@@ -32,8 +32,6 @@ pub enum MonthError {
     InvalidFormat { value: String },
     #[error("Month not found")]
     NotFound,
-    #[error("No source month for copy")]
-    NoSourceMonthForCopy,
     #[error("Repository error: {0}")]
     Repository(String),
 }

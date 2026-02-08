@@ -75,6 +75,7 @@ async fn main() {
         entry_service,
         transaction_service,
         summary_service,
+        currency_config: config.currency.clone(),
     };
 
     // Configure CORS

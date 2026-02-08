@@ -88,14 +88,6 @@ impl From<MonthError> for ApiError {
                 code: "MONTH_INVALID_FORMAT".into(),
                 details: Some(json!({ "value": value })),
             },
-            MonthError::NoSourceMonthForCopy => {
-                tracing::error!("No source month for copy");
-                ApiError {
-                    status: StatusCode::INTERNAL_SERVER_ERROR,
-                    code: "INTERNAL_ERROR".into(),
-                    details: None,
-                }
-            }
             MonthError::Repository(msg) => {
                 tracing::error!("Month repository error: {}", msg);
                 ApiError {

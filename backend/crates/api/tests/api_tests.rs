@@ -63,6 +63,11 @@ async fn setup() -> Router {
         entry_service,
         transaction_service,
         summary_service,
+        currency_config: api::config::CurrencyConfig {
+            code: "PLN".to_string(),
+            minor_unit_name: "grosz".to_string(),
+            decimal_places: 2,
+        },
     };
 
     let api = Router::new()

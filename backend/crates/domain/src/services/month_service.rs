@@ -35,17 +35,13 @@ impl MonthService {
 
     pub async fn create(&self, month: BudgetMonth) -> Result<Month, MonthError> {
         let new_month = NewMonth { month };
+
+        // Find the latest existing month before creating the new one
+        let latest = self.month_repo.find_latest().await?;
+
         let created = self.month_repo.create(new_month).await?;
 
-        // Find the latest existing month (excluding the one we just created) by sorting all months
-        let all_months = self.month_repo.list_all().await?;
-        let mut other_months: Vec<&Month> = all_months
-            .iter()
-            .filter(|m| m.id != created.id)
-            .collect();
-        other_months.sort_by(|a, b| a.month.cmp(&b.month));
-
-        if let Some(latest) = other_months.last() {
+        if let Some(ref latest) = latest {
             // Copy budget entries from the latest month to the new month
             let entries = self.entry_repo.list_by_month(&latest.id).await.map_err(|e| {
                 MonthError::Repository(format!("Failed to list entries for copy: {}", e))
