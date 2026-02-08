@@ -1,0 +1,25 @@
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    volumes:
+      - budget-data:/data
+    environment:
+      - APP__DATABASE__URL=sqlite:///data/budget.db
+      - APP__SERVER__HOST=0.0.0.0
+      - APP__SERVER__PORT=3000
+    expose:
+      - "3000"
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+
+volumes:
+  budget-data:
