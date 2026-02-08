@@ -1,0 +1,76 @@
+{
+  "nav": {
+    "budget": "Budget",
+    "months": "Months",
+    "categories": "Categories"
+  },
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "create": "Create",
+    "add": "Add",
+    "close": "Close",
+    "loading": "Loading...",
+    "noData": "No data available"
+  },
+  "categories": {
+    "title": "Categories",
+    "name": "Category Name",
+    "newCategory": "New Category",
+    "rename": "Rename Category"
+  },
+  "months": {
+    "title": "Budget Months",
+    "newMonth": "New Month",
+    "budget": "Budget",
+    "transactions": "Transactions"
+  },
+  "entries": {
+    "category": "Category",
+    "budgeted": "Budgeted",
+    "dueDay": "Due Day",
+    "addEntry": "Add Budget Entry",
+    "noEntries": "No budget entries yet"
+  },
+  "transactions": {
+    "amount": "Amount",
+    "date": "Date",
+    "addTransaction": "Add Transaction",
+    "noTransactions": "No transactions yet"
+  },
+  "summary": {
+    "totalBudgeted": "Total Budgeted",
+    "totalPaid": "Total Paid",
+    "remaining": "Remaining",
+    "budgetVsActual": "Budget vs Actual",
+    "paymentProgress": "Payment Progress"
+  },
+  "status": {
+    "unpaid": "Unpaid",
+    "underspent": "Underspent",
+    "on_budget": "On Budget",
+    "overspent": "Overspent"
+  },
+  "errors": {
+    "CATEGORY_NOT_FOUND": "Category not found",
+    "CATEGORY_NAME_ALREADY_EXISTS": "A category named \"{name}\" already exists",
+    "CATEGORY_INVALID_NAME": "Invalid category name: {reason}",
+    "MONTH_NOT_FOUND": "Month not found",
+    "MONTH_ALREADY_EXISTS": "Month {month} already exists",
+    "MONTH_INVALID_FORMAT": "Invalid month format: {value}",
+    "ENTRY_NOT_FOUND": "Budget entry not found",
+    "ENTRY_CATEGORY_ALREADY_IN_MONTH": "This category is already in this month's budget",
+    "ENTRY_HAS_TRANSACTIONS": "Cannot remove — {transaction_count} transactions exist",
+    "ENTRY_INVALID_DUE_DAY": "Due day must be between 1 and 31",
+    "TRANSACTION_NOT_FOUND": "Transaction not found",
+    "TRANSACTION_ENTRY_NOT_FOUND": "Budget entry not found",
+    "TRANSACTION_INVALID_AMOUNT": "Amount cannot be negative",
+    "TRANSACTION_INVALID_DATE": "Invalid date format",
+    "TRANSACTIONS_MONTH_REQUIRED": "Please select a month to view transactions",
+    "BAD_REQUEST": "Invalid request: {reason}",
+    "INTERNAL_ERROR": "An unexpected error occurred. Please try again.",
+    "NETWORK_ERROR": "Network error. Please check your connection."
+  }
+}

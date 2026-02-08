@@ -1,0 +1,49 @@
+use serde::Deserialize;
+use utoipa::ToSchema;
+
+#[derive(Debug, Deserialize, ToSchema)]
+pub struct CreateCategoryRequest {
+    pub name: String,
+}
+
+#[derive(Debug, Deserialize, ToSchema)]
+pub struct UpdateCategoryRequest {
+    pub name: String,
+}
+
+#[derive(Debug, Deserialize, ToSchema)]
+pub struct CreateMonthRequest {
+    pub month: String, // "YYYY-MM"
+}
+
+#[derive(Debug, Deserialize, ToSchema)]
+pub struct CreateEntryRequest {
+    pub category_id: String,
+    pub budgeted: i64,
+    pub due_day: Option<u8>,
+}
+
+#[derive(Debug, Deserialize, ToSchema)]
+pub struct UpdateEntryRequest {
+    pub budgeted: Option<i64>,
+    pub due_day: Option<Option<u8>>, // None = don't change, Some(None) = clear, Some(Some(v)) = set
+}
+
+#[derive(Debug, Deserialize, ToSchema)]
+pub struct CreateTransactionRequest {
+    pub entry_id: String,
+    pub amount: i64,
+    pub date: String, // "YYYY-MM-DD"
+}
+
+#[derive(Debug, Deserialize, ToSchema)]
+pub struct UpdateTransactionRequest {
+    pub entry_id: Option<String>,
+    pub amount: Option<i64>,
+    pub date: Option<String>, // "YYYY-MM-DD"
+}
+
+#[derive(Debug, Deserialize)]
+pub struct TransactionListQuery {
+    pub month: Option<String>, // ULID of month
+}
