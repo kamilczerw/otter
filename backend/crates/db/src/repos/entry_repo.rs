@@ -204,6 +204,19 @@ impl BudgetEntryRepository for SqliteBudgetEntryRepository {
                     month: entry.month_id.to_string(),
                 });
             }
+            Err(sqlx::Error::Database(ref db_err))
+                if db_err.message().contains("FOREIGN KEY constraint failed") =>
+            {
+                let month_exists = sqlx::query("SELECT 1 FROM months WHERE id = ?")
+                    .bind(entry.month_id.to_string())
+                    .fetch_optional(&self.pool)
+                    .await
+                    .map_err(|e| EntryError::Repository(e.to_string()))?;
+                if month_exists.is_none() {
+                    return Err(EntryError::MonthNotFound);
+                }
+                return Err(EntryError::CategoryNotFound);
+            }
             Err(e) => return Err(EntryError::Repository(e.to_string())),
         }
 

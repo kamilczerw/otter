@@ -39,11 +39,13 @@ const customDark = {
   },
 }
 
+const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
+
 export const vuetify = createVuetify({
   components,
   directives,
   theme: {
-    defaultTheme: 'customLight',
+    defaultTheme: prefersDark ? 'customDark' : 'customLight',
     themes: {
       customLight,
       customDark,

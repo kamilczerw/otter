@@ -4,6 +4,8 @@
 
     <v-progress-linear v-if="loading" indeterminate class="mt-2" />
 
+    <v-alert v-if="error" type="error" class="mt-4">{{ error }}</v-alert>
+
     <template v-if="!loading && summary">
       <!-- Summary Cards -->
       <v-row class="mt-4">
@@ -95,18 +97,21 @@
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import MonthTabs from '@/components/layout/MonthTabs.vue'
 import BudgetVsActualChart from '@/components/charts/BudgetVsActualChart.vue'
 import PaymentProgressDonut from '@/components/charts/PaymentProgressDonut.vue'
 import EntryList from '@/components/entries/EntryList.vue'
 import EntryForm from '@/components/entries/EntryForm.vue'
-import { monthsApi } from '@/api/months'
 import { entriesApi } from '@/api/entries'
 import { summaryApi } from '@/api/summary'
-import type { Entry, MonthSummary, Month } from '@/api/types'
+import { useMonths } from '@/composables/useMonths'
+import type { Entry, MonthSummary } from '@/api/types'
 import { formatCurrency } from '@/utils/currency'
 
 const route = useRoute()
+const { t } = useI18n()
+const { resolveMonthId: resolveMonth } = useMonths()
 
 const monthId = ref('')
 const entries = ref<Entry[]>([])
@@ -114,13 +119,16 @@ const summary = ref<MonthSummary | null>(null)
 const loading = ref(false)
 const loadingEntries = ref(false)
 const showEntryForm = ref(false)
+const error = ref('')
 
-async function resolveMonthId() {
+async function doResolveMonthId() {
   const monthStr = route.params.month as string
-  const months = await monthsApi.list()
-  const found = months.find((m: Month) => m.month === monthStr)
-  if (found) {
-    monthId.value = found.id
+  error.value = ''
+  try {
+    monthId.value = await resolveMonth(monthStr)
+  } catch {
+    monthId.value = ''
+    error.value = t('errors.MONTH_NOT_FOUND')
   }
 }
 
@@ -149,12 +157,12 @@ async function onEntrySaved() {
 }
 
 watch(() => route.params.month, async () => {
-  await resolveMonthId()
+  await doResolveMonthId()
   await loadData()
 })
 
 onMounted(async () => {
-  await resolveMonthId()
+  await doResolveMonthId()
   await loadData()
 })
 </script>

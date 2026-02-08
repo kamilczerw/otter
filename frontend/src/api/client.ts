@@ -20,6 +20,14 @@ async function handleResponse<T>(response: Response): Promise<T> {
   return response.json()
 }
 
+async function fetchWithErrorHandling(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+  try {
+    return await fetch(input, init)
+  } catch {
+    throw new ApiError('NETWORK_ERROR')
+  }
+}
+
 export const client = {
   async get<T>(path: string, params?: Record<string, string>): Promise<T> {
     const url = new URL(BASE_URL + path, window.location.origin)
@@ -28,14 +36,14 @@ export const client = {
         url.searchParams.set(key, value)
       })
     }
-    const response = await fetch(url.toString(), {
+    const response = await fetchWithErrorHandling(url.toString(), {
       headers: { 'Accept': 'application/json' },
     })
     return handleResponse<T>(response)
   },
 
   async post<T>(path: string, body?: unknown): Promise<T> {
-    const response = await fetch(BASE_URL + path, {
+    const response = await fetchWithErrorHandling(BASE_URL + path, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -47,7 +55,7 @@ export const client = {
   },
 
   async patch<T>(path: string, body: unknown): Promise<T> {
-    const response = await fetch(BASE_URL + path, {
+    const response = await fetchWithErrorHandling(BASE_URL + path, {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
@@ -59,7 +67,7 @@ export const client = {
   },
 
   async delete(path: string): Promise<void> {
-    const response = await fetch(BASE_URL + path, {
+    const response = await fetchWithErrorHandling(BASE_URL + path, {
       method: 'DELETE',
       headers: { 'Accept': 'application/json' },
     })

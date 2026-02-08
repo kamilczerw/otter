@@ -11,6 +11,8 @@ use domain::services::{
     CategoryService, EntryService, MonthService, SummaryService, TransactionService,
 };
 
+use crate::config::CurrencyConfig;
+
 #[derive(Clone)]
 pub struct AppState {
     pub category_service: Arc<CategoryService>,
@@ -18,6 +20,7 @@ pub struct AppState {
     pub entry_service: Arc<EntryService>,
     pub transaction_service: Arc<TransactionService>,
     pub summary_service: Arc<SummaryService>,
+    pub currency_config: CurrencyConfig,
 }
 
 pub fn parse_ulid(s: &str) -> Result<ulid::Ulid, crate::errors::ApiError> {
