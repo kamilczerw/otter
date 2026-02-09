@@ -1,8 +1,10 @@
 <template>
   <v-autocomplete
+    ref="autocompleteRef"
     v-model="selected"
     :items="items"
-    :label="$t('entries.category')"
+    :label="hideLabel ? undefined : $t('entries.category')"
+    :placeholder="hideLabel ? $t('entries.category') : undefined"
     item-title="name"
     item-value="id"
     variant="outlined"
@@ -22,18 +24,41 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, watch, nextTick } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { categoriesApi } from '@/api/categories'
+import { ApiError } from '@/api/types'
 import type { Category } from '@/api/types'
+
+const { t } = useI18n()
+
+const props = withDefaults(defineProps<{
+  autofocus?: boolean
+  hideLabel?: boolean
+}>(), {
+  autofocus: false,
+  hideLabel: false,
+})
+
+const emit = defineEmits<{
+  error: [message: string]
+}>()
 
 const model = defineModel<string>()
 
+const autocompleteRef = ref()
 const items = ref<Category[]>([])
 const selected = ref<string>('')
 const search = ref('')
 
 watch(selected, (val) => {
   model.value = val
+})
+
+watch(() => model.value, (val) => {
+  if (val !== selected.value) {
+    selected.value = val || ''
+  }
 })
 
 function onSearch(val: string) {
@@ -56,9 +81,17 @@ async function createCategory() {
     selected.value = cat.id
     search.value = ''
   } catch (e) {
-    console.error('Failed to create category', e)
+    if (e instanceof ApiError) {
+      emit('error', t(`errors.${e.code}`, e.details || {}))
+    }
   }
 }
 
-onMounted(loadCategories)
+onMounted(async () => {
+  await loadCategories()
+  if (props.autofocus) {
+    await nextTick()
+    autocompleteRef.value?.focus()
+  }
+})
 </script>

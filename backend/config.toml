@@ -11,4 +11,4 @@ minor_unit_name = "grosz"
 decimal_places = 2
 
 [cors]
-allowed_origins = ["http://localhost:5173"]
+allowed_origins = ["http://localhost:5173", "http://192.168.99.10:5173"]
