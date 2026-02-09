@@ -65,25 +65,6 @@
       />
     </div>
 
-    <!-- Add Entry FAB -->
-    <v-btn
-      icon="mdi-plus"
-      size="large"
-      position="fixed"
-      location="bottom end"
-      class="mb-16 mr-4 btn-primary-glass"
-      @click="showEntryForm = true"
-    />
-
-    <!-- Add Entry Dialog -->
-    <v-dialog v-model="showEntryForm" max-width="500">
-      <EntryForm
-        v-if="showEntryForm"
-        :month-id="monthId"
-        @saved="onEntrySaved"
-        @cancel="showEntryForm = false"
-      />
-    </v-dialog>
   </v-container>
 </template>
 
@@ -95,7 +76,6 @@ import MonthTabs from '@/components/layout/MonthTabs.vue'
 import BudgetVsActualChart from '@/components/charts/BudgetVsActualChart.vue'
 import PaymentProgressDonut from '@/components/charts/PaymentProgressDonut.vue'
 import EntryList from '@/components/entries/EntryList.vue'
-import EntryForm from '@/components/entries/EntryForm.vue'
 import { entriesApi } from '@/api/entries'
 import { summaryApi } from '@/api/summary'
 import { useMonths } from '@/composables/useMonths'
@@ -111,7 +91,6 @@ const entries = ref<Entry[]>([])
 const summary = ref<MonthSummary | null>(null)
 const loading = ref(false)
 const loadingEntries = ref(false)
-const showEntryForm = ref(false)
 const chartsOpen = ref(false)
 const error = ref('')
 
@@ -143,11 +122,6 @@ async function loadData() {
     loading.value = false
     loadingEntries.value = false
   }
-}
-
-async function onEntrySaved() {
-  showEntryForm.value = false
-  await loadData()
 }
 
 watch(() => route.params.month, async () => {
