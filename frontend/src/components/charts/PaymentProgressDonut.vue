@@ -60,6 +60,9 @@ const chartOptions = {
   display: flex;
   justify-content: center;
   align-items: center;
+  max-width: 300px;
+  max-height: 300px;
+  margin: 0 auto;
 }
 
 .donut-center {
