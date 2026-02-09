@@ -91,7 +91,7 @@ const entries = ref<Entry[]>([])
 const summary = ref<MonthSummary | null>(null)
 const loading = ref(false)
 const loadingEntries = ref(false)
-const chartsOpen = ref(false)
+const chartsOpen = ref(true)
 const error = ref('')
 
 async function doResolveMonthId() {
