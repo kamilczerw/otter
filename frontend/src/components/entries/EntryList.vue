@@ -68,7 +68,6 @@
                   variant="underlined"
                   hide-details
                   single-line
-                  clearable
                   placeholder="1-31"
                   class="inline-input inline-input--center"
                 />
