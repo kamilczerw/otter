@@ -1,5 +1,8 @@
 <template>
   <v-app>
+    <div class="language-switcher-container">
+      <LanguageSwitcher />
+    </div>
     <v-main>
       <router-view />
     </v-main>
@@ -9,6 +12,7 @@
 
 <script setup lang="ts">
 import BottomNav from './components/layout/BottomNav.vue'
+import LanguageSwitcher from './components/layout/LanguageSwitcher.vue'
 </script>
 
 <style>
@@ -301,5 +305,13 @@ body::before {
 /* Container spacing */
 .v-container {
   padding: 16px !important;
+}
+
+/* Language switcher positioning */
+.language-switcher-container {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 999;
 }
 </style>

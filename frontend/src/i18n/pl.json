@@ -4,6 +4,11 @@
     "months": "Miesiące",
     "categories": "Kategorie"
   },
+  "language": {
+    "label": "Język",
+    "en": "English",
+    "pl": "Polski"
+  },
   "common": {
     "save": "Zapisz",
     "cancel": "Anuluj",
