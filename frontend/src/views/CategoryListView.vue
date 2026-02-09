@@ -1,48 +1,38 @@
 <template>
   <v-container>
-    <v-row>
-      <v-col cols="12">
-        <h1 class="text-h5 mb-4">{{ $t('categories.title') }}</h1>
-      </v-col>
-    </v-row>
+    <h1 class="page-title mb-6">{{ $t('categories.title') }}</h1>
 
     <!-- Add Category -->
-    <v-row>
-      <v-col cols="12" sm="8" md="6">
-        <v-text-field
-          v-model="newCategoryName"
-          :label="$t('categories.newCategory')"
-          variant="outlined"
-          density="compact"
-          append-inner-icon="mdi-plus"
-          @click:append-inner="addCategory"
-          @keyup.enter="addCategory"
-          :error-messages="createError"
-        />
-      </v-col>
-    </v-row>
+    <div class="mb-6" style="max-width: 400px;">
+      <v-text-field
+        v-model="newCategoryName"
+        :label="$t('categories.newCategory')"
+        append-inner-icon="mdi-plus"
+        @click:append-inner="addCategory"
+        @keyup.enter="addCategory"
+        :error-messages="createError"
+      />
+    </div>
 
     <!-- Category List -->
-    <v-row>
-      <v-col cols="12">
-        <v-list>
-          <v-list-item
-            v-for="category in categories"
-            :key="category.id"
-            :title="category.name"
-          >
-            <template #append>
-              <v-btn icon size="small" variant="text" @click="startEdit(category)">
-                <v-icon>mdi-pencil</v-icon>
-              </v-btn>
-            </template>
-          </v-list-item>
-        </v-list>
-        <v-alert v-if="categories.length === 0 && !loading" type="info" variant="tonal">
-          {{ $t('common.noData') }}
-        </v-alert>
-      </v-col>
-    </v-row>
+    <div class="glass-card">
+      <v-list>
+        <v-list-item
+          v-for="category in categories"
+          :key="category.id"
+          :title="category.name"
+        >
+          <template #append>
+            <v-btn icon size="small" variant="text" @click="startEdit(category)">
+              <v-icon>mdi-pencil</v-icon>
+            </v-btn>
+          </template>
+        </v-list-item>
+      </v-list>
+      <v-alert v-if="categories.length === 0 && !loading" type="info" variant="tonal" class="ma-4">
+        {{ $t('common.noData') }}
+      </v-alert>
+    </div>
 
     <!-- Edit Dialog -->
     <v-dialog v-model="editDialog" max-width="400">
@@ -52,19 +42,18 @@
           <v-text-field
             v-model="editName"
             :label="$t('categories.name')"
-            variant="outlined"
             :error-messages="editError"
           />
         </v-card-text>
         <v-card-actions>
           <v-spacer />
-          <v-btn @click="editDialog = false">{{ $t('common.cancel') }}</v-btn>
-          <v-btn color="primary" @click="saveEdit">{{ $t('common.save') }}</v-btn>
+          <v-btn class="btn-secondary-glass" @click="editDialog = false">{{ $t('common.cancel') }}</v-btn>
+          <v-btn class="btn-primary-glass" @click="saveEdit">{{ $t('common.save') }}</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
 
-    <v-progress-linear v-if="loading" indeterminate />
+    <v-progress-linear v-if="loading" indeterminate color="primary" class="mt-4" />
   </v-container>
 </template>
 
@@ -134,3 +123,15 @@ async function saveEdit() {
 
 onMounted(loadCategories)
 </script>
+
+<style scoped>
+.page-title {
+  font-size: 1.375rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.mb-6 {
+  margin-bottom: 24px;
+}
+</style>

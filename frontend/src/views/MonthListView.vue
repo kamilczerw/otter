@@ -1,50 +1,40 @@
 <template>
   <v-container>
-    <v-row>
-      <v-col cols="12">
-        <h1 class="text-h5 mb-4">{{ $t('months.title') }}</h1>
-      </v-col>
-    </v-row>
+    <h1 class="page-title mb-6">{{ $t('months.title') }}</h1>
 
     <!-- Create Month -->
-    <v-row>
-      <v-col cols="12" sm="6" md="4">
-        <v-text-field
-          v-model="newMonth"
-          :label="$t('months.newMonth')"
-          placeholder="YYYY-MM"
-          variant="outlined"
-          density="compact"
-          append-inner-icon="mdi-plus"
-          @click:append-inner="createMonth"
-          @keyup.enter="createMonth"
-          :error-messages="createError"
-        />
-      </v-col>
-    </v-row>
+    <div class="mb-6" style="max-width: 320px;">
+      <v-text-field
+        v-model="newMonth"
+        :label="$t('months.newMonth')"
+        placeholder="YYYY-MM"
+        append-inner-icon="mdi-plus"
+        @click:append-inner="createMonth"
+        @keyup.enter="createMonth"
+        :error-messages="createError"
+      />
+    </div>
 
     <!-- Month List -->
-    <v-row>
-      <v-col cols="12">
-        <v-list>
-          <v-list-item
-            v-for="month in months"
-            :key="month.id"
-            :title="month.month"
-            :to="`/months/${month.month}/budget`"
-          >
-            <template #append>
-              <v-icon>mdi-chevron-right</v-icon>
-            </template>
-          </v-list-item>
-        </v-list>
-        <v-alert v-if="months.length === 0 && !loading" type="info" variant="tonal">
-          {{ $t('common.noData') }}
-        </v-alert>
-      </v-col>
-    </v-row>
+    <div class="glass-card">
+      <v-list>
+        <v-list-item
+          v-for="month in months"
+          :key="month.id"
+          :title="month.month"
+          :to="`/months/${month.month}/budget`"
+        >
+          <template #append>
+            <v-icon color="secondary">mdi-chevron-right</v-icon>
+          </template>
+        </v-list-item>
+      </v-list>
+      <v-alert v-if="months.length === 0 && !loading" type="info" variant="tonal" class="ma-4">
+        {{ $t('common.noData') }}
+      </v-alert>
+    </div>
 
-    <v-progress-linear v-if="loading" indeterminate />
+    <v-progress-linear v-if="loading" indeterminate color="primary" class="mt-4" />
   </v-container>
 </template>
 
@@ -89,3 +79,15 @@ async function createMonth() {
 
 onMounted(loadMonths)
 </script>
+
+<style scoped>
+.page-title {
+  font-size: 1.375rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.mb-6 {
+  margin-bottom: 24px;
+}
+</style>

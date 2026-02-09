@@ -38,23 +38,19 @@
             v-model="editBudgeted"
             :label="$t('entries.budgeted')"
             type="number"
-            variant="outlined"
-            density="compact"
           />
           <v-text-field
             v-model="editDueDay"
             :label="$t('entries.dueDay')"
             type="number"
-            variant="outlined"
-            density="compact"
             :placeholder="'1-31'"
             clearable
           />
         </v-card-text>
         <v-card-actions>
           <v-spacer />
-          <v-btn @click="editDialog = false">{{ $t('common.cancel') }}</v-btn>
-          <v-btn color="primary" @click="saveEdit">{{ $t('common.save') }}</v-btn>
+          <v-btn class="btn-secondary-glass" @click="editDialog = false">{{ $t('common.cancel') }}</v-btn>
+          <v-btn class="btn-primary-glass" @click="saveEdit">{{ $t('common.save') }}</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>

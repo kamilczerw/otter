@@ -6,16 +6,12 @@
       :label="$t('entries.category')"
       item-title="category.name"
       item-value="id"
-      variant="outlined"
-      density="compact"
       class="mb-2"
     />
     <v-text-field
       v-model="amount"
       :label="$t('transactions.amount')"
       type="number"
-      variant="outlined"
-      density="compact"
       min="0"
       class="mb-2"
     />
@@ -23,15 +19,13 @@
       v-model="date"
       :label="$t('transactions.date')"
       type="date"
-      variant="outlined"
-      density="compact"
     />
     <v-alert v-if="error" type="error" variant="tonal" density="compact" class="mt-2">
       {{ error }}
     </v-alert>
     <div class="d-flex justify-end mt-4">
-      <v-btn class="mr-2" @click="$emit('cancel')">{{ $t('common.cancel') }}</v-btn>
-      <v-btn color="primary" @click="save" :loading="saving">{{ $t('common.save') }}</v-btn>
+      <v-btn class="mr-2 btn-secondary-glass" @click="$emit('cancel')">{{ $t('common.cancel') }}</v-btn>
+      <v-btn class="btn-primary-glass" @click="save" :loading="saving">{{ $t('common.save') }}</v-btn>
     </div>
   </div>
 </template>

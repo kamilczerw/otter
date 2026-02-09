@@ -7,16 +7,12 @@
         v-model="budgeted"
         :label="$t('entries.budgeted')"
         type="number"
-        variant="outlined"
-        density="compact"
         class="mb-2"
       />
       <v-text-field
         v-model="dueDay"
         :label="$t('entries.dueDay')"
         type="number"
-        variant="outlined"
-        density="compact"
         placeholder="1-31"
         clearable
       />
@@ -26,8 +22,8 @@
     </v-card-text>
     <v-card-actions>
       <v-spacer />
-      <v-btn @click="$emit('cancel')">{{ $t('common.cancel') }}</v-btn>
-      <v-btn color="primary" @click="save" :loading="saving">{{ $t('common.save') }}</v-btn>
+      <v-btn class="btn-secondary-glass" @click="$emit('cancel')">{{ $t('common.cancel') }}</v-btn>
+      <v-btn class="btn-primary-glass" @click="save" :loading="saving">{{ $t('common.save') }}</v-btn>
     </v-card-actions>
   </v-card>
 </template>
