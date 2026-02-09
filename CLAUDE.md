@@ -8,9 +8,11 @@ Family Budget Tracker — a web application for household budget management with
 
 **Key characteristics:**
 - Backend: Rust workspace with 3 crates (`domain`, `db`, `api`) following ports & adapters pattern
-- Frontend: Vue 3 + TypeScript + Vuetify (Material Design)
+- Frontend: Vue 3 + TypeScript + Vuetify (Material Design) with cosmic dark theme
 - Database: SQLite with SQLx (compile-time checked queries)
 - Deployment: Docker Compose with nginx reverse proxy
+- Docs: `docs/IMPLEMENTATION_SPEC.md` contains the full implementation specification
+- No CI/CD pipeline configured yet
 
 ## Development Commands
 
@@ -65,10 +67,11 @@ The backend is organized as a Rust workspace with strict dependency rules:
 - **`domain` crate**: Pure business logic with NO framework dependencies
   - Domain types (newtypes): `Money`, `BudgetMonth`, `CategoryName`, `DueDay`, `TransactionDate`, `Ulid`
   - All newtypes validate on construction, making invalid states unrepresentable
-  - Entities: `Category`, `Month`, `BudgetEntry`, `Transaction`
+  - Entities: `Category`, `Month`, `BudgetEntry` (+ `BudgetEntryWithCategory`, `CategorySummary`), `Transaction`
   - Ports (traits): `CategoryRepository`, `MonthRepository`, `BudgetEntryRepository`, `TransactionRepository`
-  - Services: Application logic orchestrating repositories (e.g., `MonthService::create()` copies entries from latest month)
-  - Error enums: Each module defines focused error types (`CategoryError`, `MonthError`, etc.)
+  - Services: `CategoryService`, `MonthService`, `EntryService`, `TransactionService`, `SummaryService`
+  - `SummaryService` provides `MonthSummary` with per-category budget status (`Unpaid`, `Underspent`, `OnBudget`, `Overspent`)
+  - Error enums: Each module defines focused error types (`CategoryError`, `MonthError`, `EntryError`, `TransactionError`)
 
 - **`db` crate**: SQLite adapter implementing domain ports
   - Repository implementations using SQLx
@@ -108,19 +111,43 @@ All tables use ULID as TEXT primary key. All timestamps are UTC RFC 3339 with `Z
 ### Frontend: Vue 3 Composition API
 
 **Structure:**
-- `src/api/`: Typed fetch wrapper + API client functions
-- `src/components/`: Reusable components organized by domain (charts, entries, transactions, layout)
-- `src/views/`: Top-level route views
+- `src/api/`: Typed fetch wrapper (`client.ts`) + API client functions per entity + shared types (`types.ts`)
+- `src/components/`: Reusable components organized by domain:
+  - `layout/`: `BottomNav.vue`, `MonthTabs.vue`
+  - `charts/`: `BudgetVsActualChart.vue` (bar), `PaymentProgressDonut.vue` (donut)
+  - `entries/`: `EntryList.vue`, `EntryForm.vue`, `CategoryAutocomplete.vue`
+  - `transactions/`: `TransactionList.vue`, `TransactionForm.vue`, `TransactionDrawer.vue`
+- `src/views/`: `MonthListView`, `MonthBudgetView`, `MonthTransactionsView`, `CategoryListView`
+- `src/composables/`: `useMonths.ts` — shared month list state with ULID resolution
 - `src/router/`: Vue Router with human-readable URLs (`/months/2026-02/budget`)
-- `src/i18n/`: Internationalization (PL + EN) via vue-i18n
-- `src/theme/`: Custom Vuetify theme
+- `src/i18n/`: Internationalization (PL + EN) via vue-i18n (`en.json`, `pl.json`)
+- `src/theme/`: Custom Vuetify theme (`vuetify.ts`)
+- `src/utils/`: `currency.ts` — currency formatting helpers
+
+**Routes:**
+- `/` → redirects to current month budget (`/months/YYYY-MM/budget`)
+- `/months` → `MonthListView`
+- `/months/:month/budget` → `MonthBudgetView`
+- `/months/:month/transactions` → `MonthTransactionsView`
+- `/categories` → `CategoryListView`
 
 **Key patterns:**
-- Routes use `YYYY-MM` month strings; frontend resolves to backend ULIDs via cached month list
+- Routes use `YYYY-MM` month strings; frontend resolves to backend ULIDs via `useMonths` composable with cached month list
 - Bottom navigation as primary navigation (mobile-first)
+- Budget entries use **inline editing** — no dialogs; add/edit forms appear directly in the list
 - `TransactionDrawer` uses `v-bottom-sheet` for in-context editing
 - `CategoryAutocomplete` allows inline creation of new categories
-- Charts use Chart.js via vue-chartjs, data from `/months/{id}/summary` endpoint
+- Charts use Chart.js via vue-chartjs, data from `/months/{id}/summary` endpoint; charts are **collapsible** and display side-by-side on wider screens
+
+**UI theme — Cosmic Dark:**
+- Deep dark background (`#0B0D1A`) with glassmorphism (semi-transparent surfaces, backdrop blur)
+- Procedurally generated night sky background with stars and nebula glow in `App.vue`
+- Color scheme: magenta primary (`#E040A0`), success (`#5AD8A0`), danger (`#FF5070`), warning (`#FFB74D`)
+- Material Design Icons (`@mdi/font`)
+
+**Vite dev server** (`vite.config.ts`):
+- Port 5173 with `/api` proxy to `http://192.168.99.10:3000`
+- Path alias: `@` → `src/`
 
 ## API Conventions
 
@@ -139,6 +166,27 @@ All tables use ULID as TEXT primary key. All timestamps are UTC RFC 3339 with `Z
 ```
 
 Frontend maps error codes to translated messages via vue-i18n.
+
+**API route table:**
+
+| Method | Route | Handler | Description |
+|--------|-------|---------|-------------|
+| GET | `/health` | `health_check` | Health check |
+| GET | `/categories` | `list_categories` | List all categories |
+| POST | `/categories` | `create_category` | Create a category |
+| PATCH | `/categories/{id}` | `update_category` | Rename a category |
+| GET | `/months` | `list_months` | List all months |
+| POST | `/months` | `create_month` | Create month (copies entries from latest) |
+| GET | `/months/{id}` | `get_month` | Get single month |
+| GET | `/months/{id}/entries` | `list_entries` | List entries for a month |
+| POST | `/months/{id}/entries` | `create_entry` | Add entry to a month |
+| PATCH | `/months/{id}/entries/{entry_id}` | `update_entry` | Update entry amount/due day |
+| DELETE | `/months/{id}/entries/{entry_id}` | `delete_entry` | Delete entry (must have 0 transactions) |
+| GET | `/transactions?month={id}` | `list_transactions` | List transactions for a month |
+| POST | `/transactions` | `create_transaction` | Record a transaction |
+| PATCH | `/transactions/{id}` | `update_transaction` | Update a transaction |
+| DELETE | `/transactions/{id}` | `delete_transaction` | Delete a transaction |
+| GET | `/months/{id}/summary` | `get_month_summary` | Budget summary with per-category totals |
 
 **Default sort orders:**
 - Categories: `name` ascending
