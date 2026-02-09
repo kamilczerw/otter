@@ -45,7 +45,8 @@
     "totalPaid": "Total Paid",
     "remaining": "Remaining",
     "budgetVsActual": "Budget vs Actual",
-    "paymentProgress": "Payment Progress"
+    "paymentProgress": "Payment Progress",
+    "charts": "Charts"
   },
   "status": {
     "unpaid": "Unpaid",

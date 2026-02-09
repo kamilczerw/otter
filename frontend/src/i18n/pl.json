@@ -45,7 +45,8 @@
     "totalPaid": "Zapłacono łącznie",
     "remaining": "Pozostało",
     "budgetVsActual": "Budżet vs Rzeczywistość",
-    "paymentProgress": "Postęp płatności"
+    "paymentProgress": "Postęp płatności",
+    "charts": "Wykresy"
   },
   "status": {
     "unpaid": "Nieopłacone",
