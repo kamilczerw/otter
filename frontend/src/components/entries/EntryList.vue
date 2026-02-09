@@ -10,61 +10,73 @@
         </tr>
       </thead>
       <tbody>
-        <tr
-          v-for="entry in entries"
-          :key="entry.id"
-          :class="{ 'cursor-pointer': editingEntryId !== entry.id }"
-          @click="onRowClick(entry)"
-        >
-          <!-- Display mode -->
-          <template v-if="editingEntryId !== entry.id">
-            <td>{{ entry.category.name }}</td>
-            <td class="text-right">{{ formatCurrency(entry.budgeted) }}</td>
-            <td class="text-center">{{ entry.due_day ?? '-' }}</td>
-            <td class="text-right entry-actions-col">
-              <v-btn icon size="x-small" variant="text" color="error" @click.stop="tryDelete(entry)">
-                <v-icon size="small">mdi-delete</v-icon>
-              </v-btn>
+        <template v-for="entry in entries" :key="entry.id">
+          <!-- Edit button bar (above the editing row) -->
+          <tr v-if="editingEntryId === entry.id" class="edit-button-bar-row">
+            <td :colspan="4" class="edit-button-bar-cell">
+              <div class="edit-button-bar">
+                <v-btn size="small" variant="text" @click="cancelEdit">
+                  <v-icon size="small" start>mdi-close</v-icon>
+                  {{ $t('common.cancel') }}
+                </v-btn>
+                <v-btn size="small" variant="text" color="success" :loading="saving" @click="confirmEdit">
+                  <v-icon size="small" start>mdi-check</v-icon>
+                  {{ $t('common.save') }}
+                </v-btn>
+              </div>
             </td>
-          </template>
+          </tr>
 
-          <!-- Edit mode -->
-          <template v-else>
-            <td @click.stop>{{ entry.category.name }}</td>
-            <td @click.stop>
-              <v-text-field
-                v-model="editForm.budgeted"
-                type="number"
-                density="compact"
-                variant="underlined"
-                hide-details
-                single-line
-                class="inline-input inline-input--right"
-              />
-            </td>
-            <td @click.stop>
-              <v-text-field
-                v-model="editForm.dueDay"
-                type="number"
-                density="compact"
-                variant="underlined"
-                hide-details
-                single-line
-                clearable
-                placeholder="1-31"
-                class="inline-input inline-input--center"
-              />
-            </td>
-            <td class="entry-actions-col" @click.stop>
-              <v-btn icon size="x-small" variant="text" color="success" :loading="saving" @click="confirmEdit">
-                <v-icon size="small">mdi-check</v-icon>
-              </v-btn>
-              <v-btn icon size="x-small" variant="text" @click="cancelEdit">
-                <v-icon size="small">mdi-close</v-icon>
-              </v-btn>
-            </td>
-          </template>
-        </tr>
+          <tr
+            :class="{
+              'cursor-pointer': editingEntryId !== entry.id,
+              'editing-row': editingEntryId === entry.id
+            }"
+            @click="onRowClick(entry)"
+          >
+            <!-- Display mode -->
+            <template v-if="editingEntryId !== entry.id">
+              <td>{{ entry.category.name }}</td>
+              <td class="text-right">{{ formatCurrency(entry.budgeted) }}</td>
+              <td class="text-center">{{ entry.due_day ?? '-' }}</td>
+              <td class="text-right entry-actions-col">
+                <v-btn icon size="x-small" variant="text" color="error" @click.stop="tryDelete(entry)">
+                  <v-icon size="small">mdi-delete</v-icon>
+                </v-btn>
+              </td>
+            </template>
+
+            <!-- Edit mode -->
+            <template v-else>
+              <td @click.stop>{{ entry.category.name }}</td>
+              <td @click.stop>
+                <v-text-field
+                  v-model="editForm.budgeted"
+                  type="number"
+                  density="compact"
+                  variant="underlined"
+                  hide-details
+                  single-line
+                  class="inline-input inline-input--right"
+                />
+              </td>
+              <td @click.stop>
+                <v-text-field
+                  v-model="editForm.dueDay"
+                  type="number"
+                  density="compact"
+                  variant="underlined"
+                  hide-details
+                  single-line
+                  clearable
+                  placeholder="1-31"
+                  class="inline-input inline-input--center"
+                />
+              </td>
+              <td @click.stop></td>
+            </template>
+          </tr>
+        </template>
 
         <!-- New entry row -->
         <tr v-if="isAddingNew" @click.stop>
@@ -347,5 +359,56 @@ onUnmounted(() => {
 
 .mt-3 {
   margin-top: 12px;
+}
+
+/* Edit card: button bar + editing row form a unified card */
+.edit-button-bar-row {
+  position: relative;
+}
+
+.edit-button-bar-cell {
+  padding: 0 !important;
+  border-bottom: none !important;
+}
+
+.edit-button-bar {
+  display: flex;
+  justify-content: flex-end;
+  gap: 4px;
+  padding: 4px 8px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--magenta-border);
+  border-bottom: none;
+  border-radius: 10px 10px 0 0;
+  margin-top: -1px;
+}
+
+.editing-row {
+  position: relative;
+}
+
+.editing-row td {
+  background: rgba(255, 255, 255, 0.06) !important;
+}
+
+.editing-row td:first-child {
+  border-left: 1px solid var(--magenta-border);
+}
+
+.editing-row td:last-child {
+  border-right: 1px solid var(--magenta-border);
+}
+
+/* Bottom border on the last cell of editing row */
+.editing-row td {
+  border-bottom: 1px solid var(--magenta-border) !important;
+}
+
+.editing-row td:first-child {
+  border-bottom-left-radius: 10px;
+}
+
+.editing-row td:last-child {
+  border-bottom-right-radius: 10px;
 }
 </style>

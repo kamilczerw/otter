@@ -2,7 +2,15 @@
   "nav": {
     "budget": "Budżet",
     "months": "Miesiące",
-    "categories": "Kategorie"
+    "categories": "Kategorie",
+    "more": "Więcej"
+  },
+  "settings": {
+    "title": "Ustawienia",
+    "userSettings": "Ustawienia użytkownika",
+    "uiSettings": "Ustawienia interfejsu",
+    "data": "Dane",
+    "comingSoon": "Wkrótce"
   },
   "language": {
     "label": "Język",

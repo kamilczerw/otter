@@ -24,12 +24,28 @@
       </svg>
       <span class="nav-label">{{ $t('nav.categories') }}</span>
     </router-link>
+    <button class="nav-item" :class="{ active: settingsOpen }" @click="$emit('toggle-settings')">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="3" y1="6" x2="21" y2="6" />
+        <line x1="3" y1="12" x2="21" y2="12" />
+        <line x1="3" y1="18" x2="21" y2="18" />
+      </svg>
+      <span class="nav-label">{{ $t('nav.more') }}</span>
+    </button>
   </nav>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
+
+defineProps<{
+  settingsOpen: boolean
+}>()
+
+defineEmits<{
+  'toggle-settings': []
+}>()
 
 const route = useRoute()
 

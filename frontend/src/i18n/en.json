@@ -2,7 +2,15 @@
   "nav": {
     "budget": "Budget",
     "months": "Months",
-    "categories": "Categories"
+    "categories": "Categories",
+    "more": "More"
+  },
+  "settings": {
+    "title": "Settings",
+    "userSettings": "User Settings",
+    "uiSettings": "UI Settings",
+    "data": "Data",
+    "comingSoon": "Coming soon"
   },
   "language": {
     "label": "Language",
