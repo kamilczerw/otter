@@ -2,83 +2,61 @@
   <v-container>
     <MonthTabs />
 
-    <v-progress-linear v-if="loading" indeterminate class="mt-2" />
+    <v-progress-linear v-if="loading" indeterminate color="primary" class="mt-2" />
 
     <v-alert v-if="error" type="error" class="mt-4">{{ error }}</v-alert>
 
     <template v-if="!loading && summary">
-      <!-- Summary Cards -->
-      <v-row class="mt-4">
-        <v-col cols="4">
-          <v-card variant="tonal" color="primary">
-            <v-card-text class="text-center">
-              <div class="text-caption">{{ $t('summary.totalBudgeted') }}</div>
-              <div class="text-h6">{{ formatCurrency(summary.total_budgeted) }}</div>
-            </v-card-text>
-          </v-card>
-        </v-col>
-        <v-col cols="4">
-          <v-card variant="tonal" color="secondary">
-            <v-card-text class="text-center">
-              <div class="text-caption">{{ $t('summary.totalPaid') }}</div>
-              <div class="text-h6">{{ formatCurrency(summary.total_paid) }}</div>
-            </v-card-text>
-          </v-card>
-        </v-col>
-        <v-col cols="4">
-          <v-card variant="tonal" :color="summary.remaining >= 0 ? 'success' : 'error'">
-            <v-card-text class="text-center">
-              <div class="text-caption">{{ $t('summary.remaining') }}</div>
-              <div class="text-h6">{{ formatCurrency(summary.remaining) }}</div>
-            </v-card-text>
-          </v-card>
-        </v-col>
-      </v-row>
+      <!-- Summary Stats -->
+      <div class="stats-row mt-4">
+        <div class="stat-block">
+          <div class="stat-label">{{ $t('summary.totalBudgeted') }}</div>
+          <div class="stat-value text-magenta">{{ formatCurrency(summary.total_budgeted) }}</div>
+        </div>
+        <div class="stat-block">
+          <div class="stat-label">{{ $t('summary.totalPaid') }}</div>
+          <div class="stat-value">{{ formatCurrency(summary.total_paid) }}</div>
+        </div>
+        <div class="stat-block">
+          <div class="stat-label">{{ $t('summary.remaining') }}</div>
+          <div class="stat-value" :class="summary.remaining >= 0 ? 'text-success-cosmic' : 'text-danger-cosmic'">
+            {{ formatCurrency(summary.remaining) }}
+          </div>
+        </div>
+      </div>
 
       <!-- Charts -->
-      <v-row class="mt-4">
-        <v-col cols="12" md="8">
-          <v-card>
-            <v-card-title>{{ $t('summary.budgetVsActual') }}</v-card-title>
-            <v-card-text>
-              <BudgetVsActualChart :categories="summary.categories" />
-            </v-card-text>
-          </v-card>
-        </v-col>
-        <v-col cols="12" md="4">
-          <v-card>
-            <v-card-title>{{ $t('summary.paymentProgress') }}</v-card-title>
-            <v-card-text>
-              <PaymentProgressDonut
-                :total-budgeted="summary.total_budgeted"
-                :total-paid="summary.total_paid"
-              />
-            </v-card-text>
-          </v-card>
-        </v-col>
-      </v-row>
+      <div class="glass-card mt-4 pa-4">
+        <div class="section-label mb-3">{{ $t('summary.budgetVsActual') }}</div>
+        <BudgetVsActualChart :categories="summary.categories" />
+      </div>
+
+      <div class="glass-card mt-3 pa-4">
+        <div class="section-label mb-3">{{ $t('summary.paymentProgress') }}</div>
+        <PaymentProgressDonut
+          :total-budgeted="summary.total_budgeted"
+          :total-paid="summary.total_paid"
+        />
+      </div>
     </template>
 
     <!-- Entries -->
-    <v-row class="mt-4">
-      <v-col cols="12">
-        <EntryList
-          :month-id="monthId"
-          :entries="entries"
-          :loading="loadingEntries"
-          @refresh="loadData"
-        />
-      </v-col>
-    </v-row>
+    <div class="glass-card mt-4 pa-4">
+      <EntryList
+        :month-id="monthId"
+        :entries="entries"
+        :loading="loadingEntries"
+        @refresh="loadData"
+      />
+    </div>
 
     <!-- Add Entry FAB -->
     <v-btn
-      color="primary"
       icon="mdi-plus"
       size="large"
       position="fixed"
       location="bottom end"
-      class="mb-16 mr-4"
+      class="mb-16 mr-4 btn-primary-glass"
       @click="showEntryForm = true"
     />
 
@@ -166,3 +144,30 @@ onMounted(async () => {
   await loadData()
 })
 </script>
+
+<style scoped>
+.stats-row {
+  display: flex;
+  gap: 10px;
+}
+
+.stats-row .stat-block {
+  flex: 1;
+}
+
+.pa-4 {
+  padding: 16px;
+}
+
+.mt-4 {
+  margin-top: 16px;
+}
+
+.mt-3 {
+  margin-top: 12px;
+}
+
+.mb-3 {
+  margin-bottom: 12px;
+}
+</style>

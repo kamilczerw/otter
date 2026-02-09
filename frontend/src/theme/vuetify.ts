@@ -3,52 +3,53 @@ import { createVuetify } from 'vuetify'
 import * as components from 'vuetify/components'
 import * as directives from 'vuetify/directives'
 
-const customLight = {
-  dark: false,
-  colors: {
-    primary: '#2E7D32',
-    secondary: '#1565C0',
-    accent: '#FF8F00',
-    success: '#2E7D32',
-    warning: '#F57F17',
-    error: '#C62828',
-    background: '#FAFAFA',
-    surface: '#FFFFFF',
-    'on-primary': '#FFFFFF',
-    'on-secondary': '#FFFFFF',
-    'on-background': '#212121',
-    'on-surface': '#212121',
-  },
-}
-
-const customDark = {
+const cosmicDark = {
   dark: true,
   colors: {
-    primary: '#66BB6A',
-    secondary: '#42A5F5',
-    accent: '#FFB300',
-    success: '#66BB6A',
-    warning: '#FFB300',
-    error: '#EF5350',
-    background: '#121212',
-    surface: '#1E1E1E',
-    'on-primary': '#000000',
-    'on-secondary': '#000000',
-    'on-background': '#E0E0E0',
-    'on-surface': '#E0E0E0',
+    primary: '#E040A0',
+    secondary: '#8890A8',
+    accent: '#E040A0',
+    success: '#5AD8A0',
+    warning: '#FFB74D',
+    error: '#FF5070',
+    background: '#0B0D1A',
+    surface: '#121630',
+    'on-primary': '#FFFFFF',
+    'on-secondary': '#E8EAF0',
+    'on-background': '#E8EAF0',
+    'on-surface': '#E8EAF0',
+    'surface-variant': '#121630',
   },
 }
-
-const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
 
 export const vuetify = createVuetify({
   components,
   directives,
   theme: {
-    defaultTheme: prefersDark ? 'customDark' : 'customLight',
+    defaultTheme: 'cosmicDark',
     themes: {
-      customLight,
-      customDark,
+      cosmicDark,
+    },
+  },
+  defaults: {
+    VCard: {
+      rounded: 'lg',
+      elevation: 0,
+    },
+    VBtn: {
+      rounded: 'lg',
+    },
+    VTextField: {
+      variant: 'outlined',
+      density: 'compact',
+    },
+    VSelect: {
+      variant: 'outlined',
+      density: 'compact',
+    },
+    VAutocomplete: {
+      variant: 'outlined',
+      density: 'compact',
     },
   },
 })

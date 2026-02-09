@@ -2,30 +2,27 @@
   <v-container>
     <MonthTabs />
 
-    <v-progress-linear v-if="loading" indeterminate class="mt-2" />
+    <v-progress-linear v-if="loading" indeterminate color="primary" class="mt-2" />
 
     <v-alert v-if="error" type="error" class="mt-4">{{ error }}</v-alert>
 
-    <v-row class="mt-4">
-      <v-col cols="12">
-        <TransactionList
-          :transactions="transactions"
-          :entries="entries"
-          :loading="loading"
-          @edit="editTransaction"
-          @delete="deleteTransaction"
-        />
-      </v-col>
-    </v-row>
+    <div class="glass-card mt-4 pa-4">
+      <TransactionList
+        :transactions="transactions"
+        :entries="entries"
+        :loading="loading"
+        @edit="editTransaction"
+        @delete="deleteTransaction"
+      />
+    </div>
 
     <!-- Add Transaction FAB -->
     <v-btn
-      color="primary"
       icon="mdi-plus"
       size="large"
       position="fixed"
       location="bottom end"
-      class="mb-16 mr-4"
+      class="mb-16 mr-4 btn-primary-glass"
       @click="openNewTransaction"
     />
 
@@ -125,3 +122,13 @@ onMounted(async () => {
   await loadData()
 })
 </script>
+
+<style scoped>
+.pa-4 {
+  padding: 16px;
+}
+
+.mt-4 {
+  margin-top: 16px;
+}
+</style>
