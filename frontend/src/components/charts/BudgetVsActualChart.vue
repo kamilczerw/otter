@@ -1,5 +1,7 @@
 <template>
-  <Bar :data="chartData" :options="chartOptions" />
+  <div class="chart-container">
+    <Bar :data="chartData" :options="chartOptions" />
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -77,5 +79,8 @@ const chartOptions = computed(() => ({
 </script>
 
 <style scoped>
-div { height: 300px; }
+.chart-container {
+  position: relative;
+  height: 300px;
+}
 </style>
