@@ -6,7 +6,6 @@ url: "https://github.com/kamilczerw/squirrel"
 image: "ghcr.io/kamilczerw/otter"
 arch:
   - amd64
-  - aarch64
 ingress: true
 ingress_port: 3000
 panel_icon: "mdi:cash-register"
