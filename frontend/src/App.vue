@@ -1,18 +1,19 @@
 <template>
   <v-app>
-    <div class="language-switcher-container">
-      <LanguageSwitcher />
-    </div>
     <v-main>
       <router-view />
     </v-main>
-    <BottomNav />
+    <BottomNav :settings-open="settingsOpen" @toggle-settings="settingsOpen = !settingsOpen" />
+    <SettingsDrawer v-model="settingsOpen" />
   </v-app>
 </template>
 
 <script setup lang="ts">
+import { ref } from 'vue'
 import BottomNav from './components/layout/BottomNav.vue'
-import LanguageSwitcher from './components/layout/LanguageSwitcher.vue'
+import SettingsDrawer from './components/layout/SettingsDrawer.vue'
+
+const settingsOpen = ref(false)
 </script>
 
 <style>
@@ -307,11 +308,4 @@ body::before {
   padding: 16px !important;
 }
 
-/* Language switcher positioning */
-.language-switcher-container {
-  position: fixed;
-  top: 16px;
-  right: 16px;
-  z-index: 999;
-}
 </style>
