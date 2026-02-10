@@ -1,6 +1,24 @@
 import { ApiError, type ApiErrorResponse } from './types'
 
-const BASE_URL = '/api/v1'
+// Compute the API base URL relative to the current page.
+// In standard deployment: /ui/ -> API at /api/v1
+// In HA Ingress: /api/hassio_ingress/<token>/ui/ -> API at /api/hassio_ingress/<token>/api/v1
+// We detect the ingress prefix by finding everything before "/ui/" in the pathname.
+function getBaseUrl(): string {
+  const path = window.location.pathname
+  const uiIndex = path.indexOf('/ui/')
+  if (uiIndex !== -1) {
+    const prefix = path.substring(0, uiIndex)
+    return `${prefix}/api/v1`
+  }
+  if (path.endsWith('/ui')) {
+    const prefix = path.substring(0, path.length - '/ui'.length)
+    return `${prefix}/api/v1`
+  }
+  return '/api/v1'
+}
+
+const BASE_URL = getBaseUrl()
 
 async function handleResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {

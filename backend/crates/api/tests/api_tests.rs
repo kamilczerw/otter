@@ -17,7 +17,7 @@ use domain::services::{
 };
 
 // Re-use the AppState from the api crate.
-use api::handlers::AppState;
+use otter::handlers::AppState;
 
 // ---------------------------------------------------------------------------
 // Test helpers
@@ -63,7 +63,7 @@ async fn setup() -> Router {
         entry_service,
         transaction_service,
         summary_service,
-        currency_config: api::config::CurrencyConfig {
+        currency_config: otter::config::CurrencyConfig {
             code: "PLN".to_string(),
             minor_unit_name: "grosz".to_string(),
             decimal_places: 2,
@@ -71,42 +71,42 @@ async fn setup() -> Router {
     };
 
     let api = Router::new()
-        .route("/health", get(api::handlers::health::health_check))
+        .route("/health", get(otter::handlers::health::health_check))
         .route(
             "/categories",
-            get(api::handlers::categories::list_categories)
-                .post(api::handlers::categories::create_category),
+            get(otter::handlers::categories::list_categories)
+                .post(otter::handlers::categories::create_category),
         )
         .route(
             "/categories/{id}",
-            patch(api::handlers::categories::update_category),
+            patch(otter::handlers::categories::update_category),
         )
         .route(
             "/months",
-            get(api::handlers::months::list_months).post(api::handlers::months::create_month),
+            get(otter::handlers::months::list_months).post(otter::handlers::months::create_month),
         )
-        .route("/months/{id}", get(api::handlers::months::get_month))
+        .route("/months/{id}", get(otter::handlers::months::get_month))
         .route(
             "/months/{id}/entries",
-            get(api::handlers::entries::list_entries).post(api::handlers::entries::create_entry),
+            get(otter::handlers::entries::list_entries).post(otter::handlers::entries::create_entry),
         )
         .route(
             "/months/{id}/entries/{entry_id}",
-            patch(api::handlers::entries::update_entry).delete(api::handlers::entries::delete_entry),
+            patch(otter::handlers::entries::update_entry).delete(otter::handlers::entries::delete_entry),
         )
         .route(
             "/transactions",
-            get(api::handlers::transactions::list_transactions)
-                .post(api::handlers::transactions::create_transaction),
+            get(otter::handlers::transactions::list_transactions)
+                .post(otter::handlers::transactions::create_transaction),
         )
         .route(
             "/transactions/{id}",
-            patch(api::handlers::transactions::update_transaction)
-                .delete(api::handlers::transactions::delete_transaction),
+            patch(otter::handlers::transactions::update_transaction)
+                .delete(otter::handlers::transactions::delete_transaction),
         )
         .route(
             "/months/{id}/summary",
-            get(api::handlers::summary::get_month_summary),
+            get(otter::handlers::summary::get_month_summary),
         );
 
     Router::new().nest("/api/v1", api).with_state(state)

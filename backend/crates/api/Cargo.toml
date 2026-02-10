@@ -1,7 +1,11 @@
 [package]
-name = "api"
+name = "otter"
 version = "0.1.0"
 edition = "2021"
+
+[[bin]]
+name = "otter"
+path = "src/main.rs"
 
 [dependencies]
 domain = { path = "../domain" }
@@ -14,8 +18,10 @@ sqlx = { version = "0.8", features = ["runtime-tokio", "sqlite"] }
 utoipa = { version = "5", features = ["axum_extras"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
-tower-http = { version = "0.6", features = ["cors", "request-id", "trace", "util"] }
-config = { version = "0.14", features = ["toml"] }
+tower-http = { version = "0.6", features = ["cors", "fs", "request-id", "trace", "util"] }
+tower = { version = "0.5", features = ["util"] }
+config = { version = "0.14", features = ["toml", "json"] }
+clap = { version = "4", features = ["derive"] }
 chrono = { version = "0.4", features = ["serde"] }
 ulid = { version = "1", features = ["serde"] }
 uuid = "1"

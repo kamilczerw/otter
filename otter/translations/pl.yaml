@@ -1,0 +1,10 @@
+configuration:
+  currency_code:
+    name: Kod waluty
+    description: Kod waluty ISO 4217 (np. PLN, EUR, USD)
+  currency_minor_unit_name:
+    name: Nazwa jednostki
+    description: Nazwa najmniejszej jednostki waluty (np. grosz, cent)
+  currency_decimal_places:
+    name: Miejsca dziesiętne
+    description: Liczba miejsc dziesiętnych do wyświetlania kwot

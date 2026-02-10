@@ -32,7 +32,24 @@ const routes: RouteRecordRaw[] = [
   },
 ]
 
+// Detect base path dynamically to support HA Ingress subpaths.
+// In Ingress, the app is served under e.g. /api/hassio_ingress/<token>/ui/
+// We detect the base by finding everything up to and including "/ui/" in the
+// current URL path.
+function detectBase(): string {
+  const path = window.location.pathname
+  const uiIndex = path.indexOf('/ui/')
+  if (uiIndex !== -1) {
+    return path.substring(0, uiIndex + '/ui/'.length)
+  }
+  // Fallback: if path ends with /ui
+  if (path.endsWith('/ui')) {
+    return path + '/'
+  }
+  return '/ui/'
+}
+
 export const router = createRouter({
-  history: createWebHistory(),
+  history: createWebHistory(detectBase()),
   routes,
 })
