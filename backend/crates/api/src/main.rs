@@ -1,16 +1,19 @@
-mod config;
+pub mod config;
 mod errors;
-mod handlers;
+pub mod handlers;
 mod middleware;
 pub mod requests;
 pub mod responses;
 
+use std::path::PathBuf;
 use std::sync::Arc;
 
 use axum::routing::{get, patch};
 use axum::Router;
+use clap::Parser;
 use tower_http::cors::{AllowOrigin, CorsLayer};
 use tower_http::request_id::{PropagateRequestIdLayer, SetRequestIdLayer};
+use tower_http::services::{ServeDir, ServeFile};
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::EnvFilter;
 
@@ -26,15 +29,36 @@ use domain::services::{
     CategoryService, EntryService, MonthService, SummaryService, TransactionService,
 };
 
+/// Otter Budget Tracker — a self-hosted household budget application.
+#[derive(Parser, Debug)]
+#[command(name = "otter", version, about)]
+struct Cli {
+    /// Path to configuration file (TOML or JSON, auto-detected by extension)
+    #[arg(short, long, default_value = "config.toml")]
+    config: String,
+
+    /// Path to the directory containing built frontend assets
+    #[arg(short, long, default_value = "./static")]
+    static_dir: PathBuf,
+}
+
 #[tokio::main]
 async fn main() {
     tracing_subscriber::fmt()
         .with_env_filter(EnvFilter::from_default_env())
         .init();
 
-    let config = AppConfig::load().expect("Failed to load configuration");
+    let cli = Cli::parse();
 
-    let pool = db::create_pool(&config.database.url)
+    // Determine if --config was explicitly provided on the command line.
+    // If the default config file doesn't exist, we start with defaults + env vars.
+    // If an explicit path was given and doesn't exist, we fail with a clear error.
+    let explicit = std::env::args().any(|a| a == "--config" || a == "-c");
+
+    let app_config = AppConfig::load(Some(&cli.config), explicit)
+        .expect("Failed to load configuration");
+
+    let pool = db::create_pool(&app_config.database.url)
         .await
         .expect("Failed to create database pool");
 
@@ -75,23 +99,27 @@ async fn main() {
         entry_service,
         transaction_service,
         summary_service,
-        currency_config: config.currency.clone(),
+        currency_config: app_config.currency.clone(),
     };
 
     // Configure CORS
-    let origins: Vec<_> = config
-        .cors
-        .allowed_origins
-        .iter()
-        .map(|o| o.parse().expect("Invalid CORS origin"))
-        .collect();
+    let cors = if app_config.cors.allowed_origins.is_empty() {
+        CorsLayer::permissive()
+    } else {
+        let origins: Vec<_> = app_config
+            .cors
+            .allowed_origins
+            .iter()
+            .map(|o| o.parse().expect("Invalid CORS origin"))
+            .collect();
 
-    let cors = CorsLayer::new()
-        .allow_origin(AllowOrigin::list(origins))
-        .allow_methods(tower_http::cors::Any)
-        .allow_headers(tower_http::cors::Any);
+        CorsLayer::new()
+            .allow_origin(AllowOrigin::list(origins))
+            .allow_methods(tower_http::cors::Any)
+            .allow_headers(tower_http::cors::Any)
+    };
 
-    // Build router
+    // Build API router
     let api = Router::new()
         .route("/health", get(handlers::health::health_check))
         .route(
@@ -131,16 +159,33 @@ async fn main() {
             get(handlers::summary::get_month_summary),
         );
 
+    // Static file serving under /ui with SPA fallback.
+    // Any request under /ui/ that doesn't match a file returns index.html
+    // so Vue Router can handle client-side routing.
+    let index_file = cli.static_dir.join("index.html");
+    let spa_service = ServeDir::new(&cli.static_dir)
+        .not_found_service(ServeFile::new(&index_file));
+
     let app = Router::new()
         .nest("/api/v1", api)
+        .nest_service("/ui", spa_service)
         .layer(cors)
         .layer(TraceLayer::new_for_http())
         .layer(SetRequestIdLayer::x_request_id(RequestIdGenerator::default()))
         .layer(PropagateRequestIdLayer::x_request_id())
         .with_state(state);
 
-    let addr = format!("{}:{}", config.server.host, config.server.port);
+    let addr = format!("{}:{}", app_config.server.host, app_config.server.port);
     tracing::info!("Starting server on {}", addr);
+
+    if cli.static_dir.exists() {
+        tracing::info!("Serving frontend from {:?}", cli.static_dir);
+    } else {
+        tracing::warn!(
+            "Static directory {:?} does not exist — /ui routes will return 404",
+            cli.static_dir
+        );
+    }
 
     let listener = tokio::net::TcpListener::bind(&addr)
         .await

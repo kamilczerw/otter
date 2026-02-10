@@ -1,0 +1,11 @@
+#!/command/with-contenv bashio
+# ==============================================================================
+# Start the Otter Budget Tracker backend
+# ==============================================================================
+
+declare ingress_port
+ingress_port=$(bashio::addon.ingress_port)
+
+exec /usr/bin/otter \
+    --config /data/options.json \
+    --static-dir /usr/share/otter/static
