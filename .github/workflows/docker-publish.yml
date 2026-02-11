@@ -57,18 +57,21 @@ jobs:
   trigger-addon-update:
     needs: [build-and-push]
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
     steps:
       - name: Trigger HA Addon Version Update
         run: |
           # Extract addon name from repository name (e.g., "otter" from "kamilczerw/otter")
           ADDON_NAME="${GITHUB_REPOSITORY##*/}"
 
-          curl -X POST \
-            -H "Accept: application/vnd.github+json" \
-            -H "Authorization: Bearer $GITHUB_TOKEN" \
-            https://api.github.com/repos/kamilczerw/ha-addons/actions/workflows/docker-publish.yml/dispatches \
-            -d "$(jq -n --arg ref main --arg addon "$ADDON_NAME" --arg src "$GITHUB_REPOSITORY" \
-              '{ref:$ref, inputs:{addon_name:$addon, source_repo:$src}}')"
+          gh workflow run --repo ${{ github.repository }} \
+            docker-publish.yml \
+            -f addon_name="$ADDON_NAME" \
+            -f source_repo="$GITHUB_REPOSITORY"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Check trigger status
         run: |
