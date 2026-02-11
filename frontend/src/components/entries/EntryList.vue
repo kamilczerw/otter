@@ -4,7 +4,7 @@
       <thead>
         <tr>
           <th>{{ $t('entries.category') }}</th>
-          <th class="text-right">{{ $t('entries.budgeted') }}</th>
+          <th class="text-right">{{ $t('entries.paidBudgeted') }}</th>
           <th class="text-center">{{ $t('entries.dueDay') }}</th>
         </tr>
       </thead>
@@ -13,10 +13,15 @@
           v-for="entry in entries"
           :key="entry.id"
           class="cursor-pointer"
+          :class="{ 'overspent-row': isOverspent(entry) }"
           @click="openEditDrawer(entry)"
         >
           <td>{{ getCategoryDisplayName(entry.category) }}</td>
-          <td class="text-right">{{ formatCurrency(entry.budgeted) }}</td>
+          <td class="text-right">
+            <span :class="{ 'overspent-text': isOverspent(entry) }">
+              {{ formatCurrency(getPaid(entry)) }}/{{ formatCurrency(entry.budgeted) }}
+            </span>
+          </td>
           <td class="text-center">{{ entry.due_day ?? '-' }}</td>
         </tr>
       </tbody>
@@ -55,17 +60,41 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
-import type { Entry } from '@/api/types'
+import { ref, computed } from 'vue'
+import type { Entry, CategoryBudgetSummary } from '@/api/types'
 import { formatCurrency } from '@/utils/currency'
 import { getCategoryDisplayName } from '@/utils/category'
 import EntryDrawer from './EntryDrawer.vue'
 
-defineProps<{
+const props = defineProps<{
   entries: Entry[]
   monthId: string
   loading: boolean
+  categorySummaries?: CategoryBudgetSummary[]
 }>()
+
+// Create a map of category ID to summary for quick lookup
+const summaryMap = computed(() => {
+  const map = new Map<string, CategoryBudgetSummary>()
+  if (props.categorySummaries) {
+    props.categorySummaries.forEach(summary => {
+      map.set(summary.category.id, summary)
+    })
+  }
+  return map
+})
+
+// Get paid amount for an entry
+function getPaid(entry: Entry): number {
+  const summary = summaryMap.value.get(entry.category.id)
+  return summary?.paid ?? 0
+}
+
+// Check if entry is overspent
+function isOverspent(entry: Entry): boolean {
+  const summary = summaryMap.value.get(entry.category.id)
+  return summary ? summary.remaining < 0 : false
+}
 
 const emit = defineEmits<{
   refresh: []
@@ -102,6 +131,20 @@ function handleDeleted() {
 
 .cursor-pointer:hover {
   background: rgba(255, 255, 255, 0.05);
+}
+
+.overspent-row {
+  background: rgba(244, 67, 54, 0.15) !important;
+  border-left: 3px solid rgb(244, 67, 54);
+}
+
+.overspent-row:hover {
+  background: rgba(244, 67, 54, 0.25) !important;
+}
+
+.overspent-text {
+  color: rgb(244, 67, 54);
+  font-weight: 600;
 }
 
 .mt-3 {

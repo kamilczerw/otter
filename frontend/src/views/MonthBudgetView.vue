@@ -89,6 +89,7 @@
         :month-id="monthId"
         :entries="entries"
         :loading="loadingEntries"
+        :category-summaries="summary?.categories"
         @refresh="loadData"
       />
     </div>

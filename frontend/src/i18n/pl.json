@@ -48,6 +48,7 @@
   "entries": {
     "category": "Kategoria",
     "budgeted": "Zaplanowano",
+    "paidBudgeted": "Zapłacono / Zaplanowano",
     "dueDay": "Dzień płatności",
     "addEntry": "Dodaj pozycję budżetu",
     "editEntry": "Edytuj pozycję budżetu",

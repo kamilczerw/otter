@@ -48,6 +48,7 @@
   "entries": {
     "category": "Category",
     "budgeted": "Budgeted",
+    "paidBudgeted": "Paid / Budgeted",
     "dueDay": "Due Day",
     "addEntry": "Add Budget Entry",
     "editEntry": "Edit Budget Entry",
