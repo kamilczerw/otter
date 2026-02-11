@@ -69,11 +69,11 @@ jobs:
           ADDON_NAME="${GITHUB_REPOSITORY##*/}"
 
           gh workflow run --repo kamilczerw/ha-addons \
-            update-addon-version.yml \
+            update-addon-version.yaml \
             -f addon_name="$ADDON_NAME" \
             -f source_repo="$GITHUB_REPOSITORY"
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.HA_ADDONS_REPO_PAT }}
 
       - name: Check trigger status
         run: |
