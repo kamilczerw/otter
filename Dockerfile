@@ -14,7 +14,18 @@ RUN npm ci
 COPY frontend/ .
 RUN npm run build
 
-# --- Stage 2: Build backend ---
+# --- Stage 2: Prepare dependency recipe ---
+FROM rust:1.85-slim AS chef-planner
+
+RUN cargo install cargo-chef
+
+WORKDIR /app
+COPY backend/Cargo.toml backend/Cargo.lock* ./
+COPY backend/crates/ crates/
+
+RUN cargo chef prepare --recipe-path recipe.json
+
+# --- Stage 3: Build backend ---
 FROM rust:1.85-slim AS backend-builder
 
 ARG TARGETPLATFORM
@@ -23,14 +34,31 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   musl-tools gcc-aarch64-linux-gnu \
   && rm -rf /var/lib/apt/lists/*
 
+# Install cargo-chef
+RUN cargo install cargo-chef
+
 # Add Rust targets for cross-compilation
 RUN rustup target add x86_64-unknown-linux-musl aarch64-unknown-linux-musl
 
 WORKDIR /app
+
+# Copy recipe from planner stage
+COPY --from=chef-planner /app/recipe.json recipe.json
+
+# Build dependencies only (this layer is cached unless dependencies change)
+RUN case "${TARGETPLATFORM}" in \
+  "linux/arm64") \
+  export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_LINKER=aarch64-linux-gnu-gcc \
+  && cargo chef cook --release --target aarch64-unknown-linux-musl --recipe-path recipe.json ;; \
+  *) \
+  cargo chef cook --release --target x86_64-unknown-linux-musl --recipe-path recipe.json ;; \
+  esac
+
+# Copy application source code
 COPY backend/Cargo.toml backend/Cargo.lock* ./
 COPY backend/crates/ crates/
 
-# Set linker and target based on platform
+# Build application (dependencies are already cached)
 RUN case "${TARGETPLATFORM}" in \
   "linux/arm64") \
   export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_LINKER=aarch64-linux-gnu-gcc \
@@ -41,7 +69,7 @@ RUN case "${TARGETPLATFORM}" in \
   && cp target/x86_64-unknown-linux-musl/release/otter /app/otter ;; \
   esac
 
-# --- Stage 3: Final minimal image ---
+# --- Stage 4: Final minimal image ---
 FROM alpine:3.20
 
 RUN apk add --no-cache sqlite-libs ca-certificates

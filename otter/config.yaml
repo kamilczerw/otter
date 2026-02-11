@@ -1,5 +1,5 @@
 name: Otter Budget Tracker
-version: "1.0.1"
+version: "1.0.2"
 slug: otter
 description: "A self-hosted household budget tracking application"
 url: "https://github.com/kamilczerw/otter"
