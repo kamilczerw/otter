@@ -28,6 +28,18 @@
     <v-alert v-else-if="!loading" type="info" variant="tonal">
       {{ $t('transactions.noTransactions') }}
     </v-alert>
+
+    <div class="mt-3">
+      <v-btn
+        variant="text"
+        color="primary"
+        size="small"
+        prepend-icon="mdi-plus"
+        @click="$emit('add')"
+      >
+        {{ $t('transactions.addTransaction') }}
+      </v-btn>
+    </div>
   </div>
 </template>
 
@@ -43,6 +55,7 @@ const props = defineProps<{
 }>()
 
 defineEmits<{
+  add: []
   edit: [tx: Transaction]
   delete: [tx: Transaction]
 }>()
@@ -52,3 +65,9 @@ function getCategoryName(entryId: string): string {
   return entry ? getCategoryDisplayName(entry.category) : '\u2014'
 }
 </script>
+
+<style scoped>
+.mt-3 {
+  margin-top: 12px;
+}
+</style>

@@ -42,6 +42,9 @@
     "budget": "Budget",
     "transactions": "Transactions"
   },
+  "budget": {
+    "categories": "Categories"
+  },
   "entries": {
     "category": "Category",
     "budgeted": "Budgeted",
@@ -51,6 +54,7 @@
     "noEntries": "No budget entries yet"
   },
   "transactions": {
+    "title": "Transactions",
     "amount": "Amount",
     "date": "Date",
     "addTransaction": "Add Transaction",

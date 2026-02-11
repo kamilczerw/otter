@@ -22,7 +22,7 @@
           v-for="month in months"
           :key="month.id"
           :title="month.month"
-          :to="`/months/${month.month}/budget`"
+          :to="`/months/${month.month}`"
         >
           <template #append>
             <v-icon color="secondary">mdi-chevron-right</v-icon>

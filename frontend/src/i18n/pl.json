@@ -42,6 +42,9 @@
     "budget": "Budżet",
     "transactions": "Transakcje"
   },
+  "budget": {
+    "categories": "Kategorie"
+  },
   "entries": {
     "category": "Kategoria",
     "budgeted": "Zaplanowano",
@@ -51,6 +54,7 @@
     "noEntries": "Brak pozycji budżetowych"
   },
   "transactions": {
+    "title": "Transakcje",
     "amount": "Kwota",
     "date": "Data",
     "addTransaction": "Dodaj transakcję",

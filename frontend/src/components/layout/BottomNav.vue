@@ -53,12 +53,12 @@ const budgetRoute = computed(() => {
   const now = new Date()
   const year = now.getFullYear()
   const month = String(now.getMonth() + 1).padStart(2, '0')
-  return `/months/${year}-${month}/budget`
+  return `/months/${year}-${month}`
 })
 
 function isActive(section: string): boolean {
   const path = route.path
-  if (section === 'budget') return path.includes('/budget') || path.includes('/transactions')
+  if (section === 'budget') return path.startsWith('/months/') && path !== '/months'
   if (section === 'months') return path === '/months'
   if (section === 'categories') return path === '/categories'
   return false
