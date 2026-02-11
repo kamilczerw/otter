@@ -69,7 +69,7 @@ jobs:
           ADDON_NAME="${GITHUB_REPOSITORY##*/}"
 
           gh workflow run --repo ${{ github.repository }} \
-            docker-publish.yml \
+            update-addon-version.yml \
             -f addon_name="$ADDON_NAME" \
             -f source_repo="$GITHUB_REPOSITORY"
         env:
