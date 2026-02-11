@@ -24,3 +24,8 @@ dist/
 # OS
 .DS_Store
 Thumbs.db
+
+.local/
+
+### Nix ###
+.direnv/

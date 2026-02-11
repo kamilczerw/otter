@@ -45,6 +45,7 @@
     "budgeted": "Budgeted",
     "dueDay": "Due Day",
     "addEntry": "Add Budget Entry",
+    "editEntry": "Edit Budget Entry",
     "noEntries": "No budget entries yet"
   },
   "transactions": {

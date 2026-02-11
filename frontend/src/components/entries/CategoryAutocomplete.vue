@@ -12,6 +12,7 @@
     :search="search"
     @update:search="onSearch"
     :no-data-text="search ? undefined : $t('common.noData')"
+    bg-color="surface"
   >
     <template #no-data>
       <v-list-item v-if="search" @click="createCategory">

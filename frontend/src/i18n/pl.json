@@ -45,6 +45,7 @@
     "budgeted": "Zaplanowano",
     "dueDay": "Dzień płatności",
     "addEntry": "Dodaj pozycję budżetu",
+    "editEntry": "Edytuj pozycję budżetu",
     "noEntries": "Brak pozycji budżetowych"
   },
   "transactions": {
