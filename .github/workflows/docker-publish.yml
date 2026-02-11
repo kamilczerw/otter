@@ -57,9 +57,11 @@ jobs:
   trigger-addon-update:
     needs: [build-and-push]
     runs-on: ubuntu-latest
+
     permissions:
+      actions: write
       contents: read
-      issues: write
+
     steps:
       - name: Trigger HA Addon Version Update
         run: |
