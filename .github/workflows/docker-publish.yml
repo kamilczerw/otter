@@ -68,7 +68,7 @@ jobs:
           # Extract addon name from repository name (e.g., "otter" from "kamilczerw/otter")
           ADDON_NAME="${GITHUB_REPOSITORY##*/}"
 
-          gh workflow run --repo ${{ github.repository }} \
+          gh workflow run --repo kamilczerw/ha-addons \
             update-addon-version.yml \
             -f addon_name="$ADDON_NAME" \
             -f source_repo="$GITHUB_REPOSITORY"
