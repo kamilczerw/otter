@@ -23,33 +23,33 @@ Otter helps you manage your family's monthly budget by organizing spending into 
 ### Step 1: Add the repository
 
 1. In Home Assistant, navigate to **Settings > Add-ons > Add-on Store**.
-2. Click the three-dot menu in the top right and select **Repositories**.
-3. Add the following repository URL:
+1. Click the three-dot menu in the top right and select **Repositories**.
+1. Add the following repository URL:
    ```
-   https://github.com/kamilczerw/squirrel
+   https://github.com/kamilczerw/otter
    ```
-4. Click **Add** and then **Close**.
+1. Click **Add** and then **Close**.
 
 ### Step 2: Install the add-on
 
 1. Find **Otter Budget Tracker** in the add-on store (you may need to refresh the page).
-2. Click on it and then click **Install**.
+1. Click on it and then click **Install**.
 
 ### Step 3: Configure
 
 Before starting the add-on, configure the currency settings under the **Configuration** tab:
 
-| Option | Description | Default |
-|--------|-------------|---------|
-| `currency_code` | ISO 4217 currency code (e.g., `PLN`, `EUR`, `USD`) | `PLN` |
+| Option                     | Description                                                | Default |
+| -------------------------- | ---------------------------------------------------------- | ------- |
+| `currency_code`            | ISO 4217 currency code (e.g., `PLN`, `EUR`, `USD`)         | `PLN`   |
 | `currency_minor_unit_name` | Name of the smallest currency unit (e.g., `grosz`, `cent`) | `grosz` |
-| `currency_decimal_places` | Number of decimal places for currency display | `2` |
+| `currency_decimal_places`  | Number of decimal places for currency display              | `2`     |
 
 ### Step 4: Start
 
 1. Click **Start** to launch the add-on.
-2. Once running, Otter appears in the Home Assistant **sidebar** with a cash register icon.
-3. Click the sidebar entry to open the application. Authentication is handled automatically through Home Assistant's Ingress system.
+1. Once running, Otter appears in the Home Assistant **sidebar** with a cash register icon.
+1. Click the sidebar entry to open the application. Authentication is handled automatically through Home Assistant's Ingress system.
 
 ### Data storage
 

@@ -1,8 +1,8 @@
 name: Otter Budget Tracker
-version: git-4c35db9
+version: "1.0.1"
 slug: otter
 description: "A self-hosted household budget tracking application"
-url: "https://github.com/kamilczerw/squirrel"
+url: "https://github.com/kamilczerw/otter"
 image: "ghcr.io/kamilczerw/otter"
 arch:
   - amd64

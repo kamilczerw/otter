@@ -20,8 +20,8 @@ FROM rust:1.85-slim AS backend-builder
 ARG TARGETPLATFORM
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    musl-tools gcc-aarch64-linux-gnu \
-    && rm -rf /var/lib/apt/lists/*
+  musl-tools gcc-aarch64-linux-gnu \
+  && rm -rf /var/lib/apt/lists/*
 
 # Add Rust targets for cross-compilation
 RUN rustup target add x86_64-unknown-linux-musl aarch64-unknown-linux-musl
@@ -32,14 +32,14 @@ COPY backend/crates/ crates/
 
 # Set linker and target based on platform
 RUN case "${TARGETPLATFORM}" in \
-      "linux/arm64") \
-        export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_LINKER=aarch64-linux-gnu-gcc \
-        && cargo build --release --bin otter --target aarch64-unknown-linux-musl \
-        && cp target/aarch64-unknown-linux-musl/release/otter /app/otter ;; \
-      *) \
-        cargo build --release --bin otter --target x86_64-unknown-linux-musl \
-        && cp target/x86_64-unknown-linux-musl/release/otter /app/otter ;; \
-    esac
+  "linux/arm64") \
+  export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_LINKER=aarch64-linux-gnu-gcc \
+  && cargo build --release --bin otter --target aarch64-unknown-linux-musl \
+  && cp target/aarch64-unknown-linux-musl/release/otter /app/otter ;; \
+  *) \
+  cargo build --release --bin otter --target x86_64-unknown-linux-musl \
+  && cp target/x86_64-unknown-linux-musl/release/otter /app/otter ;; \
+  esac
 
 # --- Stage 3: Final minimal image ---
 FROM alpine:3.20
@@ -55,5 +55,7 @@ COPY backend/config.toml /app/config.toml
 RUN mkdir -p /data
 
 EXPOSE 3000
+
+ENV RUST_LOG=info
 
 CMD ["otter", "--config", "/app/config.toml", "--static-dir", "/usr/share/otter/static"]

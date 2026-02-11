@@ -7,6 +7,7 @@ services:
       - budget-data:/data
     environment:
       - APP__DATABASE__URL=sqlite:///data/budget.db
+      - RUST_LOG=info
     ports:
       - "3000:3000"
 
