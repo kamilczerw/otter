@@ -33,17 +33,40 @@ impl MonthService {
             .ok_or(MonthError::NotFound)
     }
 
-    pub async fn create(&self, month: BudgetMonth) -> Result<Month, MonthError> {
+    pub async fn create(
+        &self,
+        month: BudgetMonth,
+        copy_from: Option<&Ulid>,
+        empty: bool,
+    ) -> Result<Month, MonthError> {
         let new_month = NewMonth { month };
-
-        // Find the latest existing month before creating the new one
-        let latest = self.month_repo.find_latest().await?;
-
         let created = self.month_repo.create(new_month).await?;
 
-        if let Some(ref latest) = latest {
-            // Copy budget entries from the latest month to the new month
-            let entries = self.entry_repo.list_by_month(&latest.id).await.map_err(|e| {
+        // If empty is true, don't copy any entries
+        if empty {
+            return Ok(created);
+        }
+
+        // Determine source month for copying entries
+        let source_month_id = if let Some(source_id) = copy_from {
+            // Verify the source month exists
+            self.month_repo
+                .find_by_id(source_id)
+                .await?
+                .ok_or(MonthError::NotFound)?;
+            Some(*source_id)
+        } else {
+            // Find the latest existing month (excluding the one we just created)
+            self.month_repo
+                .find_latest()
+                .await?
+                .filter(|m| m.id != created.id)
+                .map(|m| m.id)
+        };
+
+        // Copy entries from source month if one exists
+        if let Some(source_id) = source_month_id {
+            let entries = self.entry_repo.list_by_month(&source_id).await.map_err(|e| {
                 MonthError::Repository(format!("Failed to list entries for copy: {}", e))
             })?;
 

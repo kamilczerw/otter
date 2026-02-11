@@ -1,27 +1,12 @@
 <template>
   <v-container>
     <!-- Month Navigation Bar -->
-    <div class="month-nav-bar">
-      <button
-        class="month-nav-btn"
-        :disabled="!prevMonth"
-        @click="navigateToMonth(prevMonth)"
-      >
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <polyline points="15 18 9 12 15 6"></polyline>
-        </svg>
-      </button>
-      <div class="month-display">{{ currentMonthDisplay }}</div>
-      <button
-        class="month-nav-btn"
-        :disabled="!nextMonth"
-        @click="navigateToMonth(nextMonth)"
-      >
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <polyline points="9 18 15 12 9 6"></polyline>
-        </svg>
-      </button>
-    </div>
+    <MonthNavigationBar
+      v-if="monthId"
+      :current-month="route.params.month as string"
+      :current-month-id="monthId"
+      :all-months="allMonths"
+    />
 
     <v-progress-linear v-if="loading" indeterminate color="primary" class="mt-2" />
 
@@ -124,9 +109,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch, computed } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
+import MonthNavigationBar from '@/components/layout/MonthNavigationBar.vue'
 import BudgetVsActualChart from '@/components/charts/BudgetVsActualChart.vue'
 import PaymentProgressDonut from '@/components/charts/PaymentProgressDonut.vue'
 import EntryList from '@/components/entries/EntryList.vue'
@@ -136,7 +122,7 @@ import { entriesApi } from '@/api/entries'
 import { summaryApi } from '@/api/summary'
 import { transactionsApi } from '@/api/transactions'
 import { useMonths } from '@/composables/useMonths'
-import type { Entry, MonthSummary, Transaction } from '@/api/types'
+import type { Entry, Month, MonthSummary, Transaction } from '@/api/types'
 import { formatCurrency } from '@/utils/currency'
 
 const route = useRoute()
@@ -155,43 +141,14 @@ const chartsOpen = ref(true)
 const drawerOpen = ref(false)
 const selectedTransaction = ref<Transaction | null>(null)
 const error = ref('')
-
-// Month navigation
-const currentMonthDisplay = computed(() => {
-  const monthStr = route.params.month as string
-  if (!monthStr) return ''
-  const [year, month] = monthStr.split('-')
-  const date = new Date(parseInt(year), parseInt(month) - 1)
-  return date.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })
-})
-
-const prevMonth = ref<string | null>(null)
-const nextMonth = ref<string | null>(null)
-
-async function updateMonthNavigation() {
-  const months = await getMonths()
-  const currentMonthStr = route.params.month as string
-  const currentIndex = months.findIndex(m => m.month === currentMonthStr)
-
-  if (currentIndex !== -1) {
-    // Months are sorted descending (newest first), so prev = next in array, next = prev in array
-    prevMonth.value = currentIndex < months.length - 1 ? months[currentIndex + 1].month : null
-    nextMonth.value = currentIndex > 0 ? months[currentIndex - 1].month : null
-  }
-}
-
-function navigateToMonth(month: string | null) {
-  if (month) {
-    router.push(`/months/${month}`)
-  }
-}
+const allMonths = ref<Month[]>([])
 
 async function doResolveMonthId() {
   const monthStr = route.params.month as string
   error.value = ''
   try {
     monthId.value = await resolveMonth(monthStr)
-    await updateMonthNavigation()
+    allMonths.value = await getMonths()
   } catch {
     monthId.value = ''
     error.value = t('errors.MONTH_NOT_FOUND')
@@ -257,51 +214,6 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-/* Month Navigation Bar */
-.month-nav-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 12px 0;
-  margin-bottom: 8px;
-}
-
-.month-nav-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 40px;
-  height: 40px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 12px;
-  color: var(--text-primary);
-  cursor: pointer;
-  transition: all 0.2s ease;
-  backdrop-filter: blur(10px);
-}
-
-.month-nav-btn:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.1);
-  border-color: var(--magenta);
-  color: var(--magenta);
-}
-
-.month-nav-btn:disabled {
-  opacity: 0.3;
-  cursor: not-allowed;
-}
-
-.month-display {
-  flex: 1;
-  text-align: center;
-  font-size: 1.125rem;
-  font-weight: 600;
-  color: var(--text-primary);
-  text-transform: capitalize;
-}
-
 /* Stats */
 .stats-row {
   display: flex;

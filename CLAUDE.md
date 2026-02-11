@@ -67,7 +67,7 @@ The backend is organized as a Rust workspace with strict dependency rules:
   - All newtypes validate on construction, making invalid states unrepresentable
   - Entities: `Category`, `Month`, `BudgetEntry`, `Transaction`
   - Ports (traits): `CategoryRepository`, `MonthRepository`, `BudgetEntryRepository`, `TransactionRepository`
-  - Services: Application logic orchestrating repositories (e.g., `MonthService::create()` copies entries from latest month)
+  - Services: Application logic orchestrating repositories (e.g., `MonthService::create()` supports flexible month creation strategies)
   - Error enums: Each module defines focused error types (`CategoryError`, `MonthError`, etc.)
 
 - **`db` crate**: SQLite adapter implementing domain ports
@@ -118,6 +118,9 @@ All tables use ULID as TEXT primary key. All timestamps are UTC RFC 3339 with `Z
 **Key patterns:**
 - Routes use `YYYY-MM` month strings; frontend resolves to backend ULIDs via cached month list
 - Bottom navigation as primary navigation (mobile-first)
+- `MonthNavigationBar` provides smart month navigation with conditional icons:
+  - Left button: Navigate to previous month (arrow) or create empty month (plus)
+  - Right button: Navigate to next month (arrow) or create by copying current month's entries (plus)
 - `TransactionDrawer` uses `v-bottom-sheet` for in-context editing
 - `CategoryAutocomplete` allows inline creation of new categories
 - Charts use Chart.js via vue-chartjs, data from `/months/{id}/summary` endpoint
@@ -148,7 +151,10 @@ Frontend maps error codes to translated messages via vue-i18n.
 
 ## Important Domain Rules
 
-1. **Month creation copies entries:** `POST /months` creates a new month and copies all budget entries (category assignments, budgeted amounts, due dates) from the most recently stored month.
+1. **Month creation strategies:** `POST /months` supports three creation strategies via optional parameters:
+   - **Empty month** (`empty: true`): Creates a month with no budget entries. Used when navigating to previous months that don't exist yet.
+   - **Copy from specific month** (`copy_from: "{ulid}"`): Copies all budget entries (category assignments, budgeted amounts, due dates) from the specified month. Used by the MonthNavigationBar when creating next months.
+   - **Default behavior** (no parameters): Copies entries from the most recently stored month. Maintains backward compatibility with existing clients.
 
 2. **Entry deletion requires no transactions:** You can only remove a budget entry if it has zero transactions. The API returns `409 ENTRY_HAS_TRANSACTIONS` otherwise.
 

@@ -18,6 +18,10 @@ pub struct UpdateCategoryRequest {
 #[derive(Debug, Deserialize, ToSchema)]
 pub struct CreateMonthRequest {
     pub month: String, // "YYYY-MM"
+    #[serde(default)]
+    pub copy_from: Option<String>, // ULID of source month to copy entries from
+    #[serde(default)]
+    pub empty: Option<bool>, // Create month with no entries
 }
 
 #[derive(Debug, Deserialize, ToSchema)]

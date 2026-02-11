@@ -35,6 +35,20 @@ pub async fn create_month(
     let budget_month: BudgetMonth = req.month.parse().map_err(|_| MonthError::InvalidFormat {
         value: req.month.clone(),
     })?;
-    let month = state.month_service.create(budget_month).await?;
+
+    // Parse copy_from ULID if provided
+    let copy_from_ulid = if let Some(ref copy_from_str) = req.copy_from {
+        Some(parse_ulid(copy_from_str)?)
+    } else {
+        None
+    };
+
+    // Determine if empty month is requested
+    let empty = req.empty.unwrap_or(false);
+
+    let month = state
+        .month_service
+        .create(budget_month, copy_from_ulid.as_ref(), empty)
+        .await?;
     Ok((StatusCode::CREATED, Json(month.into())))
 }

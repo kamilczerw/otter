@@ -453,6 +453,109 @@ async fn test_create_month_copies_entries() {
 }
 
 #[tokio::test]
+async fn test_create_empty_month() {
+    let app = setup().await;
+
+    // Set up category and January month with an entry
+    let cat_id = create_category(&app, "food").await;
+    let jan_id = create_month(&app, "2026-01").await;
+    create_entry(&app, &jan_id, &cat_id, 10000, Some(15)).await;
+
+    // Create February as empty month (should not copy entries)
+    let (status, body) = do_post(
+        &app,
+        "/api/v1/months",
+        json!({ "month": "2026-02", "empty": true }),
+    )
+    .await;
+    assert_eq!(status, StatusCode::CREATED);
+    let feb_id = body["id"].as_str().unwrap();
+
+    // Verify February has no entries
+    let path = format!("/api/v1/months/{feb_id}/entries");
+    let (status, body) = do_get(&app, &path).await;
+    assert_eq!(status, StatusCode::OK);
+    let entries = body.as_array().unwrap();
+    assert_eq!(entries.len(), 0);
+}
+
+#[tokio::test]
+async fn test_create_month_copy_from_specific() {
+    let app = setup().await;
+
+    // Set up categories
+    let cat1_id = create_category(&app, "food").await;
+    let cat2_id = create_category(&app, "rent").await;
+
+    // Create January with one entry
+    let jan_id = create_month(&app, "2026-01").await;
+    create_entry(&app, &jan_id, &cat1_id, 10000, Some(15)).await;
+
+    // Create February with different entry
+    let feb_id = create_month(&app, "2026-02").await;
+    create_entry(&app, &feb_id, &cat2_id, 20000, Some(1)).await;
+
+    // Create March copying explicitly from January (not the latest February)
+    let (status, body) = do_post(
+        &app,
+        "/api/v1/months",
+        json!({ "month": "2026-03", "copy_from": jan_id }),
+    )
+    .await;
+    assert_eq!(status, StatusCode::CREATED);
+    let march_id = body["id"].as_str().unwrap();
+
+    // Verify March copied from January (food, not rent)
+    let path = format!("/api/v1/months/{march_id}/entries");
+    let (status, body) = do_get(&app, &path).await;
+    assert_eq!(status, StatusCode::OK);
+    let entries = body.as_array().unwrap();
+    assert_eq!(entries.len(), 1);
+    assert_eq!(entries[0]["category"]["name"], "food");
+    assert_eq!(entries[0]["budgeted"], 10000);
+    assert_eq!(entries[0]["due_day"], 15);
+}
+
+#[tokio::test]
+async fn test_create_month_copy_from_nonexistent() {
+    let app = setup().await;
+
+    // Try to create month copying from non-existent ULID
+    let fake_ulid = "01HZZZZZZZZZZZZZZZZZZZZZZ";
+    let (status, body) = do_post(
+        &app,
+        "/api/v1/months",
+        json!({ "month": "2026-01", "copy_from": fake_ulid }),
+    )
+    .await;
+    assert_eq!(status, StatusCode::NOT_FOUND);
+}
+
+#[tokio::test]
+async fn test_create_month_default_behavior() {
+    let app = setup().await;
+
+    // Set up category and January month with an entry
+    let cat_id = create_category(&app, "food").await;
+    let jan_id = create_month(&app, "2026-01").await;
+    create_entry(&app, &jan_id, &cat_id, 10000, Some(15)).await;
+
+    // Create February without any parameters (backward compatibility)
+    let (status, body) = do_post(&app, "/api/v1/months", json!({ "month": "2026-02" })).await;
+    assert_eq!(status, StatusCode::CREATED);
+    let feb_id = body["id"].as_str().unwrap();
+
+    // Verify February copied entries from latest month (January)
+    let path = format!("/api/v1/months/{feb_id}/entries");
+    let (status, body) = do_get(&app, &path).await;
+    assert_eq!(status, StatusCode::OK);
+    let entries = body.as_array().unwrap();
+    assert_eq!(entries.len(), 1);
+    assert_eq!(entries[0]["category"]["name"], "food");
+    assert_eq!(entries[0]["budgeted"], 10000);
+}
+
+#[tokio::test]
 async fn test_budget_entry_crud() {
     let app = setup().await;
 

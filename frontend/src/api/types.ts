@@ -66,6 +66,8 @@ export interface UpdateCategoryRequest {
 
 export interface CreateMonthRequest {
   month: string
+  empty?: boolean
+  copy_from?: string
 }
 
 export interface CreateEntryRequest {
