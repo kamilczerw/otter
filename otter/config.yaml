@@ -8,10 +8,12 @@ arch:
   - amd64
 ingress: true
 ingress_port: 3000
-panel_icon: "mdi:cash-register"
-panel_title: "Otter"
+ingress_entry: ui/
+panel_icon: "mdi:piggy-bank"
+panel_title: "Otter Budget Tracker"
 homeassistant: "2024.1.0"
 init: false
+journald: true
 # server_host, server_port, and database_url are not exposed as options
 # because they are fixed in the add-on container environment:
 # - host is always 0.0.0.0 (container networking)
@@ -28,3 +30,7 @@ schema:
 map:
   - type: data
     read_only: false
+environment:
+  APP__DATABASE__URL: "sqlite:///data/budget.db"
+ports:
+  3000/tcp: 13000
