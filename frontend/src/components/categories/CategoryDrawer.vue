@@ -10,6 +10,14 @@
           :label="$t('categories.name')"
           placeholder="e.g., bills/electricity"
           autofocus
+          class="mb-2"
+        />
+        <v-text-field
+          v-model="categoryLabel"
+          :label="$t('categories.label')"
+          placeholder="e.g., Electricity"
+          :hint="$t('categories.labelHint')"
+          persistent-hint
         />
         <v-alert v-if="error" type="error" variant="tonal" density="compact" class="mt-2">
           {{ error }}
@@ -53,6 +61,7 @@ const isOpen = computed({
 })
 
 const categoryName = ref('')
+const categoryLabel = ref('')
 const error = ref('')
 const saving = ref(false)
 
@@ -61,8 +70,10 @@ watch(() => [props.category, props.modelValue], () => {
   if (props.modelValue) {
     if (props.category) {
       categoryName.value = props.category.name
+      categoryLabel.value = props.category.label || ''
     } else {
       categoryName.value = ''
+      categoryLabel.value = ''
     }
     error.value = ''
   }
@@ -73,10 +84,17 @@ async function save() {
   error.value = ''
   saving.value = true
   try {
+    const label = categoryLabel.value.trim() || null
     if (props.category) {
-      await categoriesApi.update(props.category.id, { name: categoryName.value.trim() })
+      await categoriesApi.update(props.category.id, {
+        name: categoryName.value.trim(),
+        label
+      })
     } else {
-      await categoriesApi.create({ name: categoryName.value.trim() })
+      await categoriesApi.create({
+        name: categoryName.value.trim(),
+        label
+      })
     }
     isOpen.value = false
     emit('saved')

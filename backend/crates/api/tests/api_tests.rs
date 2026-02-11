@@ -317,6 +317,92 @@ async fn test_rename_category() {
 }
 
 #[tokio::test]
+async fn test_create_category_with_label() {
+    let app = setup().await;
+
+    // Create category with label
+    let (status, body) = do_post(
+        &app,
+        "/api/v1/categories",
+        json!({ "name": "utils/electricity", "label": "Electricity" })
+    ).await;
+    assert_eq!(status, StatusCode::CREATED);
+    assert_eq!(body["name"], "utils/electricity");
+    assert_eq!(body["label"], "Electricity");
+
+    // Create category without label
+    let (status, body) = do_post(
+        &app,
+        "/api/v1/categories",
+        json!({ "name": "food" })
+    ).await;
+    assert_eq!(status, StatusCode::CREATED);
+    assert_eq!(body["name"], "food");
+    assert!(body["label"].is_null());
+
+    // List categories and verify labels
+    let (status, body) = do_get(&app, "/api/v1/categories").await;
+    assert_eq!(status, StatusCode::OK);
+    let categories = body.as_array().unwrap();
+    assert_eq!(categories.len(), 2);
+
+    // Find each category and verify
+    let elec = categories.iter().find(|c| c["name"] == "utils/electricity").unwrap();
+    assert_eq!(elec["label"], "Electricity");
+
+    let food = categories.iter().find(|c| c["name"] == "food").unwrap();
+    assert!(food["label"].is_null());
+}
+
+#[tokio::test]
+async fn test_update_category_label() {
+    let app = setup().await;
+
+    let cat_id = create_category(&app, "food").await;
+    let path = format!("/api/v1/categories/{cat_id}");
+
+    // Add a label
+    let (status, body) = do_patch(&app, &path, json!({ "label": "Groceries" })).await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(body["name"], "food");
+    assert_eq!(body["label"], "Groceries");
+
+    // Update the label
+    let (status, body) = do_patch(&app, &path, json!({ "label": "Food & Drinks" })).await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(body["label"], "Food & Drinks");
+
+    // Clear the label
+    let (status, body) = do_patch(&app, &path, json!({ "label": null })).await;
+    assert_eq!(status, StatusCode::OK);
+    assert!(body["label"].is_null());
+}
+
+#[tokio::test]
+async fn test_update_category_name_and_label() {
+    let app = setup().await;
+
+    let (status, body) = do_post(
+        &app,
+        "/api/v1/categories",
+        json!({ "name": "utils/electricity", "label": "Electricity" })
+    ).await;
+    assert_eq!(status, StatusCode::CREATED);
+    let cat_id = body["id"].as_str().unwrap();
+
+    // Update both name and label
+    let path = format!("/api/v1/categories/{cat_id}");
+    let (status, body) = do_patch(
+        &app,
+        &path,
+        json!({ "name": "utilities/power", "label": "Power Bills" })
+    ).await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(body["name"], "utilities/power");
+    assert_eq!(body["label"], "Power Bills");
+}
+
+#[tokio::test]
 async fn test_create_and_list_months() {
     let app = setup().await;
 

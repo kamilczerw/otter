@@ -1,6 +1,7 @@
 export interface Category {
   id: string
   name: string
+  label?: string | null
   created_at: string
   updated_at: string
 }
@@ -15,6 +16,7 @@ export interface Month {
 export interface CategorySummary {
   id: string
   name: string
+  label?: string | null
 }
 
 export interface Entry {
@@ -54,10 +56,12 @@ export interface CategoryBudgetSummary {
 // Request types
 export interface CreateCategoryRequest {
   name: string
+  label?: string | null
 }
 
 export interface UpdateCategoryRequest {
-  name: string
+  name?: string
+  label?: string | null
 }
 
 export interface CreateMonthRequest {

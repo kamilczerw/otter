@@ -5,6 +5,7 @@ use crate::types::CategoryName;
 pub struct Category {
     pub id: ulid::Ulid,
     pub name: CategoryName,
+    pub label: Option<String>,
     pub created_at: chrono::DateTime<chrono::Utc>,
     pub updated_at: chrono::DateTime<chrono::Utc>,
 }
@@ -12,4 +13,5 @@ pub struct Category {
 #[derive(Debug, Clone)]
 pub struct NewCategory {
     pub name: CategoryName,
+    pub label: Option<String>,
 }

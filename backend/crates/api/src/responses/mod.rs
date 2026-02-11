@@ -11,6 +11,7 @@ use domain::services::{BudgetStatus, CategoryBudgetSummary, MonthSummary};
 pub struct CategoryResponse {
     pub id: String,
     pub name: String,
+    pub label: Option<String>,
     pub created_at: String, // RFC 3339
     pub updated_at: String,
 }
@@ -27,6 +28,7 @@ pub struct MonthResponse {
 pub struct CategorySummaryResponse {
     pub id: String,
     pub name: String,
+    pub label: Option<String>,
 }
 
 #[derive(Debug, Serialize, ToSchema)]
@@ -74,6 +76,7 @@ impl From<Category> for CategoryResponse {
         Self {
             id: c.id.to_string(),
             name: c.name.as_str().to_string(),
+            label: c.label,
             created_at: c.created_at.to_rfc3339(),
             updated_at: c.updated_at.to_rfc3339(),
         }
@@ -96,6 +99,7 @@ impl From<DomainCategorySummary> for CategorySummaryResponse {
         Self {
             id: cs.id.to_string(),
             name: cs.name.as_str().to_string(),
+            label: cs.label,
         }
     }
 }

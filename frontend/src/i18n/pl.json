@@ -31,6 +31,8 @@
   "categories": {
     "title": "Kategorie",
     "name": "Nazwa kategorii",
+    "label": "Etykieta wyświetlania",
+    "labelHint": "Opcjonalna przyjazna nazwa (np. \"Prąd\" dla \"rachunki/prad\")",
     "newCategory": "Nowa kategoria",
     "rename": "Zmień nazwę kategorii"
   },

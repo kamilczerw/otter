@@ -34,6 +34,7 @@
 <script setup lang="ts">
 import type { Transaction, Entry } from '@/api/types'
 import { formatCurrency } from '@/utils/currency'
+import { getCategoryDisplayName } from '@/utils/category'
 
 const props = defineProps<{
   transactions: Transaction[]
@@ -48,6 +49,6 @@ defineEmits<{
 
 function getCategoryName(entryId: string): string {
   const entry = props.entries.find(e => e.id === entryId)
-  return entry?.category.name ?? '\u2014'
+  return entry ? getCategoryDisplayName(entry.category) : '\u2014'
 }
 </script>

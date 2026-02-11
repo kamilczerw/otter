@@ -31,6 +31,8 @@
   "categories": {
     "title": "Categories",
     "name": "Category Name",
+    "label": "Display Label",
+    "labelHint": "Optional human-friendly name (e.g., \"Electricity\" for \"utils/electricity\")",
     "newCategory": "New Category",
     "rename": "Rename Category"
   },

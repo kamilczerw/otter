@@ -22,6 +22,7 @@
           v-for="category in categories"
           :key="category.id"
           :title="category.name"
+          :subtitle="category.label || undefined"
         >
           <template #append>
             <v-btn icon size="small" variant="text" @click="openEditDrawer(category)">

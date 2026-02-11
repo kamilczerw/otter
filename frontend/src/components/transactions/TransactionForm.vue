@@ -2,9 +2,9 @@
   <div>
     <v-select
       v-model="entryId"
-      :items="entries"
+      :items="entriesWithDisplayName"
       :label="$t('entries.category')"
-      item-title="category.name"
+      item-title="displayName"
       item-value="id"
       class="mb-2"
     />
@@ -31,12 +31,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { transactionsApi } from '@/api/transactions'
 import type { Transaction, Entry } from '@/api/types'
 import { ApiError } from '@/api/types'
 import { parseCurrencyToMinor } from '@/utils/currency'
+import { getCategoryDisplayName } from '@/utils/category'
 
 const { t } = useI18n()
 
@@ -55,6 +56,14 @@ const amount = ref('')
 const date = ref('')
 const error = ref('')
 const saving = ref(false)
+
+// Map entries to include display name for the select
+const entriesWithDisplayName = computed(() =>
+  props.entries.map(entry => ({
+    ...entry,
+    displayName: getCategoryDisplayName(entry.category)
+  }))
+)
 
 onMounted(() => {
   if (props.transaction) {

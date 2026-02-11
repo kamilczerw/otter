@@ -19,12 +19,16 @@ impl CategoryService {
         self.repo.list_all().await
     }
 
-    pub async fn create(&self, name: CategoryName) -> Result<Category, CategoryError> {
-        let new_category = NewCategory { name };
+    pub async fn create(&self, name: CategoryName, label: Option<String>) -> Result<Category, CategoryError> {
+        let new_category = NewCategory { name, label };
         self.repo.create(new_category).await
     }
 
     pub async fn rename(&self, id: &Ulid, name: CategoryName) -> Result<Category, CategoryError> {
         self.repo.update_name(id, name).await
+    }
+
+    pub async fn update(&self, id: &Ulid, name: Option<CategoryName>, label: Option<Option<String>>) -> Result<Category, CategoryError> {
+        self.repo.update(id, name, label).await
     }
 }

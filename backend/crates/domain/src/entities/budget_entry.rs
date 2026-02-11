@@ -28,6 +28,7 @@ pub struct BudgetEntryWithCategory {
 pub struct CategorySummary {
     pub id: ulid::Ulid,
     pub name: CategoryName,
+    pub label: Option<String>,
 }
 
 #[derive(Debug, Clone)]

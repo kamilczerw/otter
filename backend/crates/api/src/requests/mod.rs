@@ -4,11 +4,15 @@ use utoipa::ToSchema;
 #[derive(Debug, Deserialize, ToSchema)]
 pub struct CreateCategoryRequest {
     pub name: String,
+    #[serde(default)]
+    pub label: Option<String>,
 }
 
 #[derive(Debug, Deserialize, ToSchema)]
 pub struct UpdateCategoryRequest {
-    pub name: String,
+    pub name: Option<String>,
+    #[serde(default)]
+    pub label: Option<Option<String>>,
 }
 
 #[derive(Debug, Deserialize, ToSchema)]

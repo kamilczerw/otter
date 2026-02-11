@@ -18,6 +18,7 @@ import {
 } from 'chart.js'
 import type { CategoryBudgetSummary } from '@/api/types'
 import { formatCurrency } from '@/utils/currency'
+import { getCategoryDisplayName } from '@/utils/category'
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend)
 
@@ -26,7 +27,7 @@ const props = defineProps<{
 }>()
 
 const chartData = computed(() => ({
-  labels: props.categories.map(c => c.category.name),
+  labels: props.categories.map(c => getCategoryDisplayName(c.category)),
   datasets: [
     {
       label: 'Budgeted',

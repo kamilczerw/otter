@@ -29,7 +29,7 @@ pub async fn create_category(
             reason: e.to_string(),
         }
     })?;
-    let category = state.category_service.create(name).await?;
+    let category = state.category_service.create(name, req.label).await?;
     Ok((StatusCode::CREATED, Json(category.into())))
 }
 
@@ -39,11 +39,16 @@ pub async fn update_category(
     Json(req): Json<UpdateCategoryRequest>,
 ) -> Result<Json<CategoryResponse>, ApiError> {
     let ulid = parse_ulid(&id)?;
-    let name = CategoryName::new(req.name).map_err(|e| {
-        CategoryError::InvalidNameFormat {
-            reason: e.to_string(),
-        }
-    })?;
-    let category = state.category_service.rename(&ulid, name).await?;
+
+    let name = match req.name {
+        Some(n) => Some(CategoryName::new(n).map_err(|e| {
+            CategoryError::InvalidNameFormat {
+                reason: e.to_string(),
+            }
+        })?),
+        None => None,
+    };
+
+    let category = state.category_service.update(&ulid, name, req.label).await?;
     Ok(Json(category.into()))
 }

@@ -15,7 +15,7 @@
           class="cursor-pointer"
           @click="openEditDrawer(entry)"
         >
-          <td>{{ entry.category.name }}</td>
+          <td>{{ getCategoryDisplayName(entry.category) }}</td>
           <td class="text-right">{{ formatCurrency(entry.budgeted) }}</td>
           <td class="text-center">{{ entry.due_day ?? '-' }}</td>
         </tr>
@@ -58,6 +58,7 @@
 import { ref } from 'vue'
 import type { Entry } from '@/api/types'
 import { formatCurrency } from '@/utils/currency'
+import { getCategoryDisplayName } from '@/utils/category'
 import EntryDrawer from './EntryDrawer.vue'
 
 defineProps<{

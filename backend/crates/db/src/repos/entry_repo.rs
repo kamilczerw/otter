@@ -78,6 +78,8 @@ fn map_row_to_entry_with_category(
     let category_name = CategoryName::new(category_name_str.clone())
         .map_err(|e| EntryError::Repository(format!("invalid category name: {}", e)))?;
 
+    let category_label: Option<String> = row.get("category_label");
+
     let budgeted: i64 = row.get("budgeted");
 
     let due_day_raw: Option<i32> = row.get("due_day");
@@ -104,6 +106,7 @@ fn map_row_to_entry_with_category(
         category: CategorySummary {
             id: category_id,
             name: category_name,
+            label: category_label,
         },
         budgeted: Money::new(budgeted),
         due_day,
@@ -117,7 +120,7 @@ async fn fetch_entry_with_category(
     entry_id: &ulid::Ulid,
 ) -> Result<BudgetEntryWithCategory, EntryError> {
     let row = sqlx::query(
-        "SELECT e.id, e.category_id, c.name AS category_name, e.budgeted, e.due_day, \
+        "SELECT e.id, e.category_id, c.name AS category_name, c.label AS category_label, e.budgeted, e.due_day, \
          e.created_at, e.updated_at \
          FROM budget_entries e \
          JOIN categories c ON e.category_id = c.id \
@@ -141,7 +144,7 @@ impl BudgetEntryRepository for SqliteBudgetEntryRepository {
         month_id: &ulid::Ulid,
     ) -> Result<Vec<BudgetEntryWithCategory>, EntryError> {
         let rows = sqlx::query(
-            "SELECT e.id, e.category_id, c.name AS category_name, e.budgeted, e.due_day, \
+            "SELECT e.id, e.category_id, c.name AS category_name, c.label AS category_label, e.budgeted, e.due_day, \
              e.created_at, e.updated_at \
              FROM budget_entries e \
              JOIN categories c ON e.category_id = c.id \
