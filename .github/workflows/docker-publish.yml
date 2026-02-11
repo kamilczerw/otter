@@ -70,18 +70,6 @@ jobs:
             -d "$(jq -n --arg ref main --arg addon "$ADDON_NAME" --arg src "$GITHUB_REPOSITORY" \
               '{ref:$ref, inputs:{addon_name:$addon, source_repo:$src}}')"
 
-          curl -X POST \
-            -H "Accept: application/vnd.github.v3+json" \
-            -H "Authorization: token ${{ secrets.HA_ADDONS_TRIGGER_TOKEN }}" \
-            https://api.github.com/repos/kamilczerw/ha-addons/dispatches \
-            -d "{
-              \"event_type\": \"update-addon-version\",
-              \"client_payload\": {
-                \"addon_name\": \"${ADDON_NAME}\",
-                \"source_repo\": \"${GITHUB_REPOSITORY}\"
-              }
-            }"
-
       - name: Check trigger status
         run: |
           if [ $? -eq 0 ]; then
