@@ -24,6 +24,8 @@ pub struct AppConfig {
     pub currency: CurrencyConfig,
     #[serde(default = "default_cors")]
     pub cors: CorsConfig,
+    #[serde(default = "default_ui")]
+    pub ui: UiConfig,
 }
 
 fn default_server() -> ServerConfig {
@@ -50,6 +52,19 @@ fn default_currency() -> CurrencyConfig {
 fn default_cors() -> CorsConfig {
     CorsConfig {
         allowed_origins: vec![],
+    }
+}
+
+fn default_ui() -> UiConfig {
+    UiConfig {
+        budget_bars: default_budget_bars(),
+    }
+}
+
+fn default_budget_bars() -> BudgetBarsConfig {
+    BudgetBarsConfig {
+        green_threshold: 80,
+        yellow_threshold: 100,
     }
 }
 
@@ -107,6 +122,28 @@ pub struct CorsConfig {
     pub allowed_origins: Vec<String>,
 }
 
+#[derive(Debug, Deserialize, Clone)]
+pub struct UiConfig {
+    #[serde(default = "default_budget_bars")]
+    pub budget_bars: BudgetBarsConfig,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct BudgetBarsConfig {
+    #[serde(default = "default_green_threshold")]
+    pub green_threshold: u8,
+    #[serde(default = "default_yellow_threshold")]
+    pub yellow_threshold: u8,
+}
+
+fn default_green_threshold() -> u8 {
+    80
+}
+
+fn default_yellow_threshold() -> u8 {
+    100
+}
+
 /// Convert flat JSON keys (e.g., "server_host") into nested structure
 /// (e.g., {"server": {"host": ...}}) so they deserialize into `AppConfig`.
 ///
@@ -124,7 +161,7 @@ fn convert_flat_json(value: serde_json::Value) -> serde_json::Value {
     };
 
     // Known section prefixes for unambiguous splitting
-    let known_sections = ["server", "database", "currency", "cors"];
+    let known_sections = ["server", "database", "currency", "cors", "ui"];
 
     let mut nested: HashMap<String, HashMap<String, serde_json::Value>> = HashMap::new();
 
@@ -219,6 +256,121 @@ impl AppConfig {
         );
 
         let config = builder.build()?;
-        config.try_deserialize()
+        let app_config: Self = config.try_deserialize()?;
+        app_config.validate()?;
+        Ok(app_config)
+    }
+
+    fn validate(&self) -> Result<(), config::ConfigError> {
+        let bars = &self.ui.budget_bars;
+        if bars.green_threshold == 0 {
+            return Err(config::ConfigError::Message(
+                "ui.budget_bars.green_threshold must be greater than 0".to_string(),
+            ));
+        }
+        if bars.yellow_threshold == 0 {
+            return Err(config::ConfigError::Message(
+                "ui.budget_bars.yellow_threshold must be greater than 0".to_string(),
+            ));
+        }
+        if bars.green_threshold >= bars.yellow_threshold {
+            return Err(config::ConfigError::Message(format!(
+                "ui.budget_bars.green_threshold ({}) must be less than yellow_threshold ({})",
+                bars.green_threshold, bars.yellow_threshold
+            )));
+        }
+        Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::io::Write;
+    use tempfile::NamedTempFile;
+
+    fn write_toml(content: &str) -> NamedTempFile {
+        let mut f = tempfile::Builder::new()
+            .suffix(".toml")
+            .tempfile()
+            .unwrap();
+        f.write_all(content.as_bytes()).unwrap();
+        f
+    }
+
+    #[test]
+    fn default_budget_bar_thresholds() {
+        let config = AppConfig::load(None, false).unwrap();
+        assert_eq!(config.ui.budget_bars.green_threshold, 80);
+        assert_eq!(config.ui.budget_bars.yellow_threshold, 100);
+    }
+
+    #[test]
+    fn custom_budget_bar_thresholds_from_toml() {
+        let f = write_toml(
+            r#"
+[ui.budget_bars]
+green_threshold = 70
+yellow_threshold = 90
+"#,
+        );
+        let config = AppConfig::load(Some(f.path().to_str().unwrap()), true).unwrap();
+        assert_eq!(config.ui.budget_bars.green_threshold, 70);
+        assert_eq!(config.ui.budget_bars.yellow_threshold, 90);
+    }
+
+    #[test]
+    fn rejects_green_gte_yellow() {
+        let f = write_toml(
+            r#"
+[ui.budget_bars]
+green_threshold = 100
+yellow_threshold = 80
+"#,
+        );
+        let err = AppConfig::load(Some(f.path().to_str().unwrap()), true).unwrap_err();
+        let msg = err.to_string();
+        assert!(msg.contains("green_threshold"), "unexpected error: {msg}");
+        assert!(msg.contains("less than"), "unexpected error: {msg}");
+    }
+
+    #[test]
+    fn rejects_equal_thresholds() {
+        let f = write_toml(
+            r#"
+[ui.budget_bars]
+green_threshold = 80
+yellow_threshold = 80
+"#,
+        );
+        let err = AppConfig::load(Some(f.path().to_str().unwrap()), true).unwrap_err();
+        assert!(err.to_string().contains("less than"));
+    }
+
+    #[test]
+    fn rejects_zero_green_threshold() {
+        let f = write_toml(
+            r#"
+[ui.budget_bars]
+green_threshold = 0
+yellow_threshold = 100
+"#,
+        );
+        let err = AppConfig::load(Some(f.path().to_str().unwrap()), true).unwrap_err();
+        assert!(err.to_string().contains("greater than 0"));
+    }
+
+    #[test]
+    fn partial_budget_bars_config_uses_defaults() {
+        // Only set green_threshold; yellow_threshold should use default
+        let f = write_toml(
+            r#"
+[ui.budget_bars]
+green_threshold = 50
+"#,
+        );
+        let config = AppConfig::load(Some(f.path().to_str().unwrap()), true).unwrap();
+        assert_eq!(config.ui.budget_bars.green_threshold, 50);
+        assert_eq!(config.ui.budget_bars.yellow_threshold, 100);
     }
 }
