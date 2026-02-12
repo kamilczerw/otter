@@ -17,6 +17,11 @@
     "en": "English",
     "pl": "Polski"
   },
+  "budgetBarSize": {
+    "label": "Budget bar size",
+    "compact": "Compact",
+    "spacious": "Spacious"
+  },
   "common": {
     "save": "Save",
     "cancel": "Cancel",

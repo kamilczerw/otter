@@ -4,28 +4,33 @@
       v-for="item in categories"
       :key="item.category.id"
       class="budget-bar"
-      :class="barSizeClass"
       role="progressbar"
       :aria-valuenow="item.paid"
       :aria-valuemin="0"
       :aria-valuemax="item.budgeted"
       :aria-label="getAriaLabel(item)"
     >
-      <div class="budget-bar__background">
-        <div
-          class="budget-bar__fill"
-          :style="{ width: getFillWidth(item) + '%', backgroundColor: getBarColor(item) }"
-        />
-        <div
-          v-if="item.paid > item.budgeted && item.budgeted > 0"
-          class="budget-bar__overspend-line"
-          :style="{ left: getOverspendLinePosition(item) + '%' }"
-        />
-        <div class="budget-bar__text">
-          <span class="budget-bar__label">{{ getCategoryDisplayName(item.category) }}</span>
-          <span class="budget-bar__amounts">{{ formatAmount(item.paid) }}/{{ formatAmount(item.budgeted) }}</span>
-        </div>
-      </div>
+      <v-progress-linear
+        :model-value="getFillWidth(item)"
+        :color="getBarColor(item)"
+        :height="barHeight"
+        rounded="lg"
+        bg-color="#424242"
+      >
+        <template v-slot:default>
+          <div class="budget-bar__text">
+            <span class="budget-bar__label">{{ getCategoryDisplayName(item.category) }}</span>
+            <span class="budget-bar__amounts">{{ formatAmount(item.paid) }}/{{ formatAmount(item.budgeted) }}</span>
+          </div>
+        </template>
+      </v-progress-linear>
+
+      <!-- Overspend indicator line -->
+      <div
+        v-if="item.paid > item.budgeted && item.budgeted > 0"
+        class="budget-bar__overspend-line"
+        :style="{ left: getOverspendLinePosition(item) + '%' }"
+      />
     </div>
   </div>
 </template>
@@ -44,7 +49,7 @@ const props = withDefaults(defineProps<Props>(), {
   barSize: 'compact',
 })
 
-const barSizeClass = computed(() => `budget-bar--${props.barSize}`)
+const barHeight = computed(() => props.barSize === 'compact' ? 48 : 72)
 
 function formatAmount(minorUnits: number): string {
   return formatCurrency(minorUnits)
@@ -57,12 +62,12 @@ function getFillWidth(item: CategoryBudgetSummary): number {
 
 function getBarColor(item: CategoryBudgetSummary): string {
   const { paid, budgeted } = item
-  if (budgeted === 0 && paid > 0) return 'var(--budget-bar-color-red)'
-  if (paid === 0) return 'var(--budget-bar-color-green)'
+  if (budgeted === 0 && paid > 0) return '#F44336'
+  if (paid === 0) return '#4CAF50'
   const percentage = (paid / budgeted) * 100
-  if (percentage > 100) return 'var(--budget-bar-color-red)'
-  if (percentage >= 80) return 'var(--budget-bar-color-yellow)'
-  return 'var(--budget-bar-color-green)'
+  if (percentage > 100) return '#F44336'
+  if (percentage >= 80) return '#FFC107'
+  return '#4CAF50'
 }
 
 function getOverspendLinePosition(item: CategoryBudgetSummary): number {
@@ -82,14 +87,8 @@ import { computed } from 'vue'
 
 <style scoped>
 .budget-progress-bars {
-  --budget-bar-height-compact: 48px;
-  --budget-bar-height-spacious: 72px;
   --budget-bar-gap: 12px;
   --budget-bar-padding: 16px;
-  --budget-bar-color-green: #4CAF50;
-  --budget-bar-color-yellow: #FFC107;
-  --budget-bar-color-red: #F44336;
-  --budget-bar-color-bg: #424242;
 
   display: flex;
   flex-direction: column;
@@ -98,34 +97,7 @@ import { computed } from 'vue'
 
 .budget-bar {
   position: relative;
-  border-radius: 8px;
-  overflow: hidden;
-}
-
-.budget-bar--compact {
-  height: var(--budget-bar-height-compact);
-}
-
-.budget-bar--spacious {
-  height: var(--budget-bar-height-spacious);
-}
-
-.budget-bar__background {
-  position: relative;
   width: 100%;
-  height: 100%;
-  background-color: var(--budget-bar-color-bg);
-  border-radius: 8px;
-  overflow: hidden;
-}
-
-.budget-bar__fill {
-  position: absolute;
-  top: 0;
-  left: 0;
-  height: 100%;
-  border-radius: 8px 0 0 8px;
-  transition: none;
 }
 
 .budget-bar__overspend-line {
@@ -134,20 +106,18 @@ import { computed } from 'vue'
   height: 100%;
   width: 3px;
   background-color: #FFFFFF;
-  z-index: 1;
+  z-index: 2;
+  pointer-events: none;
+  border-radius: 8px;
 }
 
 .budget-bar__text {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  width: 100%;
+  height: 100%;
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 0 var(--budget-bar-padding);
-  z-index: 2;
   color: #E8EAF0;
   font-size: 14px;
   pointer-events: none;

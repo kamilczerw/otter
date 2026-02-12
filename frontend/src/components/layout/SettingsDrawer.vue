@@ -53,6 +53,36 @@
               </v-icon>
             </div>
           </div>
+
+          <div class="settings-item mt-2" @click="showBudgetBarSizeMenu = !showBudgetBarSizeMenu">
+            <div class="settings-item-left">
+              <v-icon class="settings-item-icon" size="large">
+                {{ budgetBarSize === 'compact' ? 'mdi-view-compact' : 'mdi-view-comfortable' }}
+              </v-icon>
+              <div>
+                <div class="settings-item-label">{{ $t('budgetBarSize.label') }}</div>
+                <div class="settings-item-value">{{ currentBudgetBarSizeName }}</div>
+              </div>
+            </div>
+            <v-icon size="small" class="text-cosmic-secondary">
+              {{ showBudgetBarSizeMenu ? 'mdi-chevron-up' : 'mdi-chevron-down' }}
+            </v-icon>
+          </div>
+          <div v-if="showBudgetBarSizeMenu" class="language-options">
+            <div
+              v-for="size in availableBudgetBarSizes"
+              :key="size.value"
+              class="language-option"
+              :class="{ active: budgetBarSize === size.value }"
+              @click="changeBudgetBarSize(size.value)"
+            >
+              <v-icon class="language-option-flag">{{ size.icon }}</v-icon>
+              <span class="language-option-name">{{ size.name }}</span>
+              <v-icon v-if="budgetBarSize === size.value" size="small" color="primary" class="language-option-check">
+                mdi-check
+              </v-icon>
+            </div>
+          </div>
         </div>
 
         <!-- Data -->
@@ -70,6 +100,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useUiPreferences, type BudgetBarSize } from '@/composables/useUiPreferences'
 
 defineProps<{
   modelValue: boolean
@@ -80,8 +111,10 @@ defineEmits<{
 }>()
 
 const { locale, t } = useI18n()
+const { budgetBarSize } = useUiPreferences()
 
 const showLanguageMenu = ref(false)
+const showBudgetBarSizeMenu = ref(false)
 
 const currentLocale = computed(() => locale.value)
 
@@ -97,14 +130,27 @@ const currentLanguageName = computed(() => {
   return lang?.name || currentLocale.value
 })
 
+const currentBudgetBarSizeName = computed(() => {
+  return t(`budgetBarSize.${budgetBarSize.value}`)
+})
+
 const availableLanguages = computed(() => [
   { code: 'en', name: t('language.en'), flag: '\u{1F1EC}\u{1F1E7}' },
   { code: 'pl', name: t('language.pl'), flag: '\u{1F1F5}\u{1F1F1}' },
 ])
 
+const availableBudgetBarSizes = computed(() => [
+  { value: 'compact' as BudgetBarSize, name: t('budgetBarSize.compact'), icon: 'mdi-view-compact' },
+  { value: 'spacious' as BudgetBarSize, name: t('budgetBarSize.spacious'), icon: 'mdi-view-comfortable' },
+])
+
 function changeLanguage(newLocale: string) {
   locale.value = newLocale
   localStorage.setItem('language', newLocale)
+}
+
+function changeBudgetBarSize(size: BudgetBarSize) {
+  budgetBarSize.value = size
 }
 </script>
 
@@ -217,6 +263,10 @@ function changeLanguage(newLocale: string) {
 .language-option-flag {
   font-size: 1.25rem;
   line-height: 1;
+}
+
+.mt-2 {
+  margin-top: 8px;
 }
 
 .language-option-name {

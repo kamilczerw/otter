@@ -20,15 +20,19 @@
           <div class="stat-value text-magenta">{{ formatCurrency(summary.total_budgeted) }}</div>
         </div>
         <div class="stat-block">
-          <div class="stat-label">{{ $t('summary.totalPaid') }}</div>
-          <div class="stat-value">{{ formatCurrency(summary.total_paid) }}</div>
-        </div>
-        <div class="stat-block">
           <div class="stat-label">{{ $t('summary.remaining') }}</div>
           <div class="stat-value" :class="summary.remaining >= 0 ? 'text-success-cosmic' : 'text-danger-cosmic'">
             {{ formatCurrency(summary.remaining) }}
           </div>
         </div>
+      </div>
+
+      <!-- Budget Progress Bars -->
+      <div class="glass-card mt-4 pa-4">
+        <BudgetProgressBars
+          :categories="summary.categories"
+          :bar-size="budgetBarSize"
+        />
       </div>
 
       <!-- Charts Section (collapsible) -->
@@ -115,6 +119,7 @@ import { useI18n } from 'vue-i18n'
 import MonthNavigationBar from '@/components/layout/MonthNavigationBar.vue'
 import BudgetVsActualChart from '@/components/charts/BudgetVsActualChart.vue'
 import PaymentProgressDonut from '@/components/charts/PaymentProgressDonut.vue'
+import BudgetProgressBars from '@/components/budget/BudgetProgressBars.vue'
 import EntryList from '@/components/entries/EntryList.vue'
 import TransactionList from '@/components/transactions/TransactionList.vue'
 import TransactionDrawer from '@/components/transactions/TransactionDrawer.vue'
@@ -122,6 +127,7 @@ import { entriesApi } from '@/api/entries'
 import { summaryApi } from '@/api/summary'
 import { transactionsApi } from '@/api/transactions'
 import { useMonths } from '@/composables/useMonths'
+import { useUiPreferences } from '@/composables/useUiPreferences'
 import type { Entry, Month, MonthSummary, Transaction } from '@/api/types'
 import { formatCurrency } from '@/utils/currency'
 
@@ -129,6 +135,7 @@ const route = useRoute()
 const router = useRouter()
 const { t } = useI18n()
 const { resolveMonthId: resolveMonth, getMonths } = useMonths()
+const { budgetBarSize } = useUiPreferences()
 
 const monthId = ref('')
 const entries = ref<Entry[]>([])

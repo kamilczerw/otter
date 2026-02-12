@@ -17,6 +17,11 @@
     "en": "English",
     "pl": "Polski"
   },
+  "budgetBarSize": {
+    "label": "Rozmiar paska budżetu",
+    "compact": "Kompaktowy",
+    "spacious": "Przestronny"
+  },
   "common": {
     "save": "Zapisz",
     "cancel": "Anuluj",
