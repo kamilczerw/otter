@@ -66,9 +66,9 @@ function getBarColor(item: CategoryBudgetSummary): string {
   if (budgeted === 0 && paid > 0) return '#F44336'
   if (paid === 0) return '#4CAF50'
   const percentage = (paid / budgeted) * 100
-  if (percentage > 100) return '#F44336'
-  if (percentage >= 80) return '#FFC107'
-  return '#4CAF50'
+  if (percentage > 110) return 'var(--color-danger)'
+  if (percentage > 100) return 'var(--color-warning)'
+  return 'var(--color-success)'
 }
 
 function getOverspendLinePosition(item: CategoryBudgetSummary): number {
@@ -101,8 +101,8 @@ import { computed } from 'vue'
   width: 100%;
 }
 
-.budget-bar__progress {
-  opacity: 0.90;
+.budget-bar__progress >>> .v-progress-linear__determinate {
+  opacity: 0.50;
 }
 
 .budget-bar__overspend-line {
@@ -110,7 +110,7 @@ import { computed } from 'vue'
   top: 0;
   height: 100%;
   width: 3px;
-  background-color: #FFFFFF;
+  background-color: var(--color-danger);
   z-index: 2;
   pointer-events: none;
   border-radius: 8px;

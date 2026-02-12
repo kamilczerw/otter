@@ -18,5 +18,5 @@ allowed_origins = ["http://localhost:5173", "http://192.168.99.10:5173"]
 # 0% to green_threshold = green (on track)
 # green_threshold to yellow_threshold = yellow (caution)
 # above yellow_threshold = red (overspent)
-green_threshold = 80
-yellow_threshold = 100
+green_threshold = 100
+yellow_threshold = 110
