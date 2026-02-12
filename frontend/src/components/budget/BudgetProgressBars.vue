@@ -16,6 +16,7 @@
         :height="barHeight"
         rounded="lg"
         bg-color="#424242"
+        class="budget-bar__progress"
       >
         <template v-slot:default>
           <div class="budget-bar__text">
@@ -98,6 +99,10 @@ import { computed } from 'vue'
 .budget-bar {
   position: relative;
   width: 100%;
+}
+
+.budget-bar__progress {
+  opacity: 0.90;
 }
 
 .budget-bar__overspend-line {

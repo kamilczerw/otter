@@ -7,6 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 Family Budget Tracker — a web application for household budget management with a Vue 3 frontend and Rust/Axum backend following hexagonal architecture.
 
 **Key characteristics:**
+
 - Backend: Rust workspace with 3 crates (`domain`, `db`, `api`) following ports & adapters pattern
 - Frontend: Vue 3 + TypeScript + Vuetify (Material Design)
 - Database: SQLite with SQLx (compile-time checked queries)
@@ -85,22 +86,25 @@ The backend is organized as a Rust workspace with strict dependency rules:
   - Entry point: `src/main.rs` wires everything together
 
 **Key architectural rules:**
+
 1. Domain crate has NO dependencies on frameworks, databases, or HTTP libraries
-2. Domain entities ≠ API request/response types (API layer maps between them)
-3. All foreign keys use `ON DELETE RESTRICT` (deletion rules enforced in domain AND database)
-4. Services depend on traits, never on concrete implementations
+1. Domain entities ≠ API request/response types (API layer maps between them)
+1. All foreign keys use `ON DELETE RESTRICT` (deletion rules enforced in domain AND database)
+1. Services depend on traits, never on concrete implementations
 
 ### Database Schema
 
 All tables use ULID as TEXT primary key. All timestamps are UTC RFC 3339 with `Z` suffix.
 
 **Tables:**
+
 - `categories`: Global category definitions (hierarchical names like `utils/electricity`)
 - `months`: Budget months (ULID + `YYYY-MM` string)
 - `budget_entries`: Category assignments per month (links month + category, stores budgeted amount + due day)
 - `transactions`: Recorded payments against budget entries
 
 **Important constraints:**
+
 - `UNIQUE(month_id, category_id)` on `budget_entries` — category appears max once per month
 - All foreign keys use `ON DELETE RESTRICT`
 - `updated_at` managed by SQLite triggers (application sets only `created_at`)
@@ -108,6 +112,7 @@ All tables use ULID as TEXT primary key. All timestamps are UTC RFC 3339 with `Z
 ### Frontend: Vue 3 Composition API
 
 **Structure:**
+
 - `src/api/`: Typed fetch wrapper + API client functions
 - `src/components/`: Reusable components organized by domain (charts, entries, transactions, layout)
 - `src/views/`: Top-level route views
@@ -116,6 +121,7 @@ All tables use ULID as TEXT primary key. All timestamps are UTC RFC 3339 with `Z
 - `src/theme/`: Custom Vuetify theme
 
 **Key patterns:**
+
 - Routes use `YYYY-MM` month strings; frontend resolves to backend ULIDs via cached month list
 - Bottom navigation as primary navigation (mobile-first)
 - `MonthNavigationBar` provides smart month navigation with conditional icons:
@@ -132,6 +138,7 @@ All tables use ULID as TEXT primary key. All timestamps are UTC RFC 3339 with `Z
 **Resource identification:** All endpoints use ULID in URL paths (not month strings or category names)
 
 **Error responses:** Structured JSON with machine-readable codes
+
 ```json
 {
   "error": {
@@ -144,6 +151,7 @@ All tables use ULID as TEXT primary key. All timestamps are UTC RFC 3339 with `Z
 Frontend maps error codes to translated messages via vue-i18n.
 
 **Default sort orders:**
+
 - Categories: `name` ascending
 - Months: `month` descending (most recent first)
 - Entries: `due_day` ascending (nulls last), then `category.name` ascending
@@ -156,26 +164,39 @@ Frontend maps error codes to translated messages via vue-i18n.
    - **Copy from specific month** (`copy_from: "{ulid}"`): Copies all budget entries (category assignments, budgeted amounts, due dates) from the specified month. Used by the MonthNavigationBar when creating next months.
    - **Default behavior** (no parameters): Copies entries from the most recently stored month. Maintains backward compatibility with existing clients.
 
-2. **Entry deletion requires no transactions:** You can only remove a budget entry if it has zero transactions. The API returns `409 ENTRY_HAS_TRANSACTIONS` otherwise.
+1. **Entry deletion requires no transactions:** You can only remove a budget entry if it has zero transactions. The API returns `409 ENTRY_HAS_TRANSACTIONS` otherwise.
 
-3. **Category rename is retroactive:** Renaming a category updates its `name` globally; all months display the new name (no rename history in Phase 1).
+1. **Category rename is retroactive:** Renaming a category updates its `name` globally; all months display the new name (no rename history in Phase 1).
 
-4. **Transaction date is informational:** The `date` field records when payment was made but doesn't determine budget month attribution. Budget month is determined by `entry_id` → `budget_entries.month_id`.
+1. **Transaction date is informational:** The `date` field records when payment was made but doesn't determine budget month attribution. Budget month is determined by `entry_id` → `budget_entries.month_id`.
 
-5. **Money amounts:** Stored as integers in minor currency units (e.g., grosz for PLN, cents for USD). Currency is app configuration, not per-transaction.
+1. **Money amounts:** Stored as integers in minor currency units (e.g., grosz for PLN, cents for USD). Currency is app configuration, not per-transaction.
+
+## UI Style
+
+The frontend follows a styling guide documented in `docs/STYLE_GUIDE.md` which defines the dark-mode theme, color usage, spacing, and component patterns. Key points:
+
+- Dark, low-noise UI with bright accent for paid amounts and CTAs
+- Cards with minimal elevation for grouping content
+- Clear visual distinction between budgeted, paid, and remaining amounts
+- One primary accent color (pink/magenta) for emphasis
+- Responsive phone-first layout with bottom navigation and sensible horizontal gutters on desktop
 
 ## Testing
 
 **Backend:**
+
 - Unit tests: `cargo test -p domain` (fast, no dependencies)
 - Integration tests: `cargo test -p api` (full HTTP + SQLite test database)
 - Run all: `cargo test`
 
 **Frontend:**
+
 - Type checking: `npm run type-check`
 - E2E tests use Playwright (not yet implemented in Phase 1)
 
 **Test strategy:**
+
 - Domain tests focus on newtype validation, service logic, and error cases
 - API integration tests verify full HTTP request/response cycles against real database
 - E2E tests verify user flows through browser
@@ -189,6 +210,7 @@ Backend uses TOML config file (`backend/config.toml`) with environment variable 
 Example: `APP__DATABASE__URL=sqlite:///data/budget.db`
 
 **Key settings:**
+
 - `server.host` / `server.port`: API server binding
 - `database.url`: SQLite connection string
 - `currency.code` / `currency.decimal_places`: Currency display settings
@@ -197,12 +219,14 @@ Example: `APP__DATABASE__URL=sqlite:///data/budget.db`
 ## Production Deployment
 
 **Default model:** nginx reverse proxy
+
 - nginx serves frontend static files
 - nginx proxies `/api/*` to backend
 - Same-origin setup eliminates CORS complexity
 - Single exposed port
 
 **Docker:**
+
 - Backend container: Multi-stage Rust build → minimal Debian slim
 - Frontend container: Multi-stage Node build → nginx serving static files + proxy config
 - SQLite database mounted as volume for persistence
@@ -212,12 +236,14 @@ Example: `APP__DATABASE__URL=sqlite:///data/budget.db`
 ## File Naming Conventions
 
 **Backend:**
+
 - Services: `{entity}_service.rs` (e.g., `month_service.rs`)
 - Repositories: `{entity}_repo.rs` (e.g., `category_repo.rs`)
 - Entities: `{entity}.rs` (e.g., `budget_entry.rs`)
 - Types: Descriptive names (e.g., `money.rs`, `budget_month.rs`)
 
 **Frontend:**
+
 - Views: `{Entity}{Action}View.vue` (e.g., `MonthListView.vue`)
 - Components: `{Entity}{Purpose}.vue` (e.g., `TransactionDrawer.vue`)
 - API modules: `{entity}.ts` (e.g., `transactions.ts`)
@@ -225,12 +251,14 @@ Example: `APP__DATABASE__URL=sqlite:///data/budget.db`
 ## Code Style
 
 **Rust:**
+
 - Use `thiserror` for error enum derivation
 - Use `async-trait` for async repository traits
 - Prefer compile-time checked SQLx queries (`query_as!`)
 - Use `tracing` for structured logging with request IDs
 
 **TypeScript/Vue:**
+
 - Composition API (not Options API)
 - Typed API client functions (types generated from OpenAPI spec)
 - All user-facing strings via `$t()` i18n function
