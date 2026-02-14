@@ -48,7 +48,8 @@
     "transactions": "Transactions"
   },
   "budget": {
-    "categories": "Categories"
+    "categories": "Categories",
+    "overBudget": "+{amount} over budget"
   },
   "entries": {
     "category": "Category",
