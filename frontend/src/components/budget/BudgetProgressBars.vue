@@ -171,6 +171,9 @@ function getAriaLabel(item: CategoryBudgetSummary): string {
 
 .budget-bar__progress {
   transition: border-radius 0.25s ease !important;
+  border: 1px solid var(--border-glass) !important;
+  background-color: var(--bg-card) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
 }
 
 .budget-bar__progress--expanded {
@@ -179,6 +182,7 @@ function getAriaLabel(item: CategoryBudgetSummary): string {
 
 .budget-bar__progress >>> .v-progress-linear__background {
   transition: border-radius 0.25s ease !important;
+  opacity: 1 !important;
 }
 
 .budget-bar__progress--expanded >>> .v-progress-linear__background {
