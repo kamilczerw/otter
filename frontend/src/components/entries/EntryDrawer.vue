@@ -11,6 +11,7 @@
           :disabled="!!entry"
         />
         <v-text-field
+          ref="budgetedField"
           v-model="budgeted"
           :label="$t('entries.budgeted')"
           type="number"
@@ -49,7 +50,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
 import CategoryAutocomplete from './CategoryAutocomplete.vue'
 import type { Entry } from '@/api/types'
@@ -76,6 +77,7 @@ const isOpen = computed({
   set: (val: boolean) => emit('update:modelValue', val),
 })
 
+const budgetedField = ref<any>(null)
 const categoryId = ref('')
 const budgeted = ref('')
 const dueDay = ref<string | null>(null)
@@ -89,6 +91,10 @@ watch(() => [props.entry, props.modelValue], () => {
       categoryId.value = props.entry.category.id
       budgeted.value = (props.entry.budgeted / 100).toFixed(2)
       dueDay.value = props.entry.due_day?.toString() ?? null
+      // Focus budgeted field when editing entry from expanded bar
+      nextTick(() => {
+        budgetedField.value?.focus()
+      })
     } else {
       categoryId.value = ''
       budgeted.value = ''
