@@ -2,7 +2,7 @@
   <div class="panel-action-row">
     <v-btn
       variant="text"
-      size="small"
+      size="x-small"
       color="grey"
       prepend-icon="mdi-pencil"
       @click="$emit('edit-budget')"
@@ -11,7 +11,7 @@
     </v-btn>
     <v-btn
       variant="text"
-      size="small"
+      size="x-small"
       class="add-btn"
       prepend-icon="mdi-plus"
       @click="$emit('add-transaction')"
@@ -37,6 +37,6 @@ defineEmits<{
 }
 
 .add-btn {
-  color: #3ddc84 !important;
+  color: var(--color-success) !important;
 }
 </style>
