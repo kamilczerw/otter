@@ -3,44 +3,74 @@
     <div
       v-for="item in categories"
       :key="item.category.id"
-      class="budget-bar"
-      role="progressbar"
-      :aria-valuenow="item.paid"
-      :aria-valuemin="0"
-      :aria-valuemax="item.budgeted"
-      :aria-label="getAriaLabel(item)"
+      class="budget-bar-wrapper"
     >
-      <v-progress-linear
-        :model-value="getFillWidth(item)"
-        :color="getBarColor(item)"
-        :height="barHeight"
-        rounded="lg"
-        bg-color="#424242"
-        class="budget-bar__progress"
-        :class="{ 'budget-bar__progress--overspent': isOverspent(item) }"
-      >
-        <template v-slot:default>
-          <div class="budget-bar__text">
-            <span class="budget-bar__label">{{ getCategoryDisplayName(item.category) }}</span>
-            <span class="budget-bar__amounts">{{ formatAmount(item.paid) }}/{{ formatAmount(item.budgeted) }}</span>
-          </div>
-        </template>
-      </v-progress-linear>
-
-      <!-- Overspend indicator line (only for non-overspent partial fills) -->
       <div
-        v-if="item.paid > item.budgeted && item.budgeted > 0 && !isOverspent(item)"
-        class="budget-bar__overspend-line"
-        :style="{ left: getOverspendLinePosition(item) + '%' }"
-      />
-
-      <!-- Overspend badge -->
-      <div
-        v-if="isOverspent(item)"
-        class="budget-bar__overspend-badge"
+        class="budget-bar"
+        :class="{ 'budget-bar--expanded': expandedEntryId === item.entry_id } "
+        role="progressbar"
+        :aria-valuenow="item.paid"
+        :aria-valuemin="0"
+        :aria-valuemax="item.budgeted"
+        :aria-label="getAriaLabel(item)"
+        @click="toggleExpand(item.entry_id)"
       >
-        {{ t('budget.overBudget', { amount: formatAmount(item.paid - item.budgeted) }) }}
+        <v-progress-linear
+          :model-value="getFillWidth(item)"
+          :color="getBarColor(item)"
+          :height="barHeight"
+          :rounded="expandedEntryId === item.entry_id ? false : 'lg'"
+          bg-color="var(--bg-card)"
+          class="budget-bar__progress"
+          :class="{
+            'budget-bar__progress--overspent': isOverspent(item),
+            'budget-bar__progress--expanded': expandedEntryId === item.entry_id
+          }"
+        >
+          <template v-slot:default>
+            <div class="budget-bar__text">
+              <span class="budget-bar__label">{{ getCategoryDisplayName(item.category) }}</span>
+              <span class="budget-bar__amounts">
+                {{ formatAmount(item.paid) }}/{{ formatAmount(item.budgeted) }}
+                <v-icon
+                  size="18"
+                  class="budget-bar__chevron"
+                  :class="{ 'budget-bar__chevron--expanded': expandedEntryId === item.entry_id }"
+                >
+                  mdi-chevron-down
+                </v-icon>
+              </span>
+            </div>
+          </template>
+        </v-progress-linear>
+
+        <!-- Overspend indicator line -->
+        <div
+          v-if="item.paid > item.budgeted && item.budgeted > 0 && !isOverspent(item)"
+          class="budget-bar__overspend-line"
+          :style="{ left: getOverspendLinePosition(item) + '%' }"
+        />
+
+        <!-- Overspend badge -->
+        <div
+          v-if="isOverspent(item)"
+          class="budget-bar__overspend-badge"
+        >
+          {{ t('budget.overBudget', { amount: formatAmount(item.paid - item.budgeted) }) }}
+        </div>
       </div>
+
+      <!-- Expanded panel -->
+      <v-expand-transition>
+        <div v-if="expandedEntryId === item.entry_id" class="budget-panel-wrap">
+          <BudgetCategoryPanel
+            :entry-id="item.entry_id"
+            @edit-budget="$emit('edit-budget', item)"
+            @add-transaction="$emit('add-transaction', item)"
+            @edit-transaction="(tx) => $emit('edit-transaction', tx)"
+          />
+        </div>
+      </v-expand-transition>
     </div>
   </div>
 </template>
@@ -49,21 +79,36 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { CategoryBudgetSummary } from '@/api/types'
+import type { Transaction } from '@/api/types'
 import { getCategoryDisplayName } from '@/utils/category'
 import { formatCurrency } from '@/utils/currency'
+import BudgetCategoryPanel from './BudgetCategoryPanel.vue'
 
 const { t } = useI18n()
 
 interface Props {
   categories: CategoryBudgetSummary[]
   barSize?: 'compact' | 'spacious'
+  expandedEntryId?: string | null
 }
 
 const props = withDefaults(defineProps<Props>(), {
   barSize: 'compact',
+  expandedEntryId: null,
 })
 
+const emit = defineEmits<{
+  'update:expandedEntryId': [id: string | null]
+  'edit-budget': [item: CategoryBudgetSummary]
+  'add-transaction': [item: CategoryBudgetSummary]
+  'edit-transaction': [tx: Transaction]
+}>()
+
 const barHeight = computed(() => props.barSize === 'compact' ? 48 : 72)
+
+function toggleExpand(entryId: string) {
+  emit('update:expandedEntryId', props.expandedEntryId === entryId ? null : entryId)
+}
 
 function formatAmount(minorUnits: number): string {
   return formatCurrency(minorUnits)
@@ -81,7 +126,6 @@ function getFillWidth(item: CategoryBudgetSummary): number {
 
 function getBarColor(item: CategoryBudgetSummary): string {
   if (isOverspent(item)) return 'var(--color-danger)'
-  if (item.paid === 0) return '#4CAF50'
   return 'var(--color-success)'
 }
 
@@ -106,9 +150,15 @@ function getAriaLabel(item: CategoryBudgetSummary): string {
   gap: var(--budget-bar-gap);
 }
 
+.budget-bar-wrapper {
+  width: 100%;
+  will-change: contents;
+}
+
 .budget-bar {
   position: relative;
   width: 100%;
+  cursor: pointer;
 }
 
 .budget-bar__progress >>> .v-progress-linear__determinate {
@@ -119,6 +169,26 @@ function getAriaLabel(item: CategoryBudgetSummary): string {
   opacity: 0.65;
 }
 
+.budget-bar__progress {
+  transition: border-radius 0.25s ease !important;
+  border: 1px solid var(--border-glass) !important;
+  background-color: var(--bg-card) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
+}
+
+.budget-bar__progress--expanded {
+  border-radius: var(--radius-bar) var(--radius-bar) 0 0 !important;
+}
+
+.budget-bar__progress >>> .v-progress-linear__background {
+  transition: border-radius 0.25s ease !important;
+  opacity: 1 !important;
+}
+
+.budget-bar__progress--expanded >>> .v-progress-linear__background {
+  border-radius: var(--radius-bar) var(--radius-bar) 0 0 !important;
+}
+
 .budget-bar__overspend-line {
   position: absolute;
   top: 0;
@@ -127,7 +197,7 @@ function getAriaLabel(item: CategoryBudgetSummary): string {
   background-color: var(--color-danger);
   z-index: 2;
   pointer-events: none;
-  border-radius: 8px;
+  border-radius: var(--radius-bar);
 }
 
 .budget-bar__text {
@@ -137,7 +207,7 @@ function getAriaLabel(item: CategoryBudgetSummary): string {
   align-items: center;
   justify-content: space-between;
   padding: 0 var(--budget-bar-padding);
-  color: #E8EAF0;
+  color: var(--text-primary);
   font-size: 14px;
   pointer-events: none;
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
@@ -156,6 +226,30 @@ function getAriaLabel(item: CategoryBudgetSummary): string {
 .budget-bar__amounts {
   flex-shrink: 0;
   white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.budget-bar__chevron {
+  transition: transform 0.25s ease;
+  opacity: 0.6;
+}
+
+.budget-bar__chevron--expanded {
+  transform: rotate(180deg);
+  opacity: 1;
+}
+
+.budget-panel-wrap {
+  overflow: hidden;
+  background: var(--bg-card);
+  border: 1px solid var(--border-glass);
+  border-top: none;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2);
+  border-radius: 0 0 var(--radius-card) var(--radius-card);
 }
 
 .budget-bar__overspend-badge {
@@ -163,12 +257,12 @@ function getAriaLabel(item: CategoryBudgetSummary): string {
   top: -8px;
   right: -4px;
   background-color: var(--color-danger);
-  color: #fff;
+  color: var(--text-primary);
   font-size: 11px;
   font-weight: 600;
   line-height: 1;
   padding: 4px 8px;
-  border-radius: 10px;
+  border-radius: var(--radius-small);
   white-space: nowrap;
   z-index: 3;
   pointer-events: none;

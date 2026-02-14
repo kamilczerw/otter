@@ -9,6 +9,7 @@
       class="mb-2"
     />
     <v-text-field
+      ref="amountField"
       v-model="amount"
       :label="$t('transactions.amount')"
       type="number"
@@ -31,7 +32,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { transactionsApi } from '@/api/transactions'
 import type { Transaction, Entry } from '@/api/types'
@@ -44,6 +45,7 @@ const { t } = useI18n()
 const props = defineProps<{
   entries: Entry[]
   transaction: Transaction | null
+  preselectedEntryId?: string | null
 }>()
 
 const emit = defineEmits<{
@@ -51,6 +53,7 @@ const emit = defineEmits<{
   cancel: []
 }>()
 
+const amountField = ref<any>(null)
 const entryId = ref('')
 const amount = ref('')
 const date = ref('')
@@ -71,7 +74,13 @@ onMounted(() => {
     amount.value = (props.transaction.amount / 100).toFixed(2)
     date.value = props.transaction.date
   } else {
-    // Default to today's date
+    if (props.preselectedEntryId) {
+      entryId.value = props.preselectedEntryId
+      // Focus amount field when opened from expanded bar with preselected entry
+      nextTick(() => {
+        amountField.value?.focus()
+      })
+    }
     const today = new Date()
     date.value = today.toISOString().split('T')[0]
   }

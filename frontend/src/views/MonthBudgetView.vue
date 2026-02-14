@@ -28,14 +28,24 @@
       </div>
 
       <!-- Budget Progress Bars -->
-      <div class="glass-card mt-4 pa-4">
-        <BudgetProgressBars
-          :categories="summary.categories"
-          :bar-size="budgetBarSize"
-        />
-      </div>
+      <BudgetProgressBars
+        :categories="summary.categories"
+        :bar-size="budgetBarSize"
+        v-model:expanded-entry-id="expandedEntryId"
+        @edit-budget="onEditBudget"
+        @add-transaction="onAddTransaction"
+        @edit-transaction="onEditTransaction"
+        class="mt-4"
+      />
+
+      <!-- Add Category Button -->
+      <button class="add-category-btn" @click="openNewEntry">
+        <v-icon size="20">mdi-plus</v-icon>
+        <span>{{ $t('budget.addCategory') }}</span>
+      </button>
 
       <!-- Charts Section (collapsible) -->
+      <!--
       <div class="glass-card mt-4 pa-4">
         <button class="section-toggle" @click="chartsOpen = !chartsOpen">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
@@ -63,9 +73,11 @@
           </div>
         </div>
       </div>
+      -->
     </template>
 
     <!-- Categories Section -->
+    <!--
     <div class="glass-card mt-4 pa-4">
       <div class="section-header mb-3">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
@@ -82,8 +94,10 @@
         @refresh="loadData"
       />
     </div>
+    -->
 
     <!-- Transactions Section -->
+    <!--
     <div class="glass-card mt-4 pa-4">
       <div class="section-header mb-3">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
@@ -101,13 +115,23 @@
         @delete="deleteTransaction"
       />
     </div>
+    -->
 
     <!-- Transaction Drawer -->
     <TransactionDrawer
       v-model="drawerOpen"
       :entries="entries"
       :transaction="selectedTransaction"
+      :preselected-entry-id="preselectedEntryId"
       @saved="onTransactionSaved"
+    />
+
+    <EntryDrawer
+      v-model="entryDrawerOpen"
+      :month-id="monthId"
+      :entry="selectedEntry"
+      @saved="onEntrySaved"
+      @deleted="onEntryDeleted"
     />
   </v-container>
 </template>
@@ -123,12 +147,14 @@ import BudgetProgressBars from '@/components/budget/BudgetProgressBars.vue'
 import EntryList from '@/components/entries/EntryList.vue'
 import TransactionList from '@/components/transactions/TransactionList.vue'
 import TransactionDrawer from '@/components/transactions/TransactionDrawer.vue'
+import EntryDrawer from '@/components/entries/EntryDrawer.vue'
 import { entriesApi } from '@/api/entries'
 import { summaryApi } from '@/api/summary'
 import { transactionsApi } from '@/api/transactions'
 import { useMonths } from '@/composables/useMonths'
 import { useUiPreferences } from '@/composables/useUiPreferences'
-import type { Entry, Month, MonthSummary, Transaction } from '@/api/types'
+import { useCategoryTransactions } from '@/composables/useCategoryTransactions'
+import type { Entry, Month, MonthSummary, Transaction, CategoryBudgetSummary } from '@/api/types'
 import { formatCurrency } from '@/utils/currency'
 
 const route = useRoute()
@@ -136,6 +162,7 @@ const router = useRouter()
 const { t } = useI18n()
 const { resolveMonthId: resolveMonth, getMonths } = useMonths()
 const { budgetBarSize } = useUiPreferences()
+const { invalidate: invalidateTransactions, invalidateAll: invalidateAllTransactions } = useCategoryTransactions()
 
 const monthId = ref('')
 const entries = ref<Entry[]>([])
@@ -147,6 +174,10 @@ const loadingTransactions = ref(false)
 const chartsOpen = ref(true)
 const drawerOpen = ref(false)
 const selectedTransaction = ref<Transaction | null>(null)
+const expandedEntryId = ref<string | null>(null)
+const entryDrawerOpen = ref(false)
+const selectedEntry = ref<Entry | null>(null)
+const preselectedEntryId = ref<string | null>(null)
 const error = ref('')
 const allMonths = ref<Month[]>([])
 
@@ -185,8 +216,29 @@ async function loadData() {
   }
 }
 
+function onEditBudget(item: CategoryBudgetSummary) {
+  const entry = entries.value.find(e => e.id === item.entry_id)
+  if (entry) {
+    selectedEntry.value = entry
+    entryDrawerOpen.value = true
+  }
+}
+
+function onAddTransaction(item: CategoryBudgetSummary) {
+  selectedTransaction.value = null
+  preselectedEntryId.value = item.entry_id
+  drawerOpen.value = true
+}
+
+function onEditTransaction(tx: Transaction) {
+  selectedTransaction.value = tx
+  preselectedEntryId.value = null
+  drawerOpen.value = true
+}
+
 function openNewTransaction() {
   selectedTransaction.value = null
+  preselectedEntryId.value = null
   drawerOpen.value = true
 }
 
@@ -199,6 +251,7 @@ async function deleteTransaction(tx: Transaction) {
   try {
     await transactionsApi.delete(tx.id)
     await loadData()
+    await invalidateTransactions(tx.entry_id)
   } catch (e) {
     console.error('Failed to delete transaction', e)
   }
@@ -206,10 +259,32 @@ async function deleteTransaction(tx: Transaction) {
 
 async function onTransactionSaved() {
   drawerOpen.value = false
+  const entryId = preselectedEntryId.value || selectedTransaction.value?.entry_id
+  await loadData()
+  if (entryId) {
+    await invalidateTransactions(entryId)
+  }
+}
+
+function openNewEntry() {
+  selectedEntry.value = null
+  entryDrawerOpen.value = true
+}
+
+async function onEntrySaved() {
+  entryDrawerOpen.value = false
+  await loadData()
+}
+
+async function onEntryDeleted() {
+  entryDrawerOpen.value = false
+  expandedEntryId.value = null
   await loadData()
 }
 
 watch(() => route.params.month, async () => {
+  expandedEntryId.value = null
+  invalidateAllTransactions()
   await doResolveMonthId()
   await loadData()
 })
@@ -301,5 +376,37 @@ onMounted(async () => {
 
 .mb-3 {
   margin-bottom: 12px;
+}
+
+.add-category-btn {
+  width: 100%;
+  margin-top: 12px;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-bar);
+  color: var(--text-secondary);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.add-category-btn:hover {
+  background: var(--bg-card-hover);
+  color: var(--text-primary);
+  border-color: var(--magenta-border);
+  box-shadow: 0 2px 12px var(--magenta-glow);
+}
+
+.add-category-btn:active {
+  transform: scale(0.98);
 }
 </style>

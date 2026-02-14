@@ -1,7 +1,7 @@
 # Task Status — 1.0 Budget Bar Expand
 
 **Feature:** Interactive Budget Bar Component
-**Overall Status:** Not Started
+**Overall Status:** Implementation Complete (Testing Pending)
 **Last Updated:** 2026-02-14
 
 -----
@@ -10,44 +10,44 @@
 
 | Phase | Description | Status |
 |-------|-------------|--------|
-| Phase 1 | Backend — API Enhancements | Not Started |
-| Phase 2 | Frontend — Core Infrastructure | Not Started |
-| Phase 3 | Frontend — Component Refactoring | Not Started |
-| Phase 4 | Styling & Animation | Not Started |
-| Phase 5 | Internationalization | Not Started |
+| Phase 1 | Backend — API Enhancements | Done |
+| Phase 2 | Frontend — Core Infrastructure | Done |
+| Phase 3 | Frontend — Component Refactoring | Done |
+| Phase 4 | Styling & Animation | Done |
+| Phase 5 | Internationalization | Done |
 | Phase 6 | Testing | Not Started |
 
 ## Task Tracker
 
 ### Phase 1: Backend
 
-- [ ] 1.1 — Add `entry_id` to `CategoryBudgetSummary` response
-- [ ] 1.2 — Add `entry_id` filter to transactions endpoint
-- [ ] 1.3 — Add `limit`/`offset` pagination to transactions endpoint
+- [x] 1.1 — Add `entry_id` to `CategoryBudgetSummary` response
+- [x] 1.2 — Add `entry_id` filter to transactions endpoint
+- [x] 1.3 — Add `limit`/`offset` pagination to transactions endpoint
 
 ### Phase 2: Frontend Infrastructure
 
-- [ ] 2.1 — Create `frontend/src/constants.ts`
-- [ ] 2.2 — Update transactions API client with `listByEntry`
-- [ ] 2.3 — Create `useCategoryTransactions` composable
+- [x] 2.1 — Create `frontend/src/constants.ts`
+- [x] 2.2 — Update transactions API client with `listByEntry`
+- [x] 2.3 — Create `useCategoryTransactions` composable
 
 ### Phase 3: Frontend Components
 
-- [ ] 3.1 — Refactor `BudgetProgressBars.vue` into accordion
-- [ ] 3.2 — Create `BudgetCategoryPanel.vue`
-- [ ] 3.3 — Create `PanelActionRow.vue`
-- [ ] 3.4 — Create `PanelTransactionList.vue`
-- [ ] 3.5 — Update `MonthBudgetView.vue` integration
-- [ ] 3.6 — Update `TransactionDrawer`/`TransactionForm` for pre-selected entry
+- [x] 3.1 — Refactor `BudgetProgressBars.vue` into accordion
+- [x] 3.2 — Create `BudgetCategoryPanel.vue`
+- [x] 3.3 — Create `PanelActionRow.vue`
+- [x] 3.4 — Create `PanelTransactionList.vue`
+- [x] 3.5 — Update `MonthBudgetView.vue` integration
+- [x] 3.6 — Update `TransactionDrawer`/`TransactionForm` for pre-selected entry
 
 ### Phase 4: Styling
 
-- [ ] 4.1 — Accordion transitions (height, chevron, border-radius)
-- [ ] 4.2 — Panel styling (dark theme, transaction rows, action buttons)
+- [x] 4.1 — Accordion transitions (height, chevron, border-radius) — using Vuetify `v-expand-transition`
+- [x] 4.2 — Panel styling (dark theme, transaction rows, action buttons)
 
 ### Phase 5: i18n
 
-- [ ] 5.1 — Add translation keys to `en.json` and `pl.json`
+- [x] 5.1 — Add translation keys to `en.json` and `pl.json`
 
 ### Phase 6: Testing
 
@@ -58,14 +58,22 @@
 
 -----
 
-## Codebase State Notes
+## Implementation Notes
 
-Key facts about the current codebase relevant to this feature:
+### Backend Changes
+- `CategoryBudgetSummary` now includes `entry_id: Ulid` in domain and `entry_id: String` in API response
+- `TransactionRepository` trait has new `list_by_entry(entry_id, limit, offset)` method
+- `GET /transactions` supports `entry_id`, `limit`, `offset` query params; returns `PaginatedTransactionsResponse` when `entry_id` is provided
+- Legacy `month`-only queries still return `Vec<TransactionResponse>` for backward compatibility
 
-- **`CategoryBudgetSummary` lacks `entry_id`**: The summary endpoint (`GET /months/{id}/summary`) returns category info but not the budget entry ID. This is the first thing to add.
-- **No per-entry transaction filtering**: `GET /transactions?month={id}` returns all transactions for a month. No `entry_id` filter exists.
-- **No pagination on transactions**: No `limit`/`offset` support anywhere in the transaction query path.
-- **`BudgetProgressBars.vue`**: Pure presentational component, renders `v-progress-linear` bars in a loop. No click handling, no slots.
-- **`TransactionDrawer`**: Takes `entries[]` and `transaction | null`. Does not support pre-selecting an entry.
-- **`EntryDrawer`**: Takes `entry | null` and `monthId`. Currently only opened from `EntryList`.
-- **All transactions loaded upfront**: `MonthBudgetView.loadData()` fetches all transactions for the month in `Promise.all()`. The separate per-entry lazy loading is a new pattern.
+### Frontend Changes
+- `useCategoryTransactions` composable manages per-entry transaction cache with lazy loading
+- `BudgetProgressBars.vue` refactored with accordion behavior (v-model:expanded-entry-id)
+- New components: `BudgetCategoryPanel`, `PanelActionRow`, `PanelTransactionList`
+- `TransactionDrawer`/`TransactionForm` support `preselectedEntryId` prop
+- `MonthBudgetView` integrates accordion state, drawer pre-fill, and cache invalidation
+- `EntryDrawer` now accessible from budget bar panel "Edit budget" button
+
+### Build Status
+- Backend: `cargo build` succeeds, all 77 domain tests pass
+- Frontend: `vue-tsc --noEmit` type-check passes

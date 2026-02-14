@@ -46,6 +46,7 @@ export interface MonthSummary {
 }
 
 export interface CategoryBudgetSummary {
+  entry_id: string
   category: CategorySummary
   budgeted: number
   paid: number
@@ -91,6 +92,11 @@ export interface UpdateTransactionRequest {
   entry_id?: string
   amount?: number
   date?: string
+}
+
+export interface PaginatedTransactionsResponse {
+  items: Transaction[]
+  has_more: boolean
 }
 
 // Error types

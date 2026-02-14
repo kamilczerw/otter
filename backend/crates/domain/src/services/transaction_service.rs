@@ -86,6 +86,15 @@ impl TransactionService {
         self.transaction_repo.update(id, entry_id, amount, date).await
     }
 
+    pub async fn list_by_entry(
+        &self,
+        entry_id: &Ulid,
+        limit: u32,
+        offset: u32,
+    ) -> Result<Vec<Transaction>, TransactionError> {
+        self.transaction_repo.list_by_entry(entry_id, limit, offset).await
+    }
+
     pub async fn delete(&self, id: &Ulid) -> Result<(), TransactionError> {
         self.transaction_repo.delete(id).await
     }

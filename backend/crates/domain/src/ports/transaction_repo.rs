@@ -11,4 +11,5 @@ pub trait TransactionRepository: Send + Sync {
     async fn update(&self, id: &ulid::Ulid, entry_id: Option<ulid::Ulid>, amount: Option<Money>, date: Option<TransactionDate>) -> Result<Transaction, TransactionError>;
     async fn delete(&self, id: &ulid::Ulid) -> Result<(), TransactionError>;
     async fn sum_by_entry(&self, entry_id: &ulid::Ulid) -> Result<Money, TransactionError>;
+    async fn list_by_entry(&self, entry_id: &ulid::Ulid, limit: u32, offset: u32) -> Result<Vec<Transaction>, TransactionError>;
 }

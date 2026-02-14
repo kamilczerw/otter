@@ -49,7 +49,15 @@
   },
   "budget": {
     "categories": "Categories",
-    "overBudget": "+{amount} over budget"
+    "addCategory": "Add Category",
+    "overBudget": "+{amount} over budget",
+    "panel": {
+      "editBudget": "Edit budget",
+      "addTransaction": "Add",
+      "noTransactions": "No transactions yet",
+      "showMore": "+{count} more",
+      "showLess": "Show less"
+    }
   },
   "entries": {
     "category": "Category",

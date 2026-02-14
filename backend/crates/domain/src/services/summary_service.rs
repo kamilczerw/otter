@@ -18,6 +18,7 @@ pub struct MonthSummary {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CategoryBudgetSummary {
+    pub entry_id: ulid::Ulid,
     pub category: CategorySummary,
     pub budgeted: Money,
     pub paid: Money,
@@ -104,6 +105,7 @@ impl SummaryService {
             total_paid = total_paid + paid;
 
             categories.push(CategoryBudgetSummary {
+                entry_id: entry.id,
                 category: entry.category,
                 budgeted: entry.budgeted,
                 paid,
