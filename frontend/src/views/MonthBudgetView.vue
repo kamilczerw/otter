@@ -28,16 +28,15 @@
       </div>
 
       <!-- Budget Progress Bars -->
-      <div class="glass-card mt-4 pa-4">
-        <BudgetProgressBars
-          :categories="summary.categories"
-          :bar-size="budgetBarSize"
-          v-model:expanded-entry-id="expandedEntryId"
-          @edit-budget="onEditBudget"
-          @add-transaction="onAddTransaction"
-          @edit-transaction="onEditTransaction"
-        />
-      </div>
+      <BudgetProgressBars
+        :categories="summary.categories"
+        :bar-size="budgetBarSize"
+        v-model:expanded-entry-id="expandedEntryId"
+        @edit-budget="onEditBudget"
+        @add-transaction="onAddTransaction"
+        @edit-transaction="onEditTransaction"
+        class="mt-4"
+      />
 
       <!-- Charts Section (collapsible) -->
       <div class="glass-card mt-4 pa-4">
