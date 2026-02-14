@@ -44,6 +44,7 @@ const { t } = useI18n()
 const props = defineProps<{
   entries: Entry[]
   transaction: Transaction | null
+  preselectedEntryId?: string | null
 }>()
 
 const emit = defineEmits<{
@@ -71,7 +72,9 @@ onMounted(() => {
     amount.value = (props.transaction.amount / 100).toFixed(2)
     date.value = props.transaction.date
   } else {
-    // Default to today's date
+    if (props.preselectedEntryId) {
+      entryId.value = props.preselectedEntryId
+    }
     const today = new Date()
     date.value = today.toISOString().split('T')[0]
   }

@@ -62,11 +62,18 @@ pub struct MonthSummaryResponse {
 
 #[derive(Debug, Serialize, ToSchema)]
 pub struct CategoryBudgetSummaryResponse {
+    pub entry_id: String,
     pub category: CategorySummaryResponse,
     pub budgeted: i64,
     pub paid: i64,
     pub remaining: i64,
     pub status: String, // "unpaid", "underspent", "on_budget", "overspent"
+}
+
+#[derive(Debug, Serialize, ToSchema)]
+pub struct PaginatedTransactionsResponse {
+    pub items: Vec<TransactionResponse>,
+    pub has_more: bool,
 }
 
 // --- From impls ---
@@ -151,6 +158,7 @@ impl From<CategoryBudgetSummary> for CategoryBudgetSummaryResponse {
             BudgetStatus::Overspent => "overspent",
         };
         Self {
+            entry_id: c.entry_id.to_string(),
             category: CategorySummaryResponse::from(c.category),
             budgeted: c.budgeted.value(),
             paid: c.paid.value(),

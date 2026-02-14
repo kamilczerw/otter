@@ -54,4 +54,7 @@ pub struct UpdateTransactionRequest {
 #[derive(Debug, Deserialize)]
 pub struct TransactionListQuery {
     pub month: Option<String>, // ULID of month
+    pub entry_id: Option<String>,
+    pub limit: Option<u32>,
+    pub offset: Option<u32>,
 }

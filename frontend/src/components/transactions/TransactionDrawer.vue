@@ -8,6 +8,7 @@
         <TransactionForm
           :entries="entries"
           :transaction="transaction"
+          :preselected-entry-id="preselectedEntryId"
           @saved="$emit('saved')"
           @cancel="isOpen = false"
         />
@@ -25,6 +26,7 @@ const props = defineProps<{
   modelValue: boolean
   entries: Entry[]
   transaction: Transaction | null
+  preselectedEntryId?: string | null
 }>()
 
 const emit = defineEmits<{

@@ -214,6 +214,31 @@ impl TransactionRepository for SqliteTransactionRepository {
         Ok(())
     }
 
+    async fn list_by_entry(
+        &self,
+        entry_id: &ulid::Ulid,
+        limit: u32,
+        offset: u32,
+    ) -> Result<Vec<Transaction>, TransactionError> {
+        let rows = sqlx::query(
+            "SELECT id, entry_id, amount, date, created_at, updated_at \
+             FROM transactions \
+             WHERE entry_id = ? \
+             ORDER BY date DESC, created_at DESC \
+             LIMIT ? OFFSET ?",
+        )
+        .bind(entry_id.to_string())
+        .bind(limit as i64)
+        .bind(offset as i64)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| TransactionError::Repository(e.to_string()))?;
+
+        rows.iter()
+            .map(map_row_to_transaction)
+            .collect()
+    }
+
     async fn sum_by_entry(
         &self,
         entry_id: &ulid::Ulid,

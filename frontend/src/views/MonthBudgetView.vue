@@ -32,6 +32,10 @@
         <BudgetProgressBars
           :categories="summary.categories"
           :bar-size="budgetBarSize"
+          v-model:expanded-entry-id="expandedEntryId"
+          @edit-budget="onEditBudget"
+          @add-transaction="onAddTransaction"
+          @edit-transaction="onEditTransaction"
         />
       </div>
 
@@ -107,7 +111,16 @@
       v-model="drawerOpen"
       :entries="entries"
       :transaction="selectedTransaction"
+      :preselected-entry-id="preselectedEntryId"
       @saved="onTransactionSaved"
+    />
+
+    <EntryDrawer
+      v-model="entryDrawerOpen"
+      :month-id="monthId"
+      :entry="selectedEntry"
+      @saved="onEntrySaved"
+      @deleted="onEntryDeleted"
     />
   </v-container>
 </template>
@@ -123,12 +136,14 @@ import BudgetProgressBars from '@/components/budget/BudgetProgressBars.vue'
 import EntryList from '@/components/entries/EntryList.vue'
 import TransactionList from '@/components/transactions/TransactionList.vue'
 import TransactionDrawer from '@/components/transactions/TransactionDrawer.vue'
+import EntryDrawer from '@/components/entries/EntryDrawer.vue'
 import { entriesApi } from '@/api/entries'
 import { summaryApi } from '@/api/summary'
 import { transactionsApi } from '@/api/transactions'
 import { useMonths } from '@/composables/useMonths'
 import { useUiPreferences } from '@/composables/useUiPreferences'
-import type { Entry, Month, MonthSummary, Transaction } from '@/api/types'
+import { useCategoryTransactions } from '@/composables/useCategoryTransactions'
+import type { Entry, Month, MonthSummary, Transaction, CategoryBudgetSummary } from '@/api/types'
 import { formatCurrency } from '@/utils/currency'
 
 const route = useRoute()
@@ -136,6 +151,7 @@ const router = useRouter()
 const { t } = useI18n()
 const { resolveMonthId: resolveMonth, getMonths } = useMonths()
 const { budgetBarSize } = useUiPreferences()
+const { invalidate: invalidateTransactions, invalidateAll: invalidateAllTransactions } = useCategoryTransactions()
 
 const monthId = ref('')
 const entries = ref<Entry[]>([])
@@ -147,6 +163,10 @@ const loadingTransactions = ref(false)
 const chartsOpen = ref(true)
 const drawerOpen = ref(false)
 const selectedTransaction = ref<Transaction | null>(null)
+const expandedEntryId = ref<string | null>(null)
+const entryDrawerOpen = ref(false)
+const selectedEntry = ref<Entry | null>(null)
+const preselectedEntryId = ref<string | null>(null)
 const error = ref('')
 const allMonths = ref<Month[]>([])
 
@@ -185,8 +205,29 @@ async function loadData() {
   }
 }
 
+function onEditBudget(item: CategoryBudgetSummary) {
+  const entry = entries.value.find(e => e.id === item.entry_id)
+  if (entry) {
+    selectedEntry.value = entry
+    entryDrawerOpen.value = true
+  }
+}
+
+function onAddTransaction(item: CategoryBudgetSummary) {
+  selectedTransaction.value = null
+  preselectedEntryId.value = item.entry_id
+  drawerOpen.value = true
+}
+
+function onEditTransaction(tx: Transaction) {
+  selectedTransaction.value = tx
+  preselectedEntryId.value = null
+  drawerOpen.value = true
+}
+
 function openNewTransaction() {
   selectedTransaction.value = null
+  preselectedEntryId.value = null
   drawerOpen.value = true
 }
 
@@ -199,6 +240,7 @@ async function deleteTransaction(tx: Transaction) {
   try {
     await transactionsApi.delete(tx.id)
     await loadData()
+    await invalidateTransactions(tx.entry_id)
   } catch (e) {
     console.error('Failed to delete transaction', e)
   }
@@ -206,10 +248,27 @@ async function deleteTransaction(tx: Transaction) {
 
 async function onTransactionSaved() {
   drawerOpen.value = false
+  const entryId = preselectedEntryId.value || selectedTransaction.value?.entry_id
+  await loadData()
+  if (entryId) {
+    await invalidateTransactions(entryId)
+  }
+}
+
+async function onEntrySaved() {
+  entryDrawerOpen.value = false
+  await loadData()
+}
+
+async function onEntryDeleted() {
+  entryDrawerOpen.value = false
+  expandedEntryId.value = null
   await loadData()
 }
 
 watch(() => route.params.month, async () => {
+  expandedEntryId.value = null
+  invalidateAllTransactions()
   await doResolveMonthId()
   await loadData()
 })

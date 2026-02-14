@@ -3,44 +3,73 @@
     <div
       v-for="item in categories"
       :key="item.category.id"
-      class="budget-bar"
-      role="progressbar"
-      :aria-valuenow="item.paid"
-      :aria-valuemin="0"
-      :aria-valuemax="item.budgeted"
-      :aria-label="getAriaLabel(item)"
+      class="budget-bar-wrapper"
     >
-      <v-progress-linear
-        :model-value="getFillWidth(item)"
-        :color="getBarColor(item)"
-        :height="barHeight"
-        rounded="lg"
-        bg-color="#424242"
-        class="budget-bar__progress"
-        :class="{ 'budget-bar__progress--overspent': isOverspent(item) }"
-      >
-        <template v-slot:default>
-          <div class="budget-bar__text">
-            <span class="budget-bar__label">{{ getCategoryDisplayName(item.category) }}</span>
-            <span class="budget-bar__amounts">{{ formatAmount(item.paid) }}/{{ formatAmount(item.budgeted) }}</span>
-          </div>
-        </template>
-      </v-progress-linear>
-
-      <!-- Overspend indicator line (only for non-overspent partial fills) -->
       <div
-        v-if="item.paid > item.budgeted && item.budgeted > 0 && !isOverspent(item)"
-        class="budget-bar__overspend-line"
-        :style="{ left: getOverspendLinePosition(item) + '%' }"
-      />
-
-      <!-- Overspend badge -->
-      <div
-        v-if="isOverspent(item)"
-        class="budget-bar__overspend-badge"
+        class="budget-bar"
+        :class="{ 'budget-bar--expanded': expandedEntryId === item.entry_id }"
+        role="progressbar"
+        :aria-valuenow="item.paid"
+        :aria-valuemin="0"
+        :aria-valuemax="item.budgeted"
+        :aria-label="getAriaLabel(item)"
+        @click="toggleExpand(item.entry_id)"
       >
-        {{ t('budget.overBudget', { amount: formatAmount(item.paid - item.budgeted) }) }}
+        <v-progress-linear
+          :model-value="getFillWidth(item)"
+          :color="getBarColor(item)"
+          :height="barHeight"
+          :rounded="expandedEntryId === item.entry_id ? false : 'lg'"
+          bg-color="#424242"
+          class="budget-bar__progress"
+          :class="{
+            'budget-bar__progress--overspent': isOverspent(item),
+            'budget-bar__progress--expanded': expandedEntryId === item.entry_id
+          }"
+        >
+          <template v-slot:default>
+            <div class="budget-bar__text">
+              <span class="budget-bar__label">{{ getCategoryDisplayName(item.category) }}</span>
+              <span class="budget-bar__amounts">
+                {{ formatAmount(item.paid) }}/{{ formatAmount(item.budgeted) }}
+                <v-icon
+                  size="18"
+                  class="budget-bar__chevron"
+                  :class="{ 'budget-bar__chevron--expanded': expandedEntryId === item.entry_id }"
+                >
+                  mdi-chevron-down
+                </v-icon>
+              </span>
+            </div>
+          </template>
+        </v-progress-linear>
+
+        <!-- Overspend indicator line -->
+        <div
+          v-if="item.paid > item.budgeted && item.budgeted > 0 && !isOverspent(item)"
+          class="budget-bar__overspend-line"
+          :style="{ left: getOverspendLinePosition(item) + '%' }"
+        />
+
+        <!-- Overspend badge -->
+        <div
+          v-if="isOverspent(item)"
+          class="budget-bar__overspend-badge"
+        >
+          {{ t('budget.overBudget', { amount: formatAmount(item.paid - item.budgeted) }) }}
+        </div>
       </div>
+
+      <!-- Expanded panel -->
+      <v-expand-transition>
+        <BudgetCategoryPanel
+          v-if="expandedEntryId === item.entry_id"
+          :entry-id="item.entry_id"
+          @edit-budget="$emit('edit-budget', item)"
+          @add-transaction="$emit('add-transaction', item)"
+          @edit-transaction="(tx) => $emit('edit-transaction', tx)"
+        />
+      </v-expand-transition>
     </div>
   </div>
 </template>
@@ -49,21 +78,36 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { CategoryBudgetSummary } from '@/api/types'
+import type { Transaction } from '@/api/types'
 import { getCategoryDisplayName } from '@/utils/category'
 import { formatCurrency } from '@/utils/currency'
+import BudgetCategoryPanel from './BudgetCategoryPanel.vue'
 
 const { t } = useI18n()
 
 interface Props {
   categories: CategoryBudgetSummary[]
   barSize?: 'compact' | 'spacious'
+  expandedEntryId?: string | null
 }
 
 const props = withDefaults(defineProps<Props>(), {
   barSize: 'compact',
+  expandedEntryId: null,
 })
 
+const emit = defineEmits<{
+  'update:expandedEntryId': [id: string | null]
+  'edit-budget': [item: CategoryBudgetSummary]
+  'add-transaction': [item: CategoryBudgetSummary]
+  'edit-transaction': [tx: Transaction]
+}>()
+
 const barHeight = computed(() => props.barSize === 'compact' ? 48 : 72)
+
+function toggleExpand(entryId: string) {
+  emit('update:expandedEntryId', props.expandedEntryId === entryId ? null : entryId)
+}
 
 function formatAmount(minorUnits: number): string {
   return formatCurrency(minorUnits)
@@ -106,9 +150,14 @@ function getAriaLabel(item: CategoryBudgetSummary): string {
   gap: var(--budget-bar-gap);
 }
 
+.budget-bar-wrapper {
+  width: 100%;
+}
+
 .budget-bar {
   position: relative;
   width: 100%;
+  cursor: pointer;
 }
 
 .budget-bar__progress >>> .v-progress-linear__determinate {
@@ -117,6 +166,14 @@ function getAriaLabel(item: CategoryBudgetSummary): string {
 
 .budget-bar__progress--overspent >>> .v-progress-linear__determinate {
   opacity: 0.65;
+}
+
+.budget-bar__progress--expanded {
+  border-radius: 8px 8px 0 0 !important;
+}
+
+.budget-bar__progress--expanded >>> .v-progress-linear__background {
+  border-radius: 8px 8px 0 0 !important;
 }
 
 .budget-bar__overspend-line {
@@ -156,6 +213,19 @@ function getAriaLabel(item: CategoryBudgetSummary): string {
 .budget-bar__amounts {
   flex-shrink: 0;
   white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.budget-bar__chevron {
+  transition: transform 0.25s ease;
+  opacity: 0.6;
+}
+
+.budget-bar__chevron--expanded {
+  transform: rotate(180deg);
+  opacity: 1;
 }
 
 .budget-bar__overspend-badge {
