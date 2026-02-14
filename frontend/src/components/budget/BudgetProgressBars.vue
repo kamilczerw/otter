@@ -177,7 +177,7 @@ function getAriaLabel(item: CategoryBudgetSummary): string {
 }
 
 .budget-bar__progress--expanded {
-  border-radius: 8px 8px 0 0 !important;
+  border-radius: var(--radius-bar) var(--radius-bar) 0 0 !important;
 }
 
 .budget-bar__progress >>> .v-progress-linear__background {
@@ -186,7 +186,7 @@ function getAriaLabel(item: CategoryBudgetSummary): string {
 }
 
 .budget-bar__progress--expanded >>> .v-progress-linear__background {
-  border-radius: 8px 8px 0 0 !important;
+  border-radius: var(--radius-bar) var(--radius-bar) 0 0 !important;
 }
 
 .budget-bar__overspend-line {
@@ -197,7 +197,7 @@ function getAriaLabel(item: CategoryBudgetSummary): string {
   background-color: var(--color-danger);
   z-index: 2;
   pointer-events: none;
-  border-radius: 8px;
+  border-radius: var(--radius-bar);
 }
 
 .budget-bar__text {
@@ -249,7 +249,7 @@ function getAriaLabel(item: CategoryBudgetSummary): string {
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2);
-  border-radius: 0 0 14px 14px;
+  border-radius: 0 0 var(--radius-card) var(--radius-card);
 }
 
 .budget-bar__overspend-badge {
@@ -262,7 +262,7 @@ function getAriaLabel(item: CategoryBudgetSummary): string {
   font-weight: 600;
   line-height: 1;
   padding: 4px 8px;
-  border-radius: 10px;
+  border-radius: var(--radius-small);
   white-space: nowrap;
   z-index: 3;
   pointer-events: none;

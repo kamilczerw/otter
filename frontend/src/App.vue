@@ -35,6 +35,9 @@ const settingsOpen = ref(false)
   --border-glass: rgba(255, 255, 255, 0.08);
   --border-row: rgba(255, 255, 255, 0.05);
   --glass-highlight: rgba(255, 255, 255, 0.04);
+  --radius-card: 14px;
+  --radius-bar: 8px;
+  --radius-small: 10px;
 }
 
 html, body {
@@ -112,7 +115,7 @@ body::before {
   backdrop-filter: blur(16px) !important;
   -webkit-backdrop-filter: blur(16px) !important;
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2), inset 0 1px 0 var(--glass-highlight) !important;
-  border-radius: 14px !important;
+  border-radius: var(--radius-card) !important;
 }
 
 .glass-card:hover {
@@ -122,7 +125,7 @@ body::before {
 /* Stat blocks */
 .stat-block {
   background: var(--bg-stat);
-  border-radius: 10px;
+  border-radius: var(--radius-small);
   padding: 10px;
   text-align: center;
 }

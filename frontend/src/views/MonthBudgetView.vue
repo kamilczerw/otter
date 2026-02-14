@@ -38,6 +38,12 @@
         class="mt-4"
       />
 
+      <!-- Add Category Button -->
+      <button class="add-category-btn" @click="openNewEntry">
+        <v-icon size="20">mdi-plus</v-icon>
+        <span>{{ $t('budget.addCategory') }}</span>
+      </button>
+
       <!-- Charts Section (collapsible) -->
       <!--
       <div class="glass-card mt-4 pa-4">
@@ -260,6 +266,11 @@ async function onTransactionSaved() {
   }
 }
 
+function openNewEntry() {
+  selectedEntry.value = null
+  entryDrawerOpen.value = true
+}
+
 async function onEntrySaved() {
   entryDrawerOpen.value = false
   await loadData()
@@ -365,5 +376,37 @@ onMounted(async () => {
 
 .mb-3 {
   margin-bottom: 12px;
+}
+
+.add-category-btn {
+  width: 100%;
+  margin-top: 12px;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-bar);
+  color: var(--text-secondary);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.add-category-btn:hover {
+  background: var(--bg-card-hover);
+  color: var(--text-primary);
+  border-color: var(--magenta-border);
+  box-shadow: 0 2px 12px var(--magenta-glow);
+}
+
+.add-category-btn:active {
+  transform: scale(0.98);
 }
 </style>

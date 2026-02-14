@@ -49,6 +49,7 @@
   },
   "budget": {
     "categories": "Kategorie",
+    "addCategory": "Dodaj kategorię",
     "overBudget": "+{amount} ponad budżet",
     "panel": {
       "editBudget": "Edytuj budżet",
