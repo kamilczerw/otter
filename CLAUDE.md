@@ -193,6 +193,151 @@ The frontend follows a styling guide documented in `docs/STYLE_GUIDE.md` which d
 - One primary accent color (pink/magenta) for emphasis
 - Responsive phone-first layout with bottom navigation and sensible horizontal gutters on desktop
 
+## Coding Standards
+
+### Clean Code Rules
+
+All code contributions **must** follow clean code principles. The most critical rule is the **Single Responsibility Principle** for functions:
+
+- Every function must do exactly **one thing**.
+- If a function needs to perform multiple steps, break each step into its own small, focused function.
+- Compose these smaller functions inside a higher-level coordinating function that orchestrates the calls.
+
+**Bad (Rust):**
+
+```rust
+fn process_order(order: &Order) -> Result<()> {
+  if order.items.is_empty() {
+    return Err(OrderError::EmptyItems);
+  }
+
+  if !order.customer.email.contains('@') {
+    return Err(OrderError::InvalidEmail);
+  }
+    // validates, calculates totals, saves to DB, and sends email
+    // ...
+}
+```
+
+**Good (Rust):**
+
+```rust
+fn process_order(order: &Order) -> Result<()> {
+    validate_order(order)?;
+    let total = calculate_order_total(order);
+    save_order(order, total)?;
+    send_order_confirmation(order)?;
+    Ok(())
+}
+```
+
+**Bad (TypeScript):**
+
+```typescript
+function processOrder(order: Order): void {
+  // validates, calculates totals, saves to DB, and sends email
+  // ...
+}
+```
+
+**Good (TypeScript):**
+
+```typescript
+function processOrder(order: Order): void {
+  validateOrder(order);
+  const total = calculateOrderTotal(order);
+  saveOrder(order, total);
+  sendOrderConfirmation(order);
+}
+```
+
+Additional clean code expectations:
+
+- Functions should have clear, descriptive names that convey intent.
+- Keep functions short. If you need to scroll to read it, it's too long.
+- Avoid side effects that aren't obvious from the function name.
+- Minimize function arguments — prefer fewer than three.
+- Don't repeat yourself. Extract shared logic into reusable functions.
+
+### Testing Requirements
+
+All code **must** be tested before a PR is submitted. This is non-negotiable.
+
+- Write unit tests for every new function.
+- Ensure all existing tests still pass.
+- Cover both the happy path and meaningful edge cases.
+- Run the full test suite locally (`cargo test` for Rust, the project's test runner for TypeScript) and confirm it passes **before** opening the PR.
+- If a bug is being fixed, add a regression test that reproduces the bug first, then verify the fix makes it pass.
+
+No PR will be considered ready for review until tests are green.
+
+### Documentation
+
+All code **must** be documented using doc comments. Undocumented code will not be accepted.
+
+- Every function, method, struct, class, and interface must have a doc comment explaining its purpose.
+- Doc comments should describe **what** the function does and **why**, not just restate the function name.
+- Document all parameters, return values, and any errors that may be returned or thrown (Rust `# Errors` section, TypeScript `@throws`).
+- If a function has non-obvious behavior, edge cases, or assumptions, call them out explicitly.
+- Keep doc comments concise but complete — one clear sentence is better than a vague paragraph.
+
+**Bad (Rust):**
+
+```rust
+// calculates total
+fn calculate_total(items: &[OrderItem]) -> Decimal {
+    // ...
+}
+```
+
+**Good (Rust):**
+
+```rust
+/// Calculates the total price for a list of order items, including tax.
+///
+/// # Arguments
+///
+/// * `items` - The order items to sum. Must not be empty.
+///
+/// # Returns
+///
+/// The total price as a `Decimal`, rounded to two decimal places.
+///
+/// # Errors
+///
+/// Returns `OrderError::EmptyItems` if the items slice is empty.
+fn calculate_total(items: &[OrderItem]) -> Result<Decimal, OrderError> {
+    // ...
+}
+```
+
+**Bad (TypeScript):**
+
+```typescript
+// calculates total
+function calculateTotal(items: OrderItem[]): number {
+  // ...
+}
+```
+
+**Good (TypeScript):**
+
+```typescript
+/**
+ * Calculates the total price for a list of order items, including tax.
+ *
+ * @param items - The order items to sum. Must not be empty.
+ * @returns The total price, rounded to two decimal places.
+ * @throws {EmptyItemsError} If the items array is empty.
+ */
+function calculateTotal(items: OrderItem[]): number {
+  // ...
+}
+```
+
+- For Rust, include module-level `//!` doc comments summarizing the module's responsibility. For TypeScript, include a top-of-file JSDoc comment for the same purpose.
+- Update doc comments whenever the function's behavior changes. Stale documentation is worse than no documentation.
+
 ## Testing
 
 **Backend:**
