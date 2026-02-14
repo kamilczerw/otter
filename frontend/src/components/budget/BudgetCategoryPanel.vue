@@ -29,9 +29,6 @@ defineEmits<{
 
 <style scoped>
 .budget-panel {
-  background-color: #151f2e;
-  border-radius: 0 0 8px 8px;
   padding: 8px 12px 12px;
-  margin-top: -2px;
 }
 </style>

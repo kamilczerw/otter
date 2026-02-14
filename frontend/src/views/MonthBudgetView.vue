@@ -39,6 +39,7 @@
       />
 
       <!-- Charts Section (collapsible) -->
+      <!--
       <div class="glass-card mt-4 pa-4">
         <button class="section-toggle" @click="chartsOpen = !chartsOpen">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
@@ -66,9 +67,11 @@
           </div>
         </div>
       </div>
+      -->
     </template>
 
     <!-- Categories Section -->
+    <!--
     <div class="glass-card mt-4 pa-4">
       <div class="section-header mb-3">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
@@ -85,8 +88,10 @@
         @refresh="loadData"
       />
     </div>
+    -->
 
     <!-- Transactions Section -->
+    <!--
     <div class="glass-card mt-4 pa-4">
       <div class="section-header mb-3">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
@@ -104,6 +109,7 @@
         @delete="deleteTransaction"
       />
     </div>
+    -->
 
     <!-- Transaction Drawer -->
     <TransactionDrawer

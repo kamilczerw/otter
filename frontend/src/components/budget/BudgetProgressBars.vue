@@ -7,7 +7,7 @@
     >
       <div
         class="budget-bar"
-        :class="{ 'budget-bar--expanded': expandedEntryId === item.entry_id }"
+        :class="{ 'budget-bar--expanded': expandedEntryId === item.entry_id } "
         role="progressbar"
         :aria-valuenow="item.paid"
         :aria-valuemin="0"
@@ -20,7 +20,7 @@
           :color="getBarColor(item)"
           :height="barHeight"
           :rounded="expandedEntryId === item.entry_id ? false : 'lg'"
-          bg-color="#424242"
+          bg-color="var(--bg-card)"
           class="budget-bar__progress"
           :class="{
             'budget-bar__progress--overspent': isOverspent(item),
@@ -126,7 +126,6 @@ function getFillWidth(item: CategoryBudgetSummary): number {
 
 function getBarColor(item: CategoryBudgetSummary): string {
   if (isOverspent(item)) return 'var(--color-danger)'
-  if (item.paid === 0) return '#4CAF50'
   return 'var(--color-success)'
 }
 
@@ -204,7 +203,7 @@ function getAriaLabel(item: CategoryBudgetSummary): string {
   align-items: center;
   justify-content: space-between;
   padding: 0 var(--budget-bar-padding);
-  color: #E8EAF0;
+  color: var(--text-primary);
   font-size: 14px;
   pointer-events: none;
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
@@ -240,6 +239,13 @@ function getAriaLabel(item: CategoryBudgetSummary): string {
 
 .budget-panel-wrap {
   overflow: hidden;
+  background: var(--bg-card);
+  border: 1px solid var(--border-glass);
+  border-top: none;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2);
+  border-radius: 0 0 14px 14px;
 }
 
 .budget-bar__overspend-badge {
@@ -247,7 +253,7 @@ function getAriaLabel(item: CategoryBudgetSummary): string {
   top: -8px;
   right: -4px;
   background-color: var(--color-danger);
-  color: #fff;
+  color: var(--text-primary);
   font-size: 11px;
   font-weight: 600;
   line-height: 1;
