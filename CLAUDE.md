@@ -2,6 +2,17 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Task Tracking
+
+Feature specs, implementation plans, and progress tracking live in the `tasks/` directory:
+
+- **`tasks/1.0-budget-bar-expand/`** — Interactive Budget Bar Component: accordion expand/collapse on budget bars with inline transaction list, lazy loading, and drawer integration. Contains:
+  - `SPEC.md` — Full feature specification (UX behavior, API requirements, component structure, testing)
+  - `PLAN.md` — Implementation plan with phased task breakdown, dependency graph, and file-level change details
+  - `STATUS.md` — Current progress tracker and codebase state notes
+
+When working on a feature, check the corresponding `STATUS.md` for current state and `PLAN.md` for next steps.
+
 ## Project Overview
 
 Family Budget Tracker — a web application for household budget management with a Vue 3 frontend and Rust/Axum backend following hexagonal architecture.
