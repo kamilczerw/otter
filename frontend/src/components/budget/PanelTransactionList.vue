@@ -95,6 +95,7 @@ function onScroll() {
 <style scoped>
 .panel-transaction-list {
   padding: 0 4px;
+  min-height: 52px;
 }
 
 .empty-state {
@@ -102,6 +103,10 @@ function onScroll() {
   padding: 16px 0;
   color: var(--text-secondary, #888);
   font-size: 13px;
+  min-height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .transaction-items--scrollable {

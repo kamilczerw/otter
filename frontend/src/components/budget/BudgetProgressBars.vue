@@ -62,13 +62,14 @@
 
       <!-- Expanded panel -->
       <v-expand-transition>
-        <BudgetCategoryPanel
-          v-if="expandedEntryId === item.entry_id"
-          :entry-id="item.entry_id"
-          @edit-budget="$emit('edit-budget', item)"
-          @add-transaction="$emit('add-transaction', item)"
-          @edit-transaction="(tx) => $emit('edit-transaction', tx)"
-        />
+        <div v-if="expandedEntryId === item.entry_id" class="budget-panel-wrap">
+          <BudgetCategoryPanel
+            :entry-id="item.entry_id"
+            @edit-budget="$emit('edit-budget', item)"
+            @add-transaction="$emit('add-transaction', item)"
+            @edit-transaction="(tx) => $emit('edit-transaction', tx)"
+          />
+        </div>
       </v-expand-transition>
     </div>
   </div>
@@ -152,6 +153,7 @@ function getAriaLabel(item: CategoryBudgetSummary): string {
 
 .budget-bar-wrapper {
   width: 100%;
+  will-change: contents;
 }
 
 .budget-bar {
@@ -168,8 +170,16 @@ function getAriaLabel(item: CategoryBudgetSummary): string {
   opacity: 0.65;
 }
 
+.budget-bar__progress {
+  transition: border-radius 0.25s ease !important;
+}
+
 .budget-bar__progress--expanded {
   border-radius: 8px 8px 0 0 !important;
+}
+
+.budget-bar__progress >>> .v-progress-linear__background {
+  transition: border-radius 0.25s ease !important;
 }
 
 .budget-bar__progress--expanded >>> .v-progress-linear__background {
@@ -226,6 +236,10 @@ function getAriaLabel(item: CategoryBudgetSummary): string {
 .budget-bar__chevron--expanded {
   transform: rotate(180deg);
   opacity: 1;
+}
+
+.budget-panel-wrap {
+  overflow: hidden;
 }
 
 .budget-bar__overspend-badge {
