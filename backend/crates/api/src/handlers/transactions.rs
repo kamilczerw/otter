@@ -65,7 +65,7 @@ pub async fn create_transaction(
 
     let transaction = state
         .transaction_service
-        .create(entry_ulid, amount, date)
+        .create(entry_ulid, amount, date, req.title)
         .await?;
     Ok((StatusCode::CREATED, Json(transaction.into())))
 }
@@ -96,7 +96,7 @@ pub async fn update_transaction(
 
     let transaction = state
         .transaction_service
-        .update(&ulid, entry_id, amount, date)
+        .update(&ulid, entry_id, amount, date, req.title)
         .await?;
     Ok(Json(transaction.into()))
 }

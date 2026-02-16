@@ -521,8 +521,9 @@ async fn test_create_month_copy_from_nonexistent() {
     let app = setup().await;
 
     // Try to create month copying from non-existent ULID
-    let fake_ulid = "01HZZZZZZZZZZZZZZZZZZZZZZ";
-    let (status, body) = do_post(
+    // Using a valid ULID format that doesn't exist in the database
+    let fake_ulid = "01HY0000000000000000000000";
+    let (status, _body) = do_post(
         &app,
         "/api/v1/months",
         json!({ "month": "2026-01", "copy_from": fake_ulid }),

@@ -69,9 +69,12 @@
     "noEntries": "Brak pozycji budżetowych"
   },
   "transactions": {
-    "title": "Transakcje",
+    "sectionTitle": "Transakcje",
+    "title": "Tytuł",
     "amount": "Kwota",
     "date": "Data",
+    "titleHint": "Opcjonalny opis (maksymalnie 50 znaków)",
+    "noTitle": "Brak tytułu",
     "addTransaction": "Dodaj transakcję",
     "noTransactions": "Brak transakcji"
   },
@@ -104,6 +107,7 @@
     "TRANSACTION_ENTRY_NOT_FOUND": "Nie znaleziono pozycji budżetu",
     "TRANSACTION_INVALID_AMOUNT": "Kwota nie może być ujemna",
     "TRANSACTION_INVALID_DATE": "Nieprawidłowy format daty",
+    "TRANSACTION_TITLE_TOO_LONG": "Tytuł jest zbyt długi ({length} znaków, maksymalnie {max})",
     "TRANSACTIONS_MONTH_REQUIRED": "Wybierz miesiąc, aby wyświetlić transakcje",
     "BAD_REQUEST": "Nieprawidłowe żądanie: {reason}",
     "INTERNAL_ERROR": "Wystąpił nieoczekiwany błąd. Spróbuj ponownie.",

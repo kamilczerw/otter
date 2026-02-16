@@ -168,6 +168,11 @@ impl From<TransactionError> for ApiError {
                 code: "TRANSACTION_INVALID_DATE".into(),
                 details: Some(json!({ "value": value })),
             },
+            TransactionError::TitleTooLong { length, max } => ApiError {
+                status: StatusCode::UNPROCESSABLE_ENTITY,
+                code: "TRANSACTION_TITLE_TOO_LONG".into(),
+                details: Some(json!({ "length": length, "max": max })),
+            },
             TransactionError::Repository(msg) => {
                 tracing::error!("Transaction repository error: {}", msg);
                 ApiError {

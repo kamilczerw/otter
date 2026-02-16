@@ -69,9 +69,12 @@
     "noEntries": "No budget entries yet"
   },
   "transactions": {
-    "title": "Transactions",
+    "sectionTitle": "Transactions",
+    "title": "Title",
     "amount": "Amount",
     "date": "Date",
+    "titleHint": "Optional description (max 50 characters)",
+    "noTitle": "No title",
     "addTransaction": "Add Transaction",
     "noTransactions": "No transactions yet"
   },
@@ -104,6 +107,7 @@
     "TRANSACTION_ENTRY_NOT_FOUND": "Budget entry not found",
     "TRANSACTION_INVALID_AMOUNT": "Amount cannot be negative",
     "TRANSACTION_INVALID_DATE": "Invalid date format",
+    "TRANSACTION_TITLE_TOO_LONG": "Title is too long ({length} characters, max {max})",
     "TRANSACTIONS_MONTH_REQUIRED": "Please select a month to view transactions",
     "BAD_REQUEST": "Invalid request: {reason}",
     "INTERNAL_ERROR": "An unexpected error occurred. Please try again.",

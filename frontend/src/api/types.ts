@@ -33,6 +33,7 @@ export interface Transaction {
   entry_id: string
   amount: number
   date: string  // "YYYY-MM-DD"
+  title: string | null
   created_at: string
   updated_at: string
 }
@@ -86,12 +87,14 @@ export interface CreateTransactionRequest {
   entry_id: string
   amount: number
   date: string
+  title?: string | null
 }
 
 export interface UpdateTransactionRequest {
   entry_id?: string
   amount?: number
   date?: string
+  title?: string | null
 }
 
 export interface PaginatedTransactionsResponse {

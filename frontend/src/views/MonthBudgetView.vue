@@ -104,7 +104,7 @@
           <circle cx="12" cy="12" r="10" />
           <polyline points="12 6 12 12 16 14" />
         </svg>
-        <span class="section-label">{{ $t('transactions.title') }}</span>
+        <span class="section-label">{{ $t('transactions.sectionTitle') }}</span>
       </div>
       <TransactionList
         :transactions="transactions"

@@ -47,6 +47,7 @@ pub struct TransactionResponse {
     pub entry_id: String,
     pub amount: i64,
     pub date: String, // "YYYY-MM-DD"
+    pub title: Option<String>,
     pub created_at: String,
     pub updated_at: String,
 }
@@ -131,6 +132,7 @@ impl From<Transaction> for TransactionResponse {
             entry_id: t.entry_id.to_string(),
             amount: t.amount.value(),
             date: t.date.to_string(),
+            title: t.title,
             created_at: t.created_at.to_rfc3339(),
             updated_at: t.updated_at.to_rfc3339(),
         }

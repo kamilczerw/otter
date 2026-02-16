@@ -4,6 +4,10 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     flake-utils.url = "github:numtide/flake-utils";
+    crane = {
+      url = "github:ipetkov/crane";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs =
@@ -11,6 +15,7 @@
       self,
       nixpkgs,
       flake-utils,
+      crane,
     }:
     flake-utils.lib.eachDefaultSystem (
       system:
@@ -20,8 +25,79 @@
           inherit system;
         };
 
+        craneLib = crane.mkLib pkgs;
+
+        # Filter source to only include relevant files for Rust builds
+        src = craneLib.cleanCargoSource (craneLib.path ../backend);
+
+        # Common arguments for crane
+        commonArgs = {
+          inherit src;
+          strictDeps = true;
+
+          pname = "squirrel-backend";
+          version = "0.1.0";
+
+          buildInputs = with pkgs; [
+            openssl
+          ];
+
+          nativeBuildInputs = with pkgs; [
+            pkg-config
+          ];
+
+          # Use SQLx offline mode (requires sqlx-data.json)
+          SQLX_OFFLINE = "true";
+        };
+
+        # Build dependencies separately for better caching
+        cargoArtifacts = craneLib.buildDepsOnly (
+          commonArgs
+          // {
+            pname = "squirrel-backend-deps";
+          }
+        );
+
+        # Build the actual backend
+        backend = craneLib.buildPackage (
+          commonArgs
+          // {
+            inherit cargoArtifacts;
+
+            # Build only the otter binary
+            cargoExtraArgs = "--bin otter";
+          }
+        );
+
+        # Run backend tests with cargo-nextest
+        backend-tests = craneLib.cargoNextest (
+          commonArgs
+          // {
+            inherit cargoArtifacts;
+            partitions = 1;
+            partitionType = "count";
+          }
+        );
+
+        # Run backend tests with regular cargo test
+        backend-tests-cargo = craneLib.cargoTest (
+          commonArgs
+          // {
+            inherit cargoArtifacts;
+          }
+        );
+
       in
       {
+        packages = {
+          inherit backend backend-tests backend-tests-cargo;
+          default = backend;
+        };
+
+        checks = {
+          inherit backend;
+        };
+
         devShell = pkgs.mkShell {
           buildInputs = with pkgs; [
             nodePackages.prettier
@@ -40,7 +116,16 @@
             rust-analyzer
             rustup
 
+            openssl
+            pkg-config
+
           ];
+
+          env = {
+            OPENSSL_DIR = pkgs.openssl.dev;
+            OPENSSL_LIB_DIR = "${pkgs.openssl.out}/lib";
+            OPENSSL_INCLUDE_DIR = "${pkgs.openssl.dev}/include";
+          };
 
           shellHook = ''
             LOCAL_DIR="$(pwd)/.local"

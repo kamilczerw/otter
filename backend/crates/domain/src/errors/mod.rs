@@ -64,6 +64,8 @@ pub enum TransactionError {
     EntryNotFound,
     #[error("Invalid date: {value}")]
     InvalidDate { value: String },
+    #[error("Title too long: {length} characters (max {max})")]
+    TitleTooLong { length: usize, max: usize },
     #[error("Repository error: {0}")]
     Repository(String),
 }

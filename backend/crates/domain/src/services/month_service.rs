@@ -58,9 +58,8 @@ impl MonthService {
         } else {
             // Find the latest existing month (excluding the one we just created)
             self.month_repo
-                .find_latest()
+                .find_latest_excluding(&created.id)
                 .await?
-                .filter(|m| m.id != created.id)
                 .map(|m| m.id)
         };
 

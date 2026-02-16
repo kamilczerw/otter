@@ -55,6 +55,26 @@ npm run preview                      # Preview production build
 npm run type-check                   # Run Vue type checking without build
 ```
 
+### Nix (Recommended)
+
+The project uses Nix flakes for reproducible builds and testing.
+
+```bash
+# From root directory
+nix build ./nix#backend              # Build the backend binary
+nix build ./nix#backend-tests-cargo  # Build and run all backend tests (REQUIRED after every task)
+nix build ./nix#backend-tests        # Build and run tests with cargo-nextest
+nix develop                          # Enter development shell with all tools
+```
+
+**CRITICAL: After completing ANY backend task, you MUST run:**
+
+```bash
+nix build ./nix#backend-tests-cargo
+```
+
+This ensures all tests pass and validates that your changes haven't broken existing functionality. No task is complete until tests are green.
+
 ### Docker
 
 ```bash
@@ -261,15 +281,22 @@ Additional clean code expectations:
 
 ### Testing Requirements
 
-All code **must** be tested before a PR is submitted. This is non-negotiable.
+All code **must** be tested after every task. This is non-negotiable.
+
+**CRITICAL: After completing ANY task (adding a feature, fixing a bug, refactoring code), you MUST:**
+
+1. **Run the full test suite immediately** using `nix build ./nix#backend-tests-cargo` (for backend) or `npm run type-check` (for frontend)
+2. **Verify all tests pass** before moving to the next task or considering the work complete
+3. **Never mark a task as done** until tests are green
+
+Additional testing requirements:
 
 - Write unit tests for every new function.
-- Ensure all existing tests still pass.
+- Ensure all existing tests still pass after your changes.
 - Cover both the happy path and meaningful edge cases.
-- Run the full test suite locally (`cargo test` for Rust, the project's test runner for TypeScript) and confirm it passes **before** opening the PR.
 - If a bug is being fixed, add a regression test that reproduces the bug first, then verify the fix makes it pass.
 
-No PR will be considered ready for review until tests are green.
+No task is complete until the test suite passes. No PR will be considered ready for review until tests are green.
 
 ### Documentation
 
@@ -340,7 +367,12 @@ function calculateTotal(items: OrderItem[]): number {
 
 ## Testing
 
-**Backend:**
+**Backend (Nix - Recommended):**
+
+- **Run all tests (REQUIRED after every task):** `nix build ./nix#backend-tests-cargo`
+- Alternative with nextest: `nix build ./nix#backend-tests`
+
+**Backend (Cargo - Alternative):**
 
 - Unit tests: `cargo test -p domain` (fast, no dependencies)
 - Integration tests: `cargo test -p api` (full HTTP + SQLite test database)
@@ -356,6 +388,8 @@ function calculateTotal(items: OrderItem[]): number {
 - Domain tests focus on newtype validation, service logic, and error cases
 - API integration tests verify full HTTP request/response cycles against real database
 - E2E tests verify user flows through browser
+
+**IMPORTANT:** Always use Nix for testing when available. It ensures reproducible builds and catches issues that might not appear in local cargo runs.
 
 ## Configuration
 

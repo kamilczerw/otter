@@ -36,6 +36,8 @@ fn map_row_to_transaction(
     let date = TransactionDate::from_str(&date_str)
         .map_err(|e| TransactionError::Repository(format!("invalid date: {}", e)))?;
 
+    let title: Option<String> = row.get("title");
+
     let created_at_str: String = row.get("created_at");
     let created_at = DateTime::parse_from_rfc3339(&created_at_str)
         .map(|dt| dt.with_timezone(&Utc))
@@ -51,6 +53,7 @@ fn map_row_to_transaction(
         entry_id,
         amount: Money::new(amount),
         date,
+        title,
         created_at,
         updated_at,
     })
@@ -63,7 +66,7 @@ impl TransactionRepository for SqliteTransactionRepository {
         month_id: &ulid::Ulid,
     ) -> Result<Vec<Transaction>, TransactionError> {
         let rows = sqlx::query(
-            "SELECT t.id, t.entry_id, t.amount, t.date, t.created_at, t.updated_at \
+            "SELECT t.id, t.entry_id, t.amount, t.date, t.title, t.created_at, t.updated_at \
              FROM transactions t \
              JOIN budget_entries e ON t.entry_id = e.id \
              WHERE e.month_id = ? \
@@ -103,13 +106,14 @@ impl TransactionRepository for SqliteTransactionRepository {
         let now = Utc::now().format("%Y-%m-%dT%H:%M:%S%.3fZ").to_string();
 
         let result = sqlx::query(
-            "INSERT INTO transactions (id, entry_id, amount, date, created_at, updated_at) \
-             VALUES (?, ?, ?, ?, ?, ?)",
+            "INSERT INTO transactions (id, entry_id, amount, date, title, created_at, updated_at) \
+             VALUES (?, ?, ?, ?, ?, ?, ?)",
         )
         .bind(id.to_string())
         .bind(transaction.entry_id.to_string())
         .bind(transaction.amount.value())
         .bind(transaction.date.to_string())
+        .bind(&transaction.title)
         .bind(&now)
         .bind(&now)
         .execute(&self.pool)
@@ -138,6 +142,7 @@ impl TransactionRepository for SqliteTransactionRepository {
         entry_id: Option<ulid::Ulid>,
         amount: Option<Money>,
         date: Option<TransactionDate>,
+        title: Option<Option<String>>,
     ) -> Result<Transaction, TransactionError> {
         let mut set_clauses: Vec<String> = Vec::new();
 
@@ -149,6 +154,9 @@ impl TransactionRepository for SqliteTransactionRepository {
         }
         if date.is_some() {
             set_clauses.push("date = ?".to_string());
+        }
+        if title.is_some() {
+            set_clauses.push("title = ?".to_string());
         }
 
         if set_clauses.is_empty() {
@@ -173,6 +181,9 @@ impl TransactionRepository for SqliteTransactionRepository {
         }
         if let Some(ref d) = date {
             query = query.bind(d.to_string());
+        }
+        if let Some(ref t) = title {
+            query = query.bind(t);
         }
 
         query = query.bind(id.to_string());
@@ -221,7 +232,7 @@ impl TransactionRepository for SqliteTransactionRepository {
         offset: u32,
     ) -> Result<Vec<Transaction>, TransactionError> {
         let rows = sqlx::query(
-            "SELECT id, entry_id, amount, date, created_at, updated_at \
+            "SELECT id, entry_id, amount, date, title, created_at, updated_at \
              FROM transactions \
              WHERE entry_id = ? \
              ORDER BY date DESC, created_at DESC \

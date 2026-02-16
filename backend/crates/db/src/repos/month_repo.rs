@@ -127,4 +127,17 @@ impl MonthRepository for SqliteMonthRepository {
             None => Ok(None),
         }
     }
+
+    async fn find_latest_excluding(&self, exclude_id: &ulid::Ulid) -> Result<Option<Month>, MonthError> {
+        let row = sqlx::query("SELECT * FROM months WHERE id != ? ORDER BY month DESC LIMIT 1")
+            .bind(exclude_id.to_string())
+            .fetch_optional(&self.pool)
+            .await
+            .map_err(|e| MonthError::Repository(e.to_string()))?;
+
+        match row {
+            Some(ref r) => Ok(Some(map_row_to_month(r)?)),
+            None => Ok(None),
+        }
+    }
 }

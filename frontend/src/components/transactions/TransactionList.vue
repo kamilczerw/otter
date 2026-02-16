@@ -4,6 +4,7 @@
       <thead>
         <tr>
           <th>{{ $t('entries.category') }}</th>
+          <th>{{ $t('transactions.title') }}</th>
           <th class="text-right">{{ $t('transactions.amount') }}</th>
           <th>{{ $t('transactions.date') }}</th>
           <th></th>
@@ -12,6 +13,9 @@
       <tbody>
         <tr v-for="tx in transactions" :key="tx.id">
           <td>{{ getCategoryName(tx.entry_id) }}</td>
+          <td :class="getTitleCellClass(tx.title)">
+            {{ getDisplayTitle(tx.title) }}
+          </td>
           <td class="text-right">{{ formatCurrency(tx.amount) }}</td>
           <td>{{ tx.date }}</td>
           <td class="text-right">
@@ -44,9 +48,12 @@
 </template>
 
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import type { Transaction, Entry } from '@/api/types'
 import { formatCurrency } from '@/utils/currency'
 import { getCategoryDisplayName } from '@/utils/category'
+
+const { t } = useI18n()
 
 const props = defineProps<{
   transactions: Transaction[]
@@ -60,14 +67,45 @@ defineEmits<{
   delete: [tx: Transaction]
 }>()
 
+/**
+ * Gets the category display name for a transaction.
+ *
+ * @param entryId - The entry ID to look up
+ * @returns Category display name or em dash if not found
+ */
 function getCategoryName(entryId: string): string {
   const entry = props.entries.find(e => e.id === entryId)
   return entry ? getCategoryDisplayName(entry.category) : '\u2014'
+}
+
+/**
+ * Gets the display text for transaction title.
+ *
+ * @param title - The transaction title (may be null)
+ * @returns Display text (title or "No title" message)
+ */
+function getDisplayTitle(title: string | null): string {
+  return title ?? t('transactions.noTitle')
+}
+
+/**
+ * Gets CSS class for title cell display.
+ *
+ * @param title - The transaction title (may be null)
+ * @returns CSS class string
+ */
+function getTitleCellClass(title: string | null): string {
+  return title ? '' : 'title-empty'
 }
 </script>
 
 <style scoped>
 .mt-3 {
   margin-top: 12px;
+}
+
+.title-empty {
+  font-style: italic;
+  opacity: 0.5;
 }
 </style>

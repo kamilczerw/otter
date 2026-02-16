@@ -10,4 +10,5 @@ pub trait MonthRepository: Send + Sync {
     async fn find_by_month(&self, month: &BudgetMonth) -> Result<Option<Month>, MonthError>;
     async fn create(&self, month: NewMonth) -> Result<Month, MonthError>;
     async fn find_latest(&self) -> Result<Option<Month>, MonthError>;
+    async fn find_latest_excluding(&self, exclude_id: &ulid::Ulid) -> Result<Option<Month>, MonthError>;
 }
