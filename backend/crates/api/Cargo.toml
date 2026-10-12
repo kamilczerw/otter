@@ -10,6 +10,7 @@ path = "src/main.rs"
 [dependencies]
 domain = { path = "../domain" }
 db = { path = "../db" }
+csv_import = { path = "../csv_import" }
 axum = { version = "0.8", features = ["macros"] }
 tokio = { version = "1", features = ["full"] }
 serde = { version = "1", features = ["derive"] }

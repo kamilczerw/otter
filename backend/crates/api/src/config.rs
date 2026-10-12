@@ -10,7 +10,7 @@
 // Example: APP__DATABASE__URL=sqlite:///data/budget.db
 
 use std::collections::HashMap;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use serde::Deserialize;
 
@@ -26,6 +26,8 @@ pub struct AppConfig {
     pub cors: CorsConfig,
     #[serde(default = "default_ui")]
     pub ui: UiConfig,
+    #[serde(default = "default_transaction")]
+    pub transaction: TransactionConfig,
 }
 
 fn default_server() -> ServerConfig {
@@ -65,6 +67,19 @@ fn default_budget_bars() -> BudgetBarsConfig {
     BudgetBarsConfig {
         green_threshold: 80,
         yellow_threshold: 100,
+    }
+}
+
+fn default_transaction() -> TransactionConfig {
+    TransactionConfig {
+        import: default_import(),
+    }
+}
+
+fn default_import() -> ImportConfig {
+    ImportConfig {
+        rules_file: None,
+        matching_rules: None,
     }
 }
 
@@ -142,6 +157,55 @@ fn default_green_threshold() -> u8 {
 
 fn default_yellow_threshold() -> u8 {
     100
+}
+
+/// The `[transaction]` config section: currently only CSV-import-related
+/// settings, nested under `[transaction.import]`.
+#[derive(Debug, Deserialize, Clone)]
+pub struct TransactionConfig {
+    #[serde(default = "default_import")]
+    pub import: ImportConfig,
+}
+
+/// CSV import categorization settings (`[transaction.import]`).
+///
+/// Categorization rules can be supplied two ways, with inline `matching_rules`
+/// taking precedence over `rules_file` when both are set — see
+/// [`ImportConfig::resolve_rules`].
+#[derive(Debug, Deserialize, Clone, Default)]
+pub struct ImportConfig {
+    /// Path to a standalone TOML rules file (same `matching_rules`-wrapped
+    /// shape as `csv_import`'s internal `RulesFile`), loaded on demand.
+    #[serde(default)]
+    pub rules_file: Option<PathBuf>,
+    /// Rules supplied inline in the config file. Wins over `rules_file` when
+    /// both are set.
+    #[serde(default)]
+    pub matching_rules: Option<Vec<csv_import::Rule>>,
+}
+
+impl ImportConfig {
+    /// Resolves the effective set of categorization rules for this config,
+    /// per the precedence documented in the design doc: inline
+    /// `matching_rules` wins when set; otherwise rules are loaded from
+    /// `rules_file`; otherwise the result is empty (nothing categorizes;
+    /// everything falls to `"uncategorized"`).
+    ///
+    /// # Errors
+    ///
+    /// Returns [`csv_import::RulesError`] if `rules_file` is set but its
+    /// contents can't be read or don't parse as valid rules TOML. A missing
+    /// `rules_file` is not an error — it resolves to an empty rule set, same
+    /// as [`csv_import::load_rules_or_empty`].
+    pub fn resolve_rules(&self) -> Result<Vec<csv_import::Rule>, csv_import::RulesError> {
+        if let Some(inline) = &self.matching_rules {
+            return Ok(inline.clone());
+        }
+        match &self.rules_file {
+            Some(path) => csv_import::load_rules_or_empty(path),
+            None => Ok(Vec::new()),
+        }
+    }
 }
 
 /// Convert flat JSON keys (e.g., "server_host") into nested structure
@@ -372,5 +436,85 @@ green_threshold = 50
         let config = AppConfig::load(Some(f.path().to_str().unwrap()), true).unwrap();
         assert_eq!(config.ui.budget_bars.green_threshold, 50);
         assert_eq!(config.ui.budget_bars.yellow_threshold, 100);
+    }
+
+    /// Builds a single-rule `Vec<csv_import::Rule>` with a distinct
+    /// `category` name, so tests can assert on which source a resolved rule
+    /// set came from.
+    fn rule_with_category(category: &str) -> csv_import::Rule {
+        csv_import::Rule {
+            pattern: csv_import::MatchCriteria {
+                merchant_contains: Some("netto".to_string()),
+                ..Default::default()
+            },
+            category: category.to_string(),
+        }
+    }
+
+    /// Inline-only: `matching_rules` set, `rules_file` unset — resolves to
+    /// the inline rules.
+    #[test]
+    fn resolve_rules_inline_only() {
+        let config = ImportConfig {
+            rules_file: None,
+            matching_rules: Some(vec![rule_with_category("inline")]),
+        };
+        let rules = config.resolve_rules().unwrap();
+        assert_eq!(rules.len(), 1);
+        assert_eq!(rules[0].category, "inline");
+    }
+
+    /// File-only: `rules_file` set, `matching_rules` unset — resolves to the
+    /// rules loaded from disk.
+    #[test]
+    fn resolve_rules_file_only() {
+        let f = write_toml(
+            r#"
+[[matching_rules]]
+category = "from_file"
+[matching_rules.match]
+merchant_contains = "netto"
+"#,
+        );
+        let config = ImportConfig {
+            rules_file: Some(f.path().to_path_buf()),
+            matching_rules: None,
+        };
+        let rules = config.resolve_rules().unwrap();
+        assert_eq!(rules.len(), 1);
+        assert_eq!(rules[0].category, "from_file");
+    }
+
+    /// Both set: inline `matching_rules` wins, and the file's rules are not
+    /// used at all.
+    #[test]
+    fn resolve_rules_inline_wins_over_file() {
+        let f = write_toml(
+            r#"
+[[matching_rules]]
+category = "from_file"
+[matching_rules.match]
+merchant_contains = "netto"
+"#,
+        );
+        let config = ImportConfig {
+            rules_file: Some(f.path().to_path_buf()),
+            matching_rules: Some(vec![rule_with_category("inline")]),
+        };
+        let rules = config.resolve_rules().unwrap();
+        assert_eq!(rules.len(), 1);
+        assert_eq!(rules[0].category, "inline");
+        assert!(rules.iter().all(|r| r.category != "from_file"));
+    }
+
+    /// Neither set: resolves to an empty rule set, not an error.
+    #[test]
+    fn resolve_rules_neither_set_is_empty() {
+        let config = ImportConfig {
+            rules_file: None,
+            matching_rules: None,
+        };
+        let rules = config.resolve_rules().unwrap();
+        assert!(rules.is_empty());
     }
 }

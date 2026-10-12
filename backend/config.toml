@@ -20,3 +20,15 @@ allowed_origins = ["http://localhost:5173", "http://192.168.99.10:5173"]
 # above yellow_threshold = red (overspent)
 green_threshold = 100
 yellow_threshold = 110
+
+# [transaction.import]
+# CSV import categorization rules. Either point at a standalone rules file,
+# or inline rules directly below (inline wins if both are set). Leaving both
+# unset means nothing categorizes; all imported transactions fall to
+# "uncategorized".
+# rules_file = "crates/csv_import/rules.toml"
+#
+# [[transaction.import.matching_rules]]
+# category = "groceries"
+# [transaction.import.matching_rules.match]
+# merchant_contains = "netto"
