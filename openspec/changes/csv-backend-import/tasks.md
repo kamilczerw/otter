@@ -35,9 +35,9 @@
 
 ## 6. Integration testing
 
-- [ ] 6.1 Add an integration test (real SQLite, following the existing `api` integration test pattern) that POSTs the fixture CSV (`backend/crates/csv_import/tests/fixtures/sample_export.csv`) to `/imports` and verifies the resulting `Transaction`/`BudgetEntry`/`Category`/`Month` rows and response counts.
-- [ ] 6.2 Add a test that re-posts the same file and verifies the second response reports all rows as duplicates with `imported: 0` and a `200` status.
-- [ ] 6.3 Add a test with one deliberately corrupted row (e.g. bad amount) mixed into otherwise-valid rows, verifying the response is `201`, the bad row appears in `failed` with row number/raw content/reason, and the remaining rows are imported.
-- [ ] 6.4 Add a test with structurally invalid CSV content, verifying a `400` response and that nothing is persisted (no new months/categories/entries/transactions).
-- [ ] 6.5 Add a test for charset handling: one upload with `charset=windows-1250`, one with no charset (expect UTF-8 decoding), one with an unsupported charset (expect `400`).
-- [ ] 6.6 Run `nix build ./nix#backend-tests-cargo` and verify the full suite passes.
+- [x] 6.1 Add an integration test (real SQLite, following the existing `api` integration test pattern) that POSTs the fixture CSV (`backend/crates/csv_import/tests/fixtures/sample_export.csv`) to `/imports` and verifies the resulting `Transaction`/`BudgetEntry`/`Category`/`Month` rows and response counts.
+- [x] 6.2 Add a test that re-posts the same file and verifies the second response reports all rows as duplicates with `imported: 0` and a `200` status.
+- [x] 6.3 Add a test with one deliberately corrupted row (e.g. bad amount) mixed into otherwise-valid rows, verifying the response is `201`, the bad row appears in `failed` with row number/raw content/reason, and the remaining rows are imported.
+- [x] 6.4 Add a test with structurally invalid CSV content, verifying a `400` response and that nothing is persisted (no new months/categories/entries/transactions).
+- [x] 6.5 Add a test for charset handling: one upload with `charset=windows-1250`, one with no charset (expect UTF-8 decoding), one with an unsupported charset (expect `400`).
+- [x] 6.6 Run `nix build ./nix#backend-tests-cargo` and verify the full suite passes.
