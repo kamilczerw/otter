@@ -1,6 +1,7 @@
 pub mod categories;
 pub mod entries;
 pub mod health;
+pub mod imports;
 pub mod months;
 pub mod summary;
 pub mod transactions;
@@ -12,6 +13,7 @@ use domain::services::{
 };
 
 use crate::config::CurrencyConfig;
+use crate::import::ImportDeps;
 
 #[derive(Clone)]
 pub struct AppState {
@@ -21,6 +23,10 @@ pub struct AppState {
     pub transaction_service: Arc<TransactionService>,
     pub summary_service: Arc<SummaryService>,
     pub currency_config: CurrencyConfig,
+    /// Dependencies for the CSV import pipeline (`crate::import`), built
+    /// once at startup from the same repo/service `Arc`s plus resolved
+    /// categorization rules — see `handlers::imports::import_transactions`.
+    pub import_deps: Arc<ImportDeps>,
 }
 
 pub fn parse_ulid(s: &str) -> Result<ulid::Ulid, crate::errors::ApiError> {

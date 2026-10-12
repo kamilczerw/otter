@@ -7,6 +7,8 @@ use domain::entities::{
 };
 use domain::services::{BudgetStatus, CategoryBudgetSummary, MonthSummary};
 
+use crate::import::{ImportOutcome, RowFailure};
+
 #[derive(Debug, Serialize, ToSchema)]
 pub struct CategoryResponse {
     pub id: String,
@@ -77,7 +79,53 @@ pub struct PaginatedTransactionsResponse {
     pub has_more: bool,
 }
 
+/// One CSV import row that failed extraction or processing, as reported to
+/// API clients: its position in the file, its best-effort raw content, and
+/// why it failed.
+#[derive(Debug, Serialize, ToSchema)]
+pub struct FailedRowResponse {
+    pub row: usize,
+    pub raw: String,
+    pub reason: String,
+}
+
+/// Result of a CSV import request that wasn't rejected wholesale: counts of
+/// imported/duplicate/uncategorized transactions, names of any newly
+/// created months/categories, and the itemized list of rows that failed.
+#[derive(Debug, Serialize, ToSchema)]
+pub struct ImportResponse {
+    pub imported: u32,
+    pub duplicates: u32,
+    pub uncategorized: u32,
+    pub created_months: Vec<String>,
+    pub created_categories: Vec<String>,
+    pub failed: Vec<FailedRowResponse>,
+}
+
 // --- From impls ---
+
+impl From<RowFailure> for FailedRowResponse {
+    fn from(f: RowFailure) -> Self {
+        Self {
+            row: f.row,
+            raw: f.raw,
+            reason: f.reason,
+        }
+    }
+}
+
+impl From<ImportOutcome> for ImportResponse {
+    fn from(outcome: ImportOutcome) -> Self {
+        Self {
+            imported: outcome.imported,
+            duplicates: outcome.duplicates,
+            uncategorized: outcome.uncategorized,
+            created_months: outcome.created_months,
+            created_categories: outcome.created_categories,
+            failed: outcome.failed.into_iter().map(Into::into).collect(),
+        }
+    }
+}
 
 impl From<Category> for CategoryResponse {
     fn from(c: Category) -> Self {

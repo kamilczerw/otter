@@ -1,6 +1,7 @@
 pub mod config;
 mod errors;
 pub mod handlers;
+pub mod import;
 mod middleware;
 pub mod requests;
 pub mod responses;
@@ -8,7 +9,7 @@ pub mod responses;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use axum::routing::{get, patch};
+use axum::routing::{get, patch, post};
 use axum::Router;
 use clap::Parser;
 use tower_http::cors::{AllowOrigin, CorsLayer};
@@ -96,6 +97,21 @@ async fn main() {
         month_repo.clone(),
     ));
 
+    let import_rules = app_config
+        .transaction
+        .import
+        .resolve_rules()
+        .expect("Failed to resolve CSV import categorization rules");
+    let import_deps = Arc::new(import::ImportDeps {
+        month_repo: month_repo.clone(),
+        month_service: month_service.clone(),
+        category_service: category_service.clone(),
+        entry_service: entry_service.clone(),
+        transaction_repo: transaction_repo.clone(),
+        transaction_service: transaction_service.clone(),
+        rules: import_rules,
+    });
+
     let state = AppState {
         category_service,
         month_service,
@@ -103,6 +119,7 @@ async fn main() {
         transaction_service,
         summary_service,
         currency_config: app_config.currency.clone(),
+        import_deps,
     };
 
     // Configure CORS
@@ -160,6 +177,10 @@ async fn main() {
         .route(
             "/months/{id}/summary",
             get(handlers::summary::get_month_summary),
+        )
+        .route(
+            "/imports",
+            post(handlers::imports::import_transactions),
         );
 
     // Static file serving under /ui with SPA fallback.

@@ -57,6 +57,16 @@ async fn setup() -> Router {
         month_repo.clone(),
     ));
 
+    let import_deps = Arc::new(otter::import::ImportDeps {
+        month_repo: month_repo.clone(),
+        month_service: month_service.clone(),
+        category_service: category_service.clone(),
+        entry_service: entry_service.clone(),
+        transaction_repo: transaction_repo.clone(),
+        transaction_service: transaction_service.clone(),
+        rules: Vec::new(),
+    });
+
     let state = AppState {
         category_service,
         month_service,
@@ -68,6 +78,7 @@ async fn setup() -> Router {
             minor_unit_name: "grosz".to_string(),
             decimal_places: 2,
         },
+        import_deps,
     };
 
     let api = Router::new()

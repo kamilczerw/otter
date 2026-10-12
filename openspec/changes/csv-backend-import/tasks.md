@@ -28,10 +28,10 @@
 
 ## 5. HTTP endpoint
 
-- [ ] 5.1 Add `ImportResponse` to `backend/crates/api/src/responses/` matching the design's shape (`imported`, `duplicates`, `uncategorized`, `created_months`, `created_categories`, `failed: Vec<{ row, raw, reason }>`).
-- [ ] 5.2 Add the `POST /api/v1/imports` handler in `backend/crates/api/src/handlers/imports.rs`: parse multipart, extract the file part and its charset, invoke the import pipeline from Task 4, map structural parse failures to `400` via `ApiError::bad_request`, and return `201` when `imported > 0` or `200` otherwise.
-- [ ] 5.3 Register the route in `backend/crates/api/src/main.rs`.
-- [ ] 5.4 Add an OpenAPI annotation for the new endpoint consistent with existing handlers (`utoipa`).
+- [x] 5.1 Add `ImportResponse` to `backend/crates/api/src/responses/` matching the design's shape (`imported`, `duplicates`, `uncategorized`, `created_months`, `created_categories`, `failed: Vec<{ row, raw, reason }>`).
+- [x] 5.2 Add the `POST /api/v1/imports` handler in `backend/crates/api/src/handlers/imports.rs`: parse multipart, extract the file part and its charset, invoke the import pipeline from Task 4, map structural parse failures to `400` via `ApiError::bad_request`, and return `201` when `imported > 0` or `200` otherwise.
+- [x] 5.3 Register the route in `backend/crates/api/src/main.rs`.
+- [x] 5.4 Add an OpenAPI annotation for the new endpoint consistent with existing handlers (`utoipa`).
 
 ## 6. Integration testing
 
