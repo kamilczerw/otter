@@ -509,6 +509,7 @@ dependencies = [
  "domain",
  "encoding_rs",
  "serde",
+ "serde_json",
  "serde_yaml",
  "thiserror",
 ]

@@ -36,10 +36,10 @@
 
 ## 6. Breakdown output
 
-- [ ] 6.1 Aggregate categorized transactions into per-category totals and counts, as a pure function (`&[(ParsedTransaction, Category)] -> Breakdown`)
-- [ ] 6.2 Implement `pretty` table output to stdout
-- [ ] 6.3 Implement `json` output (breakdown + per-transaction extracted fields) to stdout
-- [ ] 6.4 Unit tests (`assert2`) for aggregation logic
+- [x] 6.1 Aggregate categorized transactions into per-category totals and counts, as a pure function (`&[(ParsedTransaction, Category)] -> Breakdown`)
+- [x] 6.2 Implement `pretty` table output to stdout
+- [x] 6.3 Implement `json` output (breakdown + per-transaction extracted fields) to stdout
+- [x] 6.4 Unit tests (`assert2`) for aggregation logic
 
 ## 7. Verification
 

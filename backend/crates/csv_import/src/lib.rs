@@ -6,6 +6,7 @@
 //! pipeline stage (decoding, parsing, extraction, rules, output) is
 //! implemented.
 
+mod breakdown;
 mod cli;
 mod csv_input;
 mod decode;
@@ -14,6 +15,7 @@ mod extract;
 mod learn;
 mod rules;
 
+pub use breakdown::{aggregate, print_breakdown, render_json, render_pretty, Breakdown, CategoryTotal};
 pub use cli::{Cli, OutputFormat};
 pub use csv_input::{parse_rows, report_warnings, CsvParseError, ParseWarning, RawRow};
 pub use decode::{decode_windows1250, read_and_decode_windows1250, DecodeError};

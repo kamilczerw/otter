@@ -12,6 +12,7 @@
 use crate::csv_input::RawRow;
 use chrono::NaiveDate;
 use domain::types::Money;
+use serde::Serialize;
 
 /// Expected `chrono` format of the `Data waluty` column, e.g. `2026-10-09`.
 const VALUE_DATE_FORMAT: &str = "%Y-%m-%d";
@@ -21,7 +22,7 @@ const VALUE_DATE_FORMAT: &str = "%Y-%m-%d";
 /// Card-payment-only fields (`card_last4`, `merchant`, `city`, `country`,
 /// `title`) are `None` on row shapes that don't carry them (e.g. plain
 /// transfers), which is normal rather than an error.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct ParsedTransaction {
     /// Settlement date, from the `Data waluty` column.
     pub date: NaiveDate,

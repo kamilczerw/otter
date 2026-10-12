@@ -32,4 +32,8 @@ pub enum CsvImportError {
     /// The rules file couldn't be loaded or parsed.
     #[error(transparent)]
     Rules(#[from] RulesError),
+
+    /// The JSON breakdown output could not be serialized.
+    #[error("failed to serialize breakdown as JSON: {0}")]
+    Json(#[from] serde_json::Error),
 }
