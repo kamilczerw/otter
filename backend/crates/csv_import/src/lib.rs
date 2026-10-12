@@ -11,9 +11,11 @@ mod csv_input;
 mod decode;
 mod error;
 mod extract;
+mod rules;
 
 pub use cli::{Cli, OutputFormat};
 pub use csv_input::{parse_rows, report_warnings, CsvParseError, ParseWarning, RawRow};
 pub use decode::{decode_windows1250, read_and_decode_windows1250, DecodeError};
 pub use error::CsvImportError;
 pub use extract::{extract_transaction, ExtractError, ParsedTransaction};
+pub use rules::{categorize, load_rules, match_rule, normalize, Category, MatchCriteria, Rule, RulesError};

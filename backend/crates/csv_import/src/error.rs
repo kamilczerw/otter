@@ -7,6 +7,7 @@
 use crate::csv_input::CsvParseError;
 use crate::decode::DecodeError;
 use crate::extract::ExtractError;
+use crate::rules::RulesError;
 
 /// Aggregate error type returned by the CSV import pipeline.
 ///
@@ -27,4 +28,8 @@ pub enum CsvImportError {
     /// extracted into a structured transaction.
     #[error(transparent)]
     Extract(#[from] ExtractError),
+
+    /// The rules file couldn't be loaded or parsed.
+    #[error(transparent)]
+    Rules(#[from] RulesError),
 }

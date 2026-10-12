@@ -21,11 +21,11 @@
 
 ## 4. Rules engine
 
-- [ ] 4.1 Define `Rule` struct and YAML schema: `match: { merchant_contains?, city?, country?, raw_type? }`, `category`
-- [ ] 4.2 Implement field normalization (uppercase, diacritic-stripping) for both rule patterns and transaction fields, as a pure function
-- [ ] 4.3 Implement first-rule-wins matching as a pure function (`(&ParsedTransaction, &[Rule]) -> Option<Category>`) against a loaded rule set
-- [ ] 4.4 Implement loading/parsing an existing `--rules-file`; define `RulesError` (`thiserror`) for missing-file/invalid-YAML cases, with `#[from]` wired into `CsvImportError`
-- [ ] 4.5 Unit tests (`assert2`) for match precedence and normalization (case/diacritic-insensitive matching), calling the pure matching function directly with in-memory `Rule`/`ParsedTransaction` fixtures
+- [x] 4.1 Define `Rule` struct and YAML schema: `match: { merchant_contains?, city?, country?, raw_type? }`, `category`
+- [x] 4.2 Implement field normalization (uppercase, diacritic-stripping) for both rule patterns and transaction fields, as a pure function
+- [x] 4.3 Implement first-rule-wins matching as a pure function (`(&ParsedTransaction, &[Rule]) -> Option<Category>`) against a loaded rule set
+- [x] 4.4 Implement loading/parsing an existing `--rules-file`; define `RulesError` (`thiserror`) for missing-file/invalid-YAML cases, with `#[from]` wired into `CsvImportError`
+- [x] 4.5 Unit tests (`assert2`) for match precedence and normalization (case/diacritic-insensitive matching), calling the pure matching function directly with in-memory `Rule`/`ParsedTransaction` fixtures
 
 ## 5. Interactive learning flow
 
