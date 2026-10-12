@@ -1,0 +1,79 @@
+[[matching_rules]]
+category = "wellness"
+[matching_rules.match]
+merchant_contains = "BetterMe Inc - MobApps"
+
+[[matching_rules]]
+category = "savings"
+[matching_rules.match]
+raw_type = "Autooszczędzanie"
+
+[[matching_rules]]
+category = "food/out"
+[matching_rules.match]
+merchant_contains = "ZAJAZD MALY DELFIN"
+
+[[matching_rules]]
+category = "subscription"
+[matching_rules.match]
+merchant_contains = "APPLE.COM/BILL"
+
+[[matching_rules]]
+category = "groceries"
+[matching_rules.match]
+merchant_contains = "NETTO 5567 K.2"
+
+[[matching_rules]]
+category = "groceries/health"
+[matching_rules.match]
+merchant_contains = "ROSSMANN 02"
+
+[[matching_rules]]
+category = "cash-out"
+[matching_rules.match]
+merchant_contains = "AUTOMATY AUTOMATSPEC 2026"
+
+[[matching_rules]]
+category = "remont"
+[matching_rules.match]
+merchant_contains = "CASTORAMA CIESZYN 8054"
+
+[[matching_rules]]
+category = "subscription"
+[matching_rules.match]
+merchant_contains = "UBER   *ONE MEMBERSHIP"
+
+[[matching_rules]]
+category = "remont"
+[matching_rules.match]
+merchant_contains = "BETEX S A"
+
+[[matching_rules]]
+category = "subscription"
+[matching_rules.match]
+merchant_contains = "MIDJOURNEY INC."
+
+[[matching_rules]]
+category = "groceries"
+[matching_rules.match]
+merchant_contains = "JMP S.A. BIEDRONKA 4598"
+
+[[matching_rules]]
+category = "groceries/cats"
+[matching_rules.match]
+merchant_contains = "Maxi Zoo Cieszyn"
+
+[[matching_rules]]
+category = "groceries/decoration"
+[matching_rules.match]
+merchant_contains = "Action S.A. A279"
+
+[[matching_rules]]
+category = "cloths"
+[matching_rules.match]
+merchant_contains = "Vinted"
+
+[[matching_rules]]
+category = ""
+[matching_rules.match]
+raw_type = "Płatność web - kod mobilny"

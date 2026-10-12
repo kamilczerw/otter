@@ -1,9 +1,9 @@
 ## 1. Rules format migration (TOML)
 
-- [ ] 1.1 Add a `matching_rules`-wrapped TOML shape for `Rule`/`MatchCriteria` in `backend/crates/csv_import/src/rules.rs` (e.g. a `RulesFile { matching_rules: Vec<Rule> }` wrapper), switch `load_rules`/`save_rules` from `serde_yaml` to `toml`, and verify the existing rules-loading unit tests pass against TOML fixtures instead of YAML.
-- [ ] 1.2 Update `learn.rs`'s rule-persisting flow to write the new TOML shape and verify its existing tests pass.
-- [ ] 1.3 Migrate `backend/crates/csv_import/rules.yaml` to `backend/crates/csv_import/rules.toml` by hand (same rules, new format) and update the CLI's `--rules-file` default/docs/Justfile recipe to point at it; delete `rules.yaml` once verified. Verify by running `csv_import` against the existing fixture CSV and confirming the same categorization output as before.
-- [ ] 1.4 Run `nix build ./nix#backend-tests-cargo` and verify all `csv_import` tests pass.
+- [x] 1.1 Add a `matching_rules`-wrapped TOML shape for `Rule`/`MatchCriteria` in `backend/crates/csv_import/src/rules.rs` (e.g. a `RulesFile { matching_rules: Vec<Rule> }` wrapper), switch `load_rules`/`save_rules` from `serde_yaml` to `toml`, and verify the existing rules-loading unit tests pass against TOML fixtures instead of YAML.
+- [x] 1.2 Update `learn.rs`'s rule-persisting flow to write the new TOML shape and verify its existing tests pass.
+- [x] 1.3 Migrate `backend/crates/csv_import/rules.yaml` to `backend/crates/csv_import/rules.toml` by hand (same rules, new format) and update the CLI's `--rules-file` default/docs/Justfile recipe to point at it; delete `rules.yaml` once verified. Verify by running `csv_import` against the existing fixture CSV and confirming the same categorization output as before.
+- [x] 1.4 Run `nix build ./nix#backend-tests-cargo` and verify all `csv_import` tests pass.
 
 ## 2. Domain: duplicate-detection port method
 

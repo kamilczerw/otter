@@ -22,7 +22,7 @@ pub struct Cli {
     #[arg(long)]
     pub input: PathBuf,
 
-    /// Path to the YAML rules file used to categorize transactions.
+    /// Path to the TOML rules file used to categorize transactions.
     #[arg(long)]
     pub rules_file: PathBuf,
 
@@ -51,12 +51,12 @@ mod tests {
                 "--input",
                 "foo.csv",
                 "--rules-file",
-                "rules.yaml",
+                "rules.toml",
             ])
         );
 
         check!(cli.input == PathBuf::from("foo.csv"));
-        check!(cli.rules_file == PathBuf::from("rules.yaml"));
+        check!(cli.rules_file == PathBuf::from("rules.toml"));
         check!(cli.format == OutputFormat::Pretty);
         check!(!cli.no_interactive);
     }
@@ -70,7 +70,7 @@ mod tests {
                 "--input",
                 "foo.csv",
                 "--rules-file",
-                "rules.yaml",
+                "rules.toml",
                 "--format",
                 "json",
                 "--no-interactive",

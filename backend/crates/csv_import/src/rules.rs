@@ -1,8 +1,9 @@
 //! Rule-based categorization of [`ParsedTransaction`]s against a
-//! user-maintained, hand-editable YAML rules file.
+//! user-maintained, hand-editable TOML rules file.
 //!
-//! The rules file is a bare YAML list of [`Rule`] objects (no wrapping
-//! `rules:` key) — the simplest shape that's still pleasant to hand-edit, per
+//! The rules file is a TOML document with a top-level `matching_rules` array
+//! of tables (see [`RulesFile`]) — TOML has no bare top-level array, so this
+//! wrapper key is the simplest shape that's still pleasant to hand-edit, per
 //! the "hand-editable" goal in the design doc. Matching is first-rule-wins:
 //! rules are tried in file order and the first one whose specified `match`
 //! fields all match wins.
@@ -52,6 +53,21 @@ pub struct MatchCriteria {
     pub raw_type: Option<String>,
 }
 
+/// On-disk shape of the rules file: a TOML document with a single
+/// `matching_rules` array of tables.
+///
+/// TOML has no syntax for a bare top-level array (unlike YAML's `- item`
+/// list), so every TOML rules document needs a named top-level key; this
+/// wrapper exists purely to give `Vec<Rule>` that key. Also shared with the
+/// `[transaction.import]` section of the backend's `config.toml`, so the
+/// standalone rules file and the inline config block parse via the exact
+/// same type.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RulesFile {
+    /// The rules themselves, in first-match-wins file order.
+    pub matching_rules: Vec<Rule>,
+}
+
 /// Errors from loading a rules file.
 #[derive(Debug, thiserror::Error)]
 pub enum RulesError {
@@ -69,10 +85,15 @@ pub enum RulesError {
         source: std::io::Error,
     },
 
-    /// The rules file's contents didn't parse as valid YAML matching the
-    /// `Rule` schema.
-    #[error("failed to parse rules file as YAML: {0}")]
-    InvalidYaml(#[from] serde_yaml::Error),
+    /// The rules file's contents didn't parse as valid TOML matching the
+    /// [`RulesFile`] schema.
+    #[error("failed to parse rules file as TOML: {0}")]
+    InvalidToml(#[from] toml::de::Error),
+
+    /// The parsed rules couldn't be serialized back to TOML (practically
+    /// never hit — see the `ponytail` note on [`save_rules`]).
+    #[error("failed to serialize rules as TOML: {0}")]
+    SerializeToml(#[from] toml::ser::Error),
 
     /// The rules file couldn't be written back to disk (e.g. permissions
     /// deny access, or the parent directory doesn't exist).
@@ -170,25 +191,28 @@ pub fn categorize(transaction: &ParsedTransaction, rules: &[Rule]) -> Option<Cat
 
 /// Loads and parses an existing rules file into a list of [`Rule`]s.
 ///
-/// The YAML shape is a bare list of rule objects, e.g.:
+/// The TOML shape is a `matching_rules` array of tables (see [`RulesFile`]),
+/// e.g.:
 ///
-/// ```yaml
-/// - match:
-///     merchant_contains: netto
-///   category: groceries
+/// ```toml
+/// [[matching_rules]]
+/// category = "groceries"
+/// [matching_rules.match]
+/// merchant_contains = "netto"
 /// ```
 ///
 /// # Errors
 ///
 /// Returns [`RulesError::Io`] if the file can't be read (including if it
-/// doesn't exist), or [`RulesError::InvalidYaml`] if its contents don't
-/// parse as a list of [`Rule`]s.
+/// doesn't exist), or [`RulesError::InvalidToml`] if its contents don't
+/// parse as a [`RulesFile`].
 pub fn load_rules(path: &Path) -> Result<Vec<Rule>, RulesError> {
     let contents = std::fs::read_to_string(path).map_err(|source| RulesError::Io {
         path: path.to_path_buf(),
         source,
     })?;
-    Ok(serde_yaml::from_str(&contents)?)
+    let rules_file: RulesFile = toml::from_str(&contents)?;
+    Ok(rules_file.matching_rules)
 }
 
 /// Loads the rules file at `path`, or starts from an empty rule set if it
@@ -209,20 +233,22 @@ pub fn load_rules_or_empty(path: &Path) -> Result<Vec<Rule>, RulesError> {
     }
 }
 
-/// Serializes `rules` as YAML and writes them back to `path`, overwriting
-/// any existing contents. The write-side counterpart to [`load_rules`], used
-/// to persist a newly learned rule.
+/// Serializes `rules` as TOML (wrapped in a [`RulesFile`]) and writes them
+/// back to `path`, overwriting any existing contents. The write-side
+/// counterpart to [`load_rules`], used to persist a newly learned rule.
 ///
 /// # Errors
 ///
-/// Returns [`RulesError::Write`] if the file can't be written (e.g.
+/// Returns [`RulesError::SerializeToml`] if the rules can't be serialized
+/// (practically never — a `Vec<Rule>` has no maps with non-string keys and
+/// no cycles), or [`RulesError::Write`] if the file can't be written (e.g.
 /// permissions deny access).
 pub fn save_rules(path: &Path, rules: &[Rule]) -> Result<(), RulesError> {
-    // ponytail: serde_yaml::Error has no infallible `From` for this call
-    // site's error type, but serializing a `Vec<Rule>` (no maps with
-    // non-string keys, no cycles) never actually fails in practice.
-    let yaml = serde_yaml::to_string(rules)?;
-    std::fs::write(path, yaml).map_err(|source| RulesError::Write {
+    let rules_file = RulesFile {
+        matching_rules: rules.to_vec(),
+    };
+    let toml = toml::to_string_pretty(&rules_file)?;
+    std::fs::write(path, toml).map_err(|source| RulesError::Write {
         path: path.to_path_buf(),
         source,
     })
@@ -406,11 +432,11 @@ mod tests {
     #[test]
     fn loads_rules_file() {
         let dir = std::env::temp_dir();
-        let path = dir.join(format!("csv_import_rules_test_{}.yaml", std::process::id()));
+        let path = dir.join(format!("csv_import_rules_test_{}.toml", std::process::id()));
         std::fs::write(
             &path,
-            "- match:\n    merchant_contains: netto\n  category: groceries\n\
-             - match:\n    city: Cieszyn\n    raw_type: \"Płatność kartą\"\n  category: local\n",
+            "[[matching_rules]]\ncategory = \"groceries\"\n[matching_rules.match]\nmerchant_contains = \"netto\"\n\n\
+             [[matching_rules]]\ncategory = \"local\"\n[matching_rules.match]\ncity = \"Cieszyn\"\nraw_type = \"Płatność kartą\"\n",
         )
         .unwrap();
 
@@ -428,7 +454,41 @@ mod tests {
     /// panic.
     #[test]
     fn missing_rules_file_is_an_error() {
-        let path = std::env::temp_dir().join("csv_import_rules_test_does_not_exist.yaml");
+        let path = std::env::temp_dir().join("csv_import_rules_test_does_not_exist.toml");
         let_assert!(Err(RulesError::Io { .. }) = load_rules(&path));
+    }
+
+    /// Saving rules and reloading them round-trips through the TOML
+    /// wrapper (`RulesFile`) without changing field values.
+    #[test]
+    fn save_rules_round_trips_through_toml() {
+        let dir = std::env::temp_dir();
+        let path = dir.join(format!(
+            "csv_import_rules_test_roundtrip_{}.toml",
+            std::process::id()
+        ));
+
+        let rules = vec![
+            rule(
+                MatchCriteria {
+                    merchant_contains: Some("netto".to_string()),
+                    ..Default::default()
+                },
+                "groceries",
+            ),
+            rule(
+                MatchCriteria {
+                    city: Some("Cieszyn".to_string()),
+                    ..Default::default()
+                },
+                "local",
+            ),
+        ];
+
+        save_rules(&path, &rules).unwrap();
+        let_assert!(Ok(reloaded) = load_rules(&path));
+        std::fs::remove_file(&path).unwrap();
+
+        check!(reloaded == rules);
     }
 }

@@ -3,7 +3,7 @@
 Prototype CLI that imports a bank CSV export, decodes it from Windows-1250,
 extracts structured transaction fields (merchant, city, country, card last 4
 digits, title), and categorizes each transaction against a hand-editable,
-self-learning YAML rules file.
+self-learning TOML rules file.
 
 It does not touch the database or the web app — output is a spending
 breakdown printed to stdout. The core logic lives in the crate's library
@@ -15,13 +15,13 @@ binary is a thin CLI wrapper around it.
 ```bash
 cargo run -p csv_import -- \
   --input statement.csv \
-  --rules-file rules.yaml
+  --rules-file rules.toml
 ```
 
 or, via the repo's `Justfile`:
 
 ```bash
-just csv-import --input statement.csv --rules-file rules.yaml
+just csv-import --input statement.csv --rules-file rules.toml
 ```
 
 ### Options
@@ -29,7 +29,7 @@ just csv-import --input statement.csv --rules-file rules.yaml
 | Flag               | Description                                                                 | Default  |
 | ------------------ | ---------------------------------------------------------------------------- | -------- |
 | `--input`           | Path to the bank CSV export (Windows-1250 encoded)                          | required |
-| `--rules-file`      | Path to the YAML rules file (read and updated as new categories are learned) | required |
+| `--rules-file`      | Path to the TOML rules file (read and updated as new categories are learned) | required |
 | `--format`          | Output format for the breakdown: `pretty` or `json`                         | `pretty` |
 | `--no-interactive`  | Skip prompting for unmatched transactions; assign `Uncategorized` and leave the rules file untouched | off |
 
@@ -61,16 +61,21 @@ later transactions in the same run and in future runs.
 
 ### Rules file format
 
-```yaml
-- match:
-    merchant_contains: NETTO
-  category: Groceries
-- match:
-    raw_type: Autooszczędzanie
-  category: Savings
+```toml
+[[matching_rules]]
+category = "Groceries"
+[matching_rules.match]
+merchant_contains = "NETTO"
+
+[[matching_rules]]
+category = "Savings"
+[matching_rules.match]
+raw_type = "Autooszczędzanie"
 ```
 
 Rules are matched top-to-bottom (first match wins) against the normalized
 (uppercased, diacritic-stripped) transaction fields, so `NETTO` also matches
-`Netto`. The file is plain YAML — edit it by hand to broaden, merge, or
-reorder rules.
+`Netto`. The file is plain TOML — edit it by hand to broaden, merge, or
+reorder rules. The top-level `matching_rules` key is required (TOML has no
+bare top-level array), and this same shape is reused by the backend's
+`[transaction.import]` config section.

@@ -14,7 +14,7 @@ run-dev: build-frontend
     @cd backend && cargo run --bin otter -- --static-dir ../frontend/dist
 
 # Import and categorize a bank CSV export, e.g.:
-#   just csv-import --input statement.csv --rules-file rules.yaml
+#   just csv-import --input statement.csv --rules-file rules.toml
 csv-import *ARGS:
     @cd backend && cargo run -p csv_import -- {{ARGS}}
 

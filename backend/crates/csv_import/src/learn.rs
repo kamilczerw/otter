@@ -6,7 +6,7 @@
 //! transaction), not pre-normalized/uppercased — `match_rule` already
 //! normalizes both sides of a comparison at match time (see `rules.rs`), so
 //! storing a normalized pattern here would gain nothing while making the
-//! hand-editable YAML file uglier to read.
+//! hand-editable TOML file uglier to read.
 
 use std::io::{self, Write as _};
 use std::path::Path;
@@ -176,7 +176,7 @@ mod tests {
     fn save_rules_round_trips_through_load_rules() {
         let dir = std::env::temp_dir();
         let path = dir.join(format!(
-            "csv_import_learn_test_roundtrip_{}.yaml",
+            "csv_import_learn_test_roundtrip_{}.toml",
             std::process::id()
         ));
 
@@ -201,7 +201,7 @@ mod tests {
     fn no_interactive_assigns_uncategorized_without_learning() {
         let txn = transaction(Some("UNKNOWN SHOP"), "Płatność kartą");
         let mut rules: Vec<Rule> = vec![];
-        let path = Path::new("/nonexistent/should-not-be-touched.yaml");
+        let path = Path::new("/nonexistent/should-not-be-touched.toml");
 
         let_assert!(Ok(category) = categorize_or_learn(&txn, &mut rules, path, false));
         check!(category == "Uncategorized".to_string());
@@ -215,7 +215,7 @@ mod tests {
         let txn = transaction(Some("NETTO 5567 K.2"), "Płatność kartą");
         let mut rules = vec![derive_rule(&txn, &"groceries".to_string())];
         let rules_before = rules.clone();
-        let path = Path::new("/nonexistent/should-not-be-touched.yaml");
+        let path = Path::new("/nonexistent/should-not-be-touched.toml");
 
         let_assert!(Ok(category) = categorize_or_learn(&txn, &mut rules, path, true));
         check!(category == "groceries".to_string());
