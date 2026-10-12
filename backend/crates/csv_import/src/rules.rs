@@ -73,6 +73,16 @@ pub enum RulesError {
     /// `Rule` schema.
     #[error("failed to parse rules file as YAML: {0}")]
     InvalidYaml(#[from] serde_yaml::Error),
+
+    /// The rules file couldn't be written back to disk (e.g. permissions
+    /// deny access, or the parent directory doesn't exist).
+    #[error("failed to write rules file {path:?}: {source}")]
+    Write {
+        /// Path that failed to write.
+        path: std::path::PathBuf,
+        /// Underlying I/O error.
+        source: std::io::Error,
+    },
 }
 
 /// Strips the 9 Polish diacritics (both cases) and uppercases the result, so
@@ -179,6 +189,43 @@ pub fn load_rules(path: &Path) -> Result<Vec<Rule>, RulesError> {
         source,
     })?;
     Ok(serde_yaml::from_str(&contents)?)
+}
+
+/// Loads the rules file at `path`, or starts from an empty rule set if it
+/// doesn't exist yet (e.g. the very first run of a fresh import, before any
+/// rule has been learned). Delegates to [`load_rules`] for an existing file,
+/// so parse errors on a malformed existing file are still reported.
+///
+/// # Errors
+///
+/// Returns [`RulesError::InvalidYaml`] if an existing file's contents don't
+/// parse as a list of [`Rule`]s, or [`RulesError::Io`] if the file exists
+/// but can't be read.
+pub fn load_rules_or_empty(path: &Path) -> Result<Vec<Rule>, RulesError> {
+    if path.exists() {
+        load_rules(path)
+    } else {
+        Ok(Vec::new())
+    }
+}
+
+/// Serializes `rules` as YAML and writes them back to `path`, overwriting
+/// any existing contents. The write-side counterpart to [`load_rules`], used
+/// to persist a newly learned rule.
+///
+/// # Errors
+///
+/// Returns [`RulesError::Write`] if the file can't be written (e.g.
+/// permissions deny access).
+pub fn save_rules(path: &Path, rules: &[Rule]) -> Result<(), RulesError> {
+    // ponytail: serde_yaml::Error has no infallible `From` for this call
+    // site's error type, but serializing a `Vec<Rule>` (no maps with
+    // non-string keys, no cycles) never actually fails in practice.
+    let yaml = serde_yaml::to_string(rules)?;
+    std::fs::write(path, yaml).map_err(|source| RulesError::Write {
+        path: path.to_path_buf(),
+        source,
+    })
 }
 
 #[cfg(test)]

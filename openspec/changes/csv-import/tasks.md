@@ -29,10 +29,10 @@
 
 ## 5. Interactive learning flow
 
-- [ ] 5.1 Implement inline prompt (stdin) showing extracted fields when a transaction matches no rule
-- [ ] 5.2 On answer, derive and append a new rule (`merchant_contains` default, or `raw_type` fallback) to the in-memory rule set and persist it back to `--rules-file`
-- [ ] 5.3 Implement `--no-interactive`: skip prompting, assign `Uncategorized`, leave rules file untouched
-- [ ] 5.4 Unit test (`assert2`) for rules-file round-trip (load → append learned rule → save → reload matches), and for the pure "derive a rule from a transaction + chosen category" function in isolation
+- [x] 5.1 Implement inline prompt (stdin) showing extracted fields when a transaction matches no rule
+- [x] 5.2 On answer, derive and append a new rule (`merchant_contains` default, or `raw_type` fallback) to the in-memory rule set and persist it back to `--rules-file`
+- [x] 5.3 Implement `--no-interactive`: skip prompting, assign `Uncategorized`, leave rules file untouched
+- [x] 5.4 Unit test (`assert2`) for rules-file round-trip (load → append learned rule → save → reload matches), and for the pure "derive a rule from a transaction + chosen category" function in isolation
 
 ## 6. Breakdown output
 
