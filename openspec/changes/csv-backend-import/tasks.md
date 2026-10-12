@@ -19,12 +19,12 @@
 
 ## 4. Import orchestration
 
-- [ ] 4.1 Add `csv_import` as a path dependency of `backend/crates/api`.
-- [ ] 4.2 Create `backend/crates/api/src/import/` module with: CSV decoding (charset from the multipart part's `Content-Type`, defaulting to UTF-8, rejecting unsupported charsets), structural-parse-failure detection, and per-row extraction with failure collection (reusing `csv_import::decode_windows1250`/`parse_rows`/`extract_transaction`).
-- [ ] 4.3 Implement find-or-create helpers in the import module: month-by-date (via `MonthRepository::find_by_month` / `MonthService::create` with `empty: true`), category-by-name (linear scan of `CategoryRepository::list_all` / `CategoryService::create`), and entry-by-(month,category) (linear scan of `BudgetEntryRepository::list_by_month` / `EntryService::create` with `budgeted = 0`).
-- [ ] 4.4 Implement categorization-to-category-name resolution: run `csv_import::categorize` against the resolved rules, falling back to `"uncategorized"` when no rule matches or the matched category fails `CategoryName` validation.
-- [ ] 4.5 Implement the per-row pipeline: resolve month → resolve category → resolve entry → check `find_duplicate` → create transaction via `TransactionService::create`, tracking imported/duplicate/uncategorized counts and newly created month/category names.
-- [ ] 4.6 Add unit tests for the orchestration pipeline covering: a matched rule, no match (falls to uncategorized), an empty/invalid-category match (falls to uncategorized), a duplicate skip, and auto-creation of a missing month/category/entry.
+- [x] 4.1 Add `csv_import` as a path dependency of `backend/crates/api`.
+- [x] 4.2 Create `backend/crates/api/src/import/` module with: CSV decoding (charset from the multipart part's `Content-Type`, defaulting to UTF-8, rejecting unsupported charsets), structural-parse-failure detection, and per-row extraction with failure collection (reusing `csv_import::decode_windows1250`/`parse_rows`/`extract_transaction`).
+- [x] 4.3 Implement find-or-create helpers in the import module: month-by-date (via `MonthRepository::find_by_month` / `MonthService::create` with `empty: true`), category-by-name (linear scan of `CategoryRepository::list_all` / `CategoryService::create`), and entry-by-(month,category) (linear scan of `BudgetEntryRepository::list_by_month` / `EntryService::create` with `budgeted = 0`).
+- [x] 4.4 Implement categorization-to-category-name resolution: run `csv_import::categorize` against the resolved rules, falling back to `"uncategorized"` when no rule matches or the matched category fails `CategoryName` validation.
+- [x] 4.5 Implement the per-row pipeline: resolve month → resolve category → resolve entry → check `find_duplicate` → create transaction via `TransactionService::create`, tracking imported/duplicate/uncategorized counts and newly created month/category names.
+- [x] 4.6 Add unit tests for the orchestration pipeline covering: a matched rule, no match (falls to uncategorized), an empty/invalid-category match (falls to uncategorized), a duplicate skip, and auto-creation of a missing month/category/entry.
 
 ## 5. HTTP endpoint
 
