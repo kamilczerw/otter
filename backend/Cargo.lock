@@ -503,6 +503,7 @@ name = "csv_import"
 version = "0.1.0"
 dependencies = [
  "assert2",
+ "chrono",
  "clap",
  "csv",
  "domain",

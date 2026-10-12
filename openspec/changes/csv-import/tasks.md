@@ -14,10 +14,10 @@
 
 ## 3. Field extraction
 
-- [ ] 3.1 Implement extraction as a pure function (`&RawRow -> ParsedTransaction`, no I/O) of `Tytuł:`, `Lokalizacja:` (split into `Adres:`/`Miasto:`/`Kraj:`), `Numer karty:` (masked, keep last 4 digits), `Data wykonania operacji:`, `Oryginalna kwota operacji:` from the description columns; define `ExtractError` (`thiserror`) for unparseable amount/date fields
-- [ ] 3.2 Build `ParsedTransaction` struct: date, amount (`Money`), currency, raw_type, card_last4, merchant, city, country, title, raw_description
-- [ ] 3.3 Handle the no-merchant transfer case (`Autooszczędzanie`) gracefully (absent fields, not errors)
-- [ ] 3.4 Unit tests (`assert2`) covering both row shapes from the sample data, calling the pure extraction function directly with in-memory `RawRow` fixtures
+- [x] 3.1 Implement extraction as a pure function (`&RawRow -> ParsedTransaction`, no I/O) of `Tytuł:`, `Lokalizacja:` (split into `Adres:`/`Miasto:`/`Kraj:`), `Numer karty:` (masked, keep last 4 digits), `Data wykonania operacji:`, `Oryginalna kwota operacji:` from the description columns; define `ExtractError` (`thiserror`) for unparseable amount/date fields
+- [x] 3.2 Build `ParsedTransaction` struct: date, amount (`Money`), currency, raw_type, card_last4, merchant, city, country, title, raw_description
+- [x] 3.3 Handle the no-merchant transfer case (`Autooszczędzanie`) gracefully (absent fields, not errors)
+- [x] 3.4 Unit tests (`assert2`) covering both row shapes from the sample data, calling the pure extraction function directly with in-memory `RawRow` fixtures
 
 ## 4. Rules engine
 

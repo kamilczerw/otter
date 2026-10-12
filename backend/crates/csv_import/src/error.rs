@@ -6,6 +6,7 @@
 
 use crate::csv_input::CsvParseError;
 use crate::decode::DecodeError;
+use crate::extract::ExtractError;
 
 /// Aggregate error type returned by the CSV import pipeline.
 ///
@@ -21,4 +22,9 @@ pub enum CsvImportError {
     /// The decoded CSV text could not be parsed.
     #[error(transparent)]
     CsvParse(#[from] CsvParseError),
+
+    /// A row's always-present fields (`Kwota`, `Data waluty`) could not be
+    /// extracted into a structured transaction.
+    #[error(transparent)]
+    Extract(#[from] ExtractError),
 }
