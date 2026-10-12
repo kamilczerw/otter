@@ -264,4 +264,206 @@ impl TransactionRepository for SqliteTransactionRepository {
         let total: i64 = row.get("total");
         Ok(Money::new(total))
     }
+
+    async fn find_duplicate(
+        &self,
+        entry_id: &ulid::Ulid,
+        date: &TransactionDate,
+        amount: &Money,
+        title: Option<&str>,
+    ) -> Result<Option<Transaction>, TransactionError> {
+        let row = match title {
+            Some(t) => {
+                sqlx::query(
+                    "SELECT id, entry_id, amount, date, title, created_at, updated_at \
+                     FROM transactions \
+                     WHERE entry_id = ? AND date = ? AND amount = ? AND title = ? \
+                     LIMIT 1",
+                )
+                .bind(entry_id.to_string())
+                .bind(date.to_string())
+                .bind(amount.value())
+                .bind(t)
+                .fetch_optional(&self.pool)
+                .await
+            }
+            None => {
+                sqlx::query(
+                    "SELECT id, entry_id, amount, date, title, created_at, updated_at \
+                     FROM transactions \
+                     WHERE entry_id = ? AND date = ? AND amount = ? AND title IS NULL \
+                     LIMIT 1",
+                )
+                .bind(entry_id.to_string())
+                .bind(date.to_string())
+                .bind(amount.value())
+                .fetch_optional(&self.pool)
+                .await
+            }
+        }
+        .map_err(|e| TransactionError::Repository(e.to_string()))?;
+
+        match row {
+            Some(ref r) => Ok(Some(map_row_to_transaction(r)?)),
+            None => Ok(None),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use domain::entities::NewTransaction;
+
+    /// Spins up an in-memory SQLite pool with migrations applied, mirroring
+    /// the pattern used by the `api` crate's integration tests.
+    async fn setup_pool() -> SqlitePool {
+        let pool = crate::create_pool("sqlite::memory:")
+            .await
+            .expect("failed to create in-memory pool");
+        crate::run_migrations(&pool)
+            .await
+            .expect("failed to run migrations");
+        pool
+    }
+
+    /// Inserts a category, month, and budget entry, returning the entry's id,
+    /// so tests can create transactions against a valid `entry_id`.
+    async fn seed_entry(pool: &SqlitePool) -> ulid::Ulid {
+        let category_id = ulid::Ulid::new();
+        let month_id = ulid::Ulid::new();
+        let entry_id = ulid::Ulid::new();
+        let now = "2026-01-01T00:00:00.000Z";
+
+        sqlx::query("INSERT INTO categories (id, name, created_at, updated_at) VALUES (?, ?, ?, ?)")
+            .bind(category_id.to_string())
+            .bind("groceries")
+            .bind(now)
+            .bind(now)
+            .execute(pool)
+            .await
+            .unwrap();
+
+        sqlx::query("INSERT INTO months (id, month, created_at, updated_at) VALUES (?, ?, ?, ?)")
+            .bind(month_id.to_string())
+            .bind("2026-01")
+            .bind(now)
+            .bind(now)
+            .execute(pool)
+            .await
+            .unwrap();
+
+        sqlx::query(
+            "INSERT INTO budget_entries (id, month_id, category_id, budgeted, due_day, created_at, updated_at) \
+             VALUES (?, ?, ?, ?, ?, ?, ?)",
+        )
+        .bind(entry_id.to_string())
+        .bind(month_id.to_string())
+        .bind(category_id.to_string())
+        .bind(0_i64)
+        .bind(Option::<i64>::None)
+        .bind(now)
+        .bind(now)
+        .execute(pool)
+        .await
+        .unwrap();
+
+        entry_id
+    }
+
+    #[tokio::test]
+    async fn find_duplicate_matches_identical_transaction() {
+        let pool = setup_pool().await;
+        let repo = SqliteTransactionRepository::new(pool.clone());
+        let entry_id = seed_entry(&pool).await;
+        let date: TransactionDate = "2026-01-15".parse().unwrap();
+
+        let created = repo
+            .create(NewTransaction {
+                entry_id,
+                amount: Money::new(1500),
+                date,
+                title: Some("Lidl".to_string()),
+            })
+            .await
+            .unwrap();
+
+        let found = repo
+            .find_duplicate(&entry_id, &date, &Money::new(1500), Some("Lidl"))
+            .await
+            .unwrap();
+
+        assert_eq!(found.map(|t| t.id), Some(created.id));
+    }
+
+    #[tokio::test]
+    async fn find_duplicate_matches_untitled_transaction_only_against_untitled() {
+        let pool = setup_pool().await;
+        let repo = SqliteTransactionRepository::new(pool.clone());
+        let entry_id = seed_entry(&pool).await;
+        let date: TransactionDate = "2026-01-15".parse().unwrap();
+
+        let created = repo
+            .create(NewTransaction {
+                entry_id,
+                amount: Money::new(2000),
+                date,
+                title: None,
+            })
+            .await
+            .unwrap();
+
+        let found = repo
+            .find_duplicate(&entry_id, &date, &Money::new(2000), None)
+            .await
+            .unwrap();
+
+        assert_eq!(found.map(|t| t.id), Some(created.id));
+    }
+
+    #[tokio::test]
+    async fn find_duplicate_returns_none_when_no_match() {
+        let pool = setup_pool().await;
+        let repo = SqliteTransactionRepository::new(pool.clone());
+        let entry_id = seed_entry(&pool).await;
+        let date: TransactionDate = "2026-01-15".parse().unwrap();
+
+        repo.create(NewTransaction {
+            entry_id,
+            amount: Money::new(1500),
+            date,
+            title: Some("Lidl".to_string()),
+        })
+        .await
+        .unwrap();
+
+        // Different amount.
+        assert!(repo
+            .find_duplicate(&entry_id, &date, &Money::new(999), Some("Lidl"))
+            .await
+            .unwrap()
+            .is_none());
+
+        // Different date.
+        let other_date: TransactionDate = "2026-01-16".parse().unwrap();
+        assert!(repo
+            .find_duplicate(&entry_id, &other_date, &Money::new(1500), Some("Lidl"))
+            .await
+            .unwrap()
+            .is_none());
+
+        // Different title.
+        assert!(repo
+            .find_duplicate(&entry_id, &date, &Money::new(1500), Some("Biedronka"))
+            .await
+            .unwrap()
+            .is_none());
+
+        // Untitled probe against a titled row.
+        assert!(repo
+            .find_duplicate(&entry_id, &date, &Money::new(1500), None)
+            .await
+            .unwrap()
+            .is_none());
+    }
 }
