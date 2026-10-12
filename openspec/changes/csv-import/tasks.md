@@ -7,10 +7,10 @@
 
 ## 2. CSV decoding and parsing
 
-- [ ] 2.1 Implement Windows-1250 → UTF-8 decoding of the input file; define `DecodeError` (`thiserror`) for invalid-byte failures
-- [ ] 2.2 Parse decoded CSV into raw rows using the `csv` crate, matching the 13-column header shape from the sample export; define `CsvParseError` (`thiserror`)
-- [ ] 2.3 Skip and warn on malformed rows instead of aborting
-- [ ] 2.4 Unit tests (`assert2::check!`/`let_assert!`) using the sample CSV rows as fixtures (both `Autooszczędzanie` and `Płatność kartą` shapes)
+- [x] 2.1 Implement Windows-1250 → UTF-8 decoding of the input file; define `DecodeError` (`thiserror`) for invalid-byte failures
+- [x] 2.2 Parse decoded CSV into raw rows using the `csv` crate, matching the 13-column header shape from the sample export; define `CsvParseError` (`thiserror`)
+- [x] 2.3 Skip and warn on malformed rows instead of aborting
+- [x] 2.4 Unit tests (`assert2::check!`/`let_assert!`) using the sample CSV rows as fixtures (both `Autooszczędzanie` and `Płatność kartą` shapes)
 
 ## 3. Field extraction
 

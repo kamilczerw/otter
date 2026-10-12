@@ -7,7 +7,11 @@
 //! implemented.
 
 mod cli;
+mod csv_input;
+mod decode;
 mod error;
 
 pub use cli::{Cli, OutputFormat};
+pub use csv_input::{parse_rows, report_warnings, CsvParseError, ParseWarning, RawRow};
+pub use decode::{decode_windows1250, read_and_decode_windows1250, DecodeError};
 pub use error::CsvImportError;
