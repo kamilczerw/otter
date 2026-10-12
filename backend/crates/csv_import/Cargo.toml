@@ -1,0 +1,20 @@
+[package]
+name = "csv_import"
+version = "0.1.0"
+edition = "2024"
+
+[[bin]]
+name = "csv_import"
+path = "src/main.rs"
+
+[dependencies]
+domain = { path = "../domain" }
+csv = "1"
+encoding_rs = "0.8"
+serde = { version = "1", features = ["derive"] }
+serde_yaml = "0.9"
+clap = { version = "4", features = ["derive"] }
+thiserror = "2"
+
+[dev-dependencies]
+assert2 = "0.3"
