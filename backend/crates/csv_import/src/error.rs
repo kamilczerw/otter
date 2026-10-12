@@ -36,4 +36,9 @@ pub enum CsvImportError {
     /// The JSON breakdown output could not be serialized.
     #[error("failed to serialize breakdown as JSON: {0}")]
     Json(#[from] serde_json::Error),
+
+    /// Interactive prompting or persisting a learned rule failed (see
+    /// [`crate::categorize_or_learn`]).
+    #[error("interactive categorization failed: {0}")]
+    Io(#[from] std::io::Error),
 }

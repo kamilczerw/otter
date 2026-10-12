@@ -27,8 +27,18 @@
 
         craneLib = crane.mkLib pkgs;
 
-        # Filter source to only include relevant files for Rust builds
-        src = craneLib.cleanCargoSource (craneLib.path ../backend);
+        # Filter source to only include relevant files for Rust builds.
+        # `cleanCargoSource`'s default filter only keeps .rs/.toml/Cargo.lock,
+        # which drops non-Rust fixtures that get embedded at compile time via
+        # `include_bytes!`/`include_str!`/`sqlx::migrate!` (e.g. csv_import's
+        # test CSV fixtures, db's migration .sql files), so those are added
+        # back explicitly.
+        src = pkgs.lib.cleanSourceWith {
+          src = craneLib.path ../backend;
+          filter =
+            path: type:
+            (craneLib.filterCargoSources path type) || (builtins.match ".*/(fixtures|migrations)/.*" path != null);
+        };
 
         # Common arguments for crane
         commonArgs = {

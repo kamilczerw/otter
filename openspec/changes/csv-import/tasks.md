@@ -43,5 +43,5 @@
 
 ## 7. Verification
 
-- [ ] 7.1 Wire the new crate into `nix build ./nix#backend-tests-cargo`
-- [ ] 7.2 Run the CLI end-to-end against the sample CSV (both `pretty` and `json`, interactive and `--no-interactive`) and confirm output is correct
+- [x] 7.1 Wire the new crate into `nix build ./nix#backend-tests-cargo`
+- [x] 7.2 Run the CLI end-to-end against the sample CSV (both `pretty` and `json`, interactive and `--no-interactive`) and confirm output is correct
