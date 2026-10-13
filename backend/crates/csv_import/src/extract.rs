@@ -46,6 +46,11 @@ pub struct ParsedTransaction {
     /// Verbatim, unmodified `Opis transakcji` column content, kept for
     /// audit/debugging regardless of how `title` extraction went.
     pub raw_description: String,
+    /// Raw, unparsed original-amount fragment (e.g. a foreign-currency
+    /// amount before conversion), if this row's original-amount column is
+    /// non-empty. Kept verbatim for display/audit; this change deliberately
+    /// does not parse it into a typed amount/currency pair.
+    pub original_amount_fragment: Option<String>,
 }
 
 /// Errors from fields that are always populated and therefore genuinely
@@ -88,7 +93,19 @@ pub fn extract_transaction(row: &RawRow) -> Result<ParsedTransaction, ExtractErr
         country,
         title: parse_title(&row.description),
         raw_description: row.description.clone(),
+        original_amount_fragment: non_empty(&row.original_amount_fragment),
     })
+}
+
+/// Converts an empty string into `None`, leaving a non-empty string as
+/// `Some` of itself. Used for columns that are either absent (empty) or
+/// present verbatim, with no further parsing of their content.
+fn non_empty(raw: &str) -> Option<String> {
+    if raw.is_empty() {
+        None
+    } else {
+        Some(raw.to_string())
+    }
 }
 
 /// Parses the `Data waluty` column as a `YYYY-MM-DD` date.
@@ -206,6 +223,7 @@ mod tests {
         check!(parsed.country == None);
         check!(parsed.title == None);
         check!(parsed.raw_description == "AUTOOSZCZĘDZANIE-PRZELEW");
+        check!(parsed.original_amount_fragment == None);
     }
 
     /// A card payment row with a simple, single-word merchant name.
@@ -250,6 +268,32 @@ mod tests {
         check!(parsed.merchant == Some("UBER   *ONE MEMBERSHIP".to_string()));
         check!(parsed.city == Some("AMSTERDAM".to_string()));
         check!(parsed.country == Some("KRÓLESTWO NIDERLANDÓW".to_string()));
+    }
+
+    /// A row with a non-empty original-amount column (e.g. a
+    /// foreign-currency purchase) carries that column's raw text verbatim
+    /// in `original_amount_fragment`, unparsed.
+    #[test]
+    fn extracts_non_empty_original_amount_fragment() {
+        let mut row = fixture_rows().remove(0);
+        row.original_amount_fragment = "Oryginalna kwota operacji: 1.00 EUR".to_string();
+        let_assert!(Ok(parsed) = extract_transaction(&row));
+
+        check!(
+            parsed.original_amount_fragment
+                == Some("Oryginalna kwota operacji: 1.00 EUR".to_string())
+        );
+    }
+
+    /// A row whose original-amount column is empty has no
+    /// `original_amount_fragment`.
+    #[test]
+    fn extracts_empty_original_amount_fragment_as_none() {
+        let mut row = fixture_rows().remove(0);
+        row.original_amount_fragment = String::new();
+        let_assert!(Ok(parsed) = extract_transaction(&row));
+
+        check!(parsed.original_amount_fragment == None);
     }
 
     /// An unparseable `Kwota` is a hard error since it's an always-present

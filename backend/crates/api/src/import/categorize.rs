@@ -60,6 +60,7 @@ mod tests {
             country: None,
             title: None,
             raw_description: String::new(),
+            original_amount_fragment: None,
         }
     }
 

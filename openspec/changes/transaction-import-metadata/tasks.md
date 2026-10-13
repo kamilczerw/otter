@@ -11,7 +11,7 @@
 
 ## 3. CSV extraction
 
-- [ ] 3.1 Add `original_amount_fragment: Option<String>` to `ParsedTransaction` in `crates/csv_import/src/extract.rs`, populated from `RawRow.original_amount_fragment`, and verify with a unit test covering both a row with a non-empty original-amount column and a row with an empty one.
+- [x] 3.1 Add `original_amount_fragment: Option<String>` to `ParsedTransaction` in `crates/csv_import/src/extract.rs`, populated from `RawRow.original_amount_fragment`, and verify with a unit test covering both a row with a non-empty original-amount column and a row with an empty one.
 
 ## 4. Service and import pipeline wiring
 

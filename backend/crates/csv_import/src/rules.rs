@@ -280,6 +280,7 @@ mod tests {
             country: country.map(str::to_string),
             title: None,
             raw_description: String::new(),
+            original_amount_fragment: None,
         }
     }
 

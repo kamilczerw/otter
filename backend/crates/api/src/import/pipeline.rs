@@ -198,6 +198,7 @@ mod tests {
             country: None,
             title: title.map(str::to_string),
             raw_description: "test row".to_string(),
+            original_amount_fragment: None,
         }
     }
 
