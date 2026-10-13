@@ -15,10 +15,10 @@
 
 ## 4. Service and import pipeline wiring
 
-- [ ] 4.1 Extend `TransactionService::create` to accept `import_details: Option<ImportDetails>` and `tags: Vec<String>`, and verify existing domain service tests still pass after updating call sites.
-- [ ] 4.2 Update the manual-transaction-creation API handler to pass `None`/`vec![]` for the new parameters, and verify the existing manual-creation integration test still passes.
-- [ ] 4.3 Update `api::import::pipeline` to build an `ImportDetails` from each row's `ParsedTransaction` (with `source: "csv_import"`) and pass `tags: vec!["imported/csv".into()]` into `transaction_service.create(...)`, and verify with an import integration test asserting a successfully imported transaction has `tags == ["imported/csv"]` and `import_details` populated from the row's fields.
-- [ ] 4.4 Verify existing duplicate-detection import tests (keyed on entry+date+amount+title) still pass unchanged.
+- [x] 4.1 Extend `TransactionService::create` to accept `import_details: Option<ImportDetails>` and `tags: Vec<String>`, and verify existing domain service tests still pass after updating call sites.
+- [x] 4.2 Update the manual-transaction-creation API handler to pass `None`/`vec![]` for the new parameters, and verify the existing manual-creation integration test still passes.
+- [x] 4.3 Update `api::import::pipeline` to build an `ImportDetails` from each row's `ParsedTransaction` (with `source: "csv_import"`) and pass `tags: vec!["imported/csv".into()]` into `transaction_service.create(...)`, and verify with an import integration test asserting a successfully imported transaction has `tags == ["imported/csv"]` and `import_details` populated from the row's fields.
+- [x] 4.4 Verify existing duplicate-detection import tests (keyed on entry+date+amount+title) still pass unchanged.
 
 ## 5. API response
 

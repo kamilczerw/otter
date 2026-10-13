@@ -65,7 +65,8 @@ pub async fn create_transaction(
 
     let transaction = state
         .transaction_service
-        .create(entry_ulid, amount, date, req.title)
+        // Manually created transactions have no import provenance or tags.
+        .create(entry_ulid, amount, date, req.title, None, vec![])
         .await?;
     Ok((StatusCode::CREATED, Json(transaction.into())))
 }

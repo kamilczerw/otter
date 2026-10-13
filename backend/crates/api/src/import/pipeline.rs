@@ -6,6 +6,7 @@
 //! semantics" sections.
 
 use csv_import::ParsedTransaction;
+use domain::entities::ImportDetails;
 use domain::types::{Money, TransactionDate};
 
 use crate::import::categorize::resolve_category_name;
@@ -84,6 +85,23 @@ fn transaction_amount(parsed: &ParsedTransaction) -> Money {
     parsed.amount
 }
 
+/// Builds the import provenance metadata attached to every transaction
+/// created by the CSV import pipeline, carrying the row's bank-reported
+/// fields through unchanged.
+fn import_details_from_row(parsed: &ParsedTransaction) -> ImportDetails {
+    ImportDetails {
+        source: "csv_import".to_string(),
+        merchant: parsed.merchant.clone(),
+        city: parsed.city.clone(),
+        country: parsed.country.clone(),
+        card_last4: parsed.card_last4.clone(),
+        raw_type: Some(parsed.raw_type.clone()),
+        currency: Some(parsed.currency.clone()),
+        raw_description: Some(parsed.raw_description.clone()),
+        original_amount_fragment: parsed.original_amount_fragment.clone(),
+    }
+}
+
 /// Runs the per-row pipeline for one extracted transaction: resolve
 /// category -> resolve-or-create month -> resolve-or-create category ->
 /// resolve-or-create entry -> duplicate check -> create transaction,
@@ -130,7 +148,14 @@ async fn import_one_transaction(
     }
 
     deps.transaction_service
-        .create(entry.id, amount, date, transaction.title.clone())
+        .create(
+            entry.id,
+            amount,
+            date,
+            transaction.title.clone(),
+            Some(import_details_from_row(transaction)),
+            vec!["imported/csv".to_string()],
+        )
         .await?;
     result.imported += 1;
 
@@ -325,6 +350,29 @@ mod tests {
         assert_eq!(transactions.len(), 1);
         assert_eq!(transactions[0].amount, Money::new(1050));
         assert_eq!(transactions[0].kind(), domain::entities::TransactionKind::Income);
+    }
+
+    /// An imported transaction is tagged `"imported/csv"` and carries its
+    /// source row's merchant/source metadata in `import_details`, so later
+    /// UI/features can distinguish imported from manually entered rows.
+    #[tokio::test]
+    async fn imported_transaction_carries_tags_and_import_details() {
+        let deps = test_deps(vec![]).await;
+        let txn = transaction(Some("NETTO 5567"), -1050, Some("groceries run"));
+
+        let mut result = ImportOutcome::default();
+        import_one_transaction(&deps, &txn, &mut result).await.unwrap();
+
+        let months = deps.month_service.list_all().await.unwrap();
+        let transactions = deps.transaction_repo.list_by_month(&months[0].id).await.unwrap();
+        assert_eq!(transactions.len(), 1);
+
+        let created = &transactions[0];
+        assert_eq!(created.tags, vec!["imported/csv".to_string()]);
+
+        let import_details = created.import_details.as_ref().expect("import_details should be set");
+        assert_eq!(import_details.source, "csv_import");
+        assert_eq!(import_details.merchant, Some("NETTO 5567".to_string()));
     }
 
     /// `run_import` end-to-end: decodes, extracts, and imports a tiny
