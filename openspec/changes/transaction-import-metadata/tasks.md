@@ -22,8 +22,8 @@
 
 ## 5. API response
 
-- [ ] 5.1 Add `ImportDetailsResponse` to `crates/api/src/responses/mod.rs` mirroring `ImportDetails` 1:1, with `utoipa` annotations matching existing response types, and verify the crate builds with `utoipa`'s OpenAPI generation including the new type.
-- [ ] 5.2 Add `metadata: Option<ImportDetailsResponse>` and `tags: Vec<String>` to `TransactionResponse`, mapped from the domain entity's `import_details`/`tags`, and verify with an integration test that an imported transaction's response has non-null `metadata` and a manually-created transaction's response has `metadata: null`, `tags: []`.
+- [x] 5.1 Add `ImportDetailsResponse` to `crates/api/src/responses/mod.rs` mirroring `ImportDetails` 1:1, with `utoipa` annotations matching existing response types, and verify the crate builds with `utoipa`'s OpenAPI generation including the new type.
+- [x] 5.2 Add `metadata: Option<ImportDetailsResponse>` and `tags: Vec<String>` to `TransactionResponse`, mapped from the domain entity's `import_details`/`tags`, and verify with an integration test that an imported transaction's response has non-null `metadata` and a manually-created transaction's response has `metadata: null`, `tags: []`.
 
 ## 6. Frontend
 

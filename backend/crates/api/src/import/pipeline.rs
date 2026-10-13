@@ -375,6 +375,49 @@ mod tests {
         assert_eq!(import_details.merchant, Some("NETTO 5567".to_string()));
     }
 
+    /// A transaction created via CSV import maps to a `TransactionResponse`
+    /// with non-null `metadata` and the `"imported/csv"` tag, while a
+    /// manually created transaction (no import details, no tags) maps to a
+    /// response with `metadata: None` and an empty `tags` list.
+    #[tokio::test]
+    async fn transaction_response_reflects_import_metadata_and_tags() {
+        use crate::responses::TransactionResponse;
+
+        let deps = test_deps(vec![]).await;
+        let txn = transaction(Some("NETTO 5567"), -1050, Some("groceries run"));
+
+        let mut result = ImportOutcome::default();
+        import_one_transaction(&deps, &txn, &mut result).await.unwrap();
+
+        let months = deps.month_service.list_all().await.unwrap();
+        let imported = deps.transaction_repo.list_by_month(&months[0].id).await.unwrap();
+        assert_eq!(imported.len(), 1);
+
+        let imported_response = TransactionResponse::from(imported[0].clone());
+        let metadata = imported_response.metadata.expect("imported transaction should carry metadata");
+        assert_eq!(metadata.source, "csv_import");
+        assert_eq!(metadata.merchant, Some("NETTO 5567".to_string()));
+        assert_eq!(imported_response.tags, vec!["imported/csv".to_string()]);
+
+        let entry_id = imported[0].entry_id;
+        let manual = deps
+            .transaction_service
+            .create(
+                entry_id,
+                Money::new(-500),
+                TransactionDate::new(NaiveDate::from_ymd_opt(2026, 10, 9).unwrap()),
+                Some("manual entry".to_string()),
+                None,
+                vec![],
+            )
+            .await
+            .unwrap();
+
+        let manual_response = TransactionResponse::from(manual);
+        assert!(manual_response.metadata.is_none());
+        assert!(manual_response.tags.is_empty());
+    }
+
     /// `run_import` end-to-end: decodes, extracts, and imports a tiny
     /// well-formed CSV, confirming the public entry point wires everything
     /// together (not just the inner per-transaction step).

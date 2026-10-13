@@ -2,8 +2,8 @@ use serde::Serialize;
 use utoipa::ToSchema;
 
 use domain::entities::{
-    BudgetEntryWithCategory, Category, CategorySummary as DomainCategorySummary, Month,
-    Transaction, TransactionKind,
+    BudgetEntryWithCategory, Category, CategorySummary as DomainCategorySummary, ImportDetails,
+    Month, Transaction, TransactionKind,
 };
 
 /// Maps a transaction's derived direction to its API string representation.
@@ -51,6 +51,22 @@ pub struct EntryResponse {
     pub updated_at: String,
 }
 
+/// Provenance metadata for a transaction created by an automated import
+/// (e.g. CSV), as reported to API clients. `None` fields mean the source
+/// didn't report that attribute, not that it was stripped.
+#[derive(Debug, Serialize, ToSchema)]
+pub struct ImportDetailsResponse {
+    pub source: String,
+    pub merchant: Option<String>,
+    pub city: Option<String>,
+    pub country: Option<String>,
+    pub card_last4: Option<String>,
+    pub raw_type: Option<String>,
+    pub currency: Option<String>,
+    pub raw_description: Option<String>,
+    pub original_amount_fragment: Option<String>,
+}
+
 #[derive(Debug, Serialize, ToSchema)]
 pub struct TransactionResponse {
     pub id: String,
@@ -62,6 +78,11 @@ pub struct TransactionResponse {
     pub title: Option<String>,
     pub created_at: String,
     pub updated_at: String,
+    /// Import provenance, present only for transactions created by an
+    /// automated import; `None` for manually created transactions.
+    pub metadata: Option<ImportDetailsResponse>,
+    /// Free-form labels attached to the transaction (e.g. `"imported/csv"`).
+    pub tags: Vec<String>,
 }
 
 #[derive(Debug, Serialize, ToSchema)]
@@ -183,6 +204,22 @@ impl From<BudgetEntryWithCategory> for EntryResponse {
     }
 }
 
+impl From<ImportDetails> for ImportDetailsResponse {
+    fn from(d: ImportDetails) -> Self {
+        Self {
+            source: d.source,
+            merchant: d.merchant,
+            city: d.city,
+            country: d.country,
+            card_last4: d.card_last4,
+            raw_type: d.raw_type,
+            currency: d.currency,
+            raw_description: d.raw_description,
+            original_amount_fragment: d.original_amount_fragment,
+        }
+    }
+}
+
 impl From<Transaction> for TransactionResponse {
     fn from(t: Transaction) -> Self {
         Self {
@@ -194,6 +231,8 @@ impl From<Transaction> for TransactionResponse {
             title: t.title,
             created_at: t.created_at.to_rfc3339(),
             updated_at: t.updated_at.to_rfc3339(),
+            metadata: t.import_details.map(ImportDetailsResponse::from),
+            tags: t.tags,
         }
     }
 }
