@@ -103,7 +103,7 @@ async fn imports_fixture_and_categorizes_via_rules() {
         .await
         .unwrap();
     assert_eq!(groceries_txns.len(), 1, "only the NETTO row matches the rule");
-    assert_eq!(groceries_txns[0].amount.value(), 10310);
+    assert_eq!(groceries_txns[0].amount.value(), -10310);
 
     let uncategorized_txns = app
         .transaction_service

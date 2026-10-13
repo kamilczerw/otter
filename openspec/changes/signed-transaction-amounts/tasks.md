@@ -20,7 +20,7 @@
 
 ## 4. CSV import: preserve the bank's sign
 
-- [ ] 4.1 Remove the `.abs()` call on the parsed amount in `backend/crates/api/src/import/pipeline.rs` so the bank's signed value is passed through unchanged to `Transaction::amount`.
-- [ ] 4.2 Update the import pipeline's existing unit tests (in `pipeline.rs`) that currently assert absolute-valued amounts, so they assert the real signed value instead. Add a case where an imported row has a positive (credit) amount, asserting it is persisted as positive and classified `Income`, and is not treated as a failure.
-- [ ] 4.3 Update `backend/crates/api/tests/imports_tests.rs` (`imports_fixture_and_categorizes_via_rules`, `partial_failure_reports_bad_row_and_imports_the_rest`, and any other test asserting specific transaction amounts) to the fixture's real signed values.
-- [ ] 4.4 Run `nix build ./nix#backend-tests-cargo` and verify the full suite passes, including all sections above.
+- [x] 4.1 Remove the `.abs()` call on the parsed amount in `backend/crates/api/src/import/pipeline.rs` so the bank's signed value is passed through unchanged to `Transaction::amount`.
+- [x] 4.2 Update the import pipeline's existing unit tests (in `pipeline.rs`) that currently assert absolute-valued amounts, so they assert the real signed value instead. Add a case where an imported row has a positive (credit) amount, asserting it is persisted as positive and classified `Income`, and is not treated as a failure.
+- [x] 4.3 Update `backend/crates/api/tests/imports_tests.rs` (`imports_fixture_and_categorizes_via_rules`, `partial_failure_reports_bad_row_and_imports_the_rest`, and any other test asserting specific transaction amounts) to the fixture's real signed values.
+- [x] 4.4 Run `nix build ./nix#backend-tests-cargo` and verify the full suite passes, including all sections above.

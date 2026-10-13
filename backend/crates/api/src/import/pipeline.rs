@@ -77,11 +77,11 @@ async fn apply_row_outcome(deps: &ImportDeps, outcome: RowOutcome, result: &mut 
     }
 }
 
-/// Converts a transaction's signed bank amount into the non-negative
-/// `Money` the domain's `Transaction` requires, by magnitude: a CSV import
-/// is only ever recording what was paid, not tracking account direction.
+/// Carries a transaction's signed bank amount through unchanged: negative
+/// values are expenses and zero/positive values are income, per
+/// `Transaction::kind()`'s sign convention.
 fn transaction_amount(parsed: &ParsedTransaction) -> Money {
-    Money::new(parsed.amount.value().abs())
+    parsed.amount
 }
 
 /// Runs the per-row pipeline for one extracted transaction: resolve
@@ -303,6 +303,27 @@ mod tests {
         let entries = deps.entry_service.list_by_month(&months[0].id).await.unwrap();
         assert_eq!(entries.len(), 1);
         assert_eq!(entries[0].category.id, categories[0].id);
+    }
+
+    /// A transaction with a positive (credit) amount is persisted as-is —
+    /// not negated or rejected — and is classified `Income` by
+    /// `Transaction::kind()`.
+    #[tokio::test]
+    async fn imports_credit_amount_as_income() {
+        let deps = test_deps(vec![]).await;
+        let txn = transaction(Some("REFUND SHOP"), 1050, Some("refund"));
+
+        let mut result = ImportOutcome::default();
+        import_one_transaction(&deps, &txn, &mut result).await.unwrap();
+
+        assert_eq!(result.imported, 1);
+        assert!(result.failed.is_empty());
+
+        let months = deps.month_service.list_all().await.unwrap();
+        let transactions = deps.transaction_repo.list_by_month(&months[0].id).await.unwrap();
+        assert_eq!(transactions.len(), 1);
+        assert_eq!(transactions[0].amount, Money::new(1050));
+        assert_eq!(transactions[0].kind(), domain::entities::TransactionKind::Income);
     }
 
     /// `run_import` end-to-end: decodes, extracts, and imports a tiny
