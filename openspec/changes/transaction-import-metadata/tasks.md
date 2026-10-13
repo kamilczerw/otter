@@ -34,6 +34,6 @@
 
 ## 7. Full verification
 
-- [ ] 7.1 Run `nix build ./nix#backend-tests-cargo` and verify it passes.
-- [ ] 7.2 Run `npm run type-check` in `frontend/` and verify it passes.
-- [ ] 7.3 Import a real sample CSV through the running app and manually verify imported transactions show merchant/city/country/tags in both the list and the edit drawer, and that a manually-created transaction shows neither.
+- [x] 7.1 Run `nix build ./nix#backend-tests-cargo` and verify it passes.
+- [x] 7.2 Run `npm run type-check` in `frontend/` and verify it passes.
+- [x] 7.3 Import a real sample CSV through the running app and manually verify imported transactions show merchant/city/country/tags in both the list and the edit drawer, and that a manually-created transaction shows neither.
