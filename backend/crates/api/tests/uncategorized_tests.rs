@@ -1,11 +1,16 @@
-//! Integration tests for `GET /api/v1/uncategorized-transactions` (task 3.1
-//! of the `bulk-categorize-transactions` OpenSpec change), exercised against
-//! a real in-memory SQLite database through the actual HTTP router.
+//! Integration tests for the "uncategorized" transaction queue endpoints
+//! (tasks 3.1 and 3.2 of the `bulk-categorize-transactions` OpenSpec
+//! change), exercised against a real in-memory SQLite database through the
+//! actual HTTP router.
 //!
-//! Covers: an empty queue, a head transaction with a merchant (derives a
-//! `merchant` rule), a head transaction with only a `raw_type` (derives a
-//! `raw_type` rule), and a head transaction with no import metadata at all
-//! (no derived rule).
+//! `GET /api/v1/uncategorized-transactions` coverage: an empty queue, a
+//! head transaction with a merchant (derives a `merchant` rule), a head
+//! transaction with only a `raw_type` (derives a `raw_type` rule), and a
+//! head transaction with no import metadata at all (no derived rule).
+//!
+//! `POST /api/v1/uncategorized-transactions/preview` coverage: broader vs.
+//! narrower draft rules, the empty-criteria vacuous match, a `regex`
+//! criterion end-to-end, and rejection of a malformed criterion.
 
 mod common;
 
@@ -147,4 +152,132 @@ async fn head_without_import_details_has_no_derived_rule() {
     assert_eq!(status, StatusCode::OK);
     assert_eq!(body["remaining"], 1);
     assert!(body["head"]["derived_rule"].is_null());
+}
+
+/// Creates (or reuses) the "uncategorized" category's budget entry for
+/// October 2026 and returns its id, so a test can seed several transactions
+/// under the same entry without re-creating the month/category/entry (which
+/// would error on the second call).
+async fn uncategorized_entry_id(app: &common::TestApp) -> ulid::Ulid {
+    let month = app
+        .month_service
+        .create(BudgetMonth::new(2026, 10).unwrap(), None, true)
+        .await
+        .unwrap();
+    let category = app
+        .category_service
+        .create(CategoryName::new("uncategorized").unwrap(), None)
+        .await
+        .unwrap();
+    let entry = app
+        .entry_service
+        .create(month.id, category.id, Money::new(0), None)
+        .await
+        .unwrap();
+    entry.id
+}
+
+/// Creates a transaction with the given `import_details` under the
+/// "uncategorized" entry identified by `entry_id`, for seeding multiple
+/// transactions into the same preview-test queue.
+async fn seed_transaction_under(app: &common::TestApp, entry_id: ulid::Ulid, import_details: Option<ImportDetails>) {
+    app.transaction_service
+        .create(
+            entry_id,
+            Money::new(-500),
+            TransactionDate::new(NaiveDate::from_ymd_opt(2026, 10, 9).unwrap()),
+            None,
+            import_details,
+            vec![],
+        )
+        .await
+        .unwrap();
+}
+
+/// POSTs `/api/v1/uncategorized-transactions/preview` with the given raw
+/// JSON `body` and returns the parsed response alongside the status code.
+async fn preview_rule(router: &axum::Router, body: Value) -> (StatusCode, Value) {
+    let response = router
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/api/v1/uncategorized-transactions/preview")
+                .header("content-type", "application/json")
+                .body(Body::from(body.to_string()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    let status = response.status();
+    let bytes = response.into_body().collect().await.unwrap().to_bytes();
+    let json: Value = serde_json::from_slice(&bytes).unwrap_or_default();
+    (status, json)
+}
+
+/// Builds a `{ "criteria": [...] }` preview request body from
+/// `(field, contains)` pairs.
+fn criteria_body(criteria: Vec<(&str, &str)>) -> Value {
+    serde_json::json!({
+        "criteria": criteria
+            .into_iter()
+            .map(|(field, contains)| serde_json::json!({ "field": field, "contains": contains }))
+            .collect::<Vec<_>>(),
+    })
+}
+
+/// A broader draft rule (matching several seeded merchants) returns a
+/// higher count than a narrower one (matching only a subset), and an empty
+/// criteria list matches every transaction that has import metadata
+/// (vacuous AND).
+#[tokio::test]
+async fn preview_counts_matches_by_specificity() {
+    let app = setup(vec![]).await;
+    let entry_id = uncategorized_entry_id(&app).await;
+    seed_transaction_under(&app, entry_id, Some(import_details(Some("NETTO 5567 K.2"), None))).await;
+    seed_transaction_under(&app, entry_id, Some(import_details(Some("NETTO 1234 K.9"), None))).await;
+    seed_transaction_under(&app, entry_id, Some(import_details(Some("ZABKA 42"), None))).await;
+    seed_transaction_under(&app, entry_id, None).await;
+
+    let (status, body) = preview_rule(&app.router, criteria_body(vec![("merchant", "netto")])).await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(body["count"], 2);
+
+    let (status, body) = preview_rule(&app.router, criteria_body(vec![("merchant", "NETTO 5567")])).await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(body["count"], 1);
+
+    let (status, body) = preview_rule(&app.router, serde_json::json!({ "criteria": [] })).await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(body["count"], 3); // the 3 with import_details, not the one without
+}
+
+/// A `regex` criterion is honored end-to-end through the API, not just
+/// `contains`.
+#[tokio::test]
+async fn preview_supports_regex_criterion() {
+    let app = setup(vec![]).await;
+    let entry_id = uncategorized_entry_id(&app).await;
+    seed_transaction_under(&app, entry_id, Some(import_details(Some("NETTO 5567 K.2"), None))).await;
+    seed_transaction_under(&app, entry_id, Some(import_details(Some("ZABKA 42"), None))).await;
+
+    let body = serde_json::json!({
+        "criteria": [{ "field": "merchant", "regex": r"^NETTO \d+" }],
+    });
+    let (status, body) = preview_rule(&app.router, body).await;
+
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(body["count"], 1);
+}
+
+/// A criterion setting neither `contains` nor `regex` is rejected as a bad
+/// request rather than silently matching nothing or everything.
+#[tokio::test]
+async fn preview_rejects_criterion_missing_match_type() {
+    let app = setup(vec![]).await;
+
+    let body = serde_json::json!({ "criteria": [{ "field": "merchant" }] });
+    let (status, _) = preview_rule(&app.router, body).await;
+
+    assert_eq!(status, StatusCode::BAD_REQUEST);
 }

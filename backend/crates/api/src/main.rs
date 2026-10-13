@@ -172,6 +172,10 @@ async fn main() {
         .route(
             "/uncategorized-transactions",
             get(handlers::uncategorized::get_uncategorized_queue),
+        )
+        .route(
+            "/uncategorized-transactions/preview",
+            post(handlers::uncategorized::preview_uncategorized_rule),
         );
 
     // Static file serving under /ui with SPA fallback.

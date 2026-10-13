@@ -178,6 +178,15 @@ pub struct UncategorizedQueueResponse {
     pub head: Option<UncategorizedHeadResponse>,
 }
 
+/// Response body for `POST /api/v1/uncategorized-transactions/preview`: how
+/// many transactions currently in the "uncategorized" category a draft
+/// rule's match criteria would match, so the UI can preview a rule live
+/// before saving it.
+#[derive(Debug, Serialize, ToSchema)]
+pub struct PreviewRuleResponse {
+    pub count: u32,
+}
+
 impl From<MatchField> for MatchFieldResponse {
     fn from(field: MatchField) -> Self {
         match field {

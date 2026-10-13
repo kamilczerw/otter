@@ -1,6 +1,8 @@
 use serde::Deserialize;
 use utoipa::ToSchema;
 
+use csv_import::{MatchCriteria, MatchCriterion, MatchField, MatchType};
+
 #[derive(Debug, Deserialize, ToSchema)]
 pub struct CreateCategoryRequest {
     pub name: String,
@@ -67,6 +69,91 @@ pub struct TransactionListQuery {
     pub entry_id: Option<String>,
     pub limit: Option<u32>,
     pub offset: Option<u32>,
+}
+
+/// Wire-format mirror of [`MatchField`] for request bodies (the reverse
+/// direction of `responses::MatchFieldResponse`): deserializes the same
+/// snake_case strings so a draft rule built client-side round-trips through
+/// the same field names the API already reports.
+#[derive(Debug, Deserialize, ToSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum MatchFieldRequest {
+    Merchant,
+    RawType,
+    City,
+    Country,
+    Description,
+}
+
+impl From<MatchFieldRequest> for MatchField {
+    fn from(field: MatchFieldRequest) -> Self {
+        match field {
+            MatchFieldRequest::Merchant => Self::Merchant,
+            MatchFieldRequest::RawType => Self::RawType,
+            MatchFieldRequest::City => Self::City,
+            MatchFieldRequest::Country => Self::Country,
+            MatchFieldRequest::Description => Self::Description,
+        }
+    }
+}
+
+/// Wire-format mirror of a [`MatchCriterion`] for request bodies: a flat
+/// `{ field, contains, regex }` shape, structurally the reverse of
+/// `responses::MatchCriterionResponse`. Exactly one of `contains`/`regex`
+/// must be set — this is a client-supplied draft rule crossing a trust
+/// boundary, so an invalid combination (both or neither set) is rejected via
+/// [`TryFrom`] rather than silently defaulting to one side.
+#[derive(Debug, Deserialize, ToSchema)]
+pub struct MatchCriterionRequest {
+    pub field: MatchFieldRequest,
+    #[serde(default)]
+    pub contains: Option<String>,
+    #[serde(default)]
+    pub regex: Option<String>,
+}
+
+/// Error converting a [`MatchCriterionRequest`] into a [`MatchCriterion`]:
+/// the client didn't set exactly one of `contains`/`regex`.
+#[derive(Debug, thiserror::Error)]
+#[error("exactly one of `contains` or `regex` must be set")]
+pub struct InvalidMatchCriterionRequest;
+
+impl TryFrom<MatchCriterionRequest> for MatchCriterion {
+    type Error = InvalidMatchCriterionRequest;
+
+    fn try_from(request: MatchCriterionRequest) -> Result<Self, Self::Error> {
+        let match_type = match (request.contains, request.regex) {
+            (Some(pattern), None) => MatchType::Contains(pattern),
+            (None, Some(pattern)) => MatchType::Regex(pattern),
+            _ => return Err(InvalidMatchCriterionRequest),
+        };
+        Ok(MatchCriterion {
+            field: request.field.into(),
+            match_type,
+        })
+    }
+}
+
+/// Request body for `POST /api/v1/uncategorized-transactions/preview`: a
+/// draft rule's match criteria, ANDed together exactly like a saved
+/// [`csv_import::Rule`]'s `match` list, so the UI can preview how many
+/// uncategorized transactions it would match before saving it.
+#[derive(Debug, Deserialize, ToSchema)]
+pub struct PreviewRuleRequest {
+    pub criteria: Vec<MatchCriterionRequest>,
+}
+
+impl TryFrom<PreviewRuleRequest> for MatchCriteria {
+    type Error = InvalidMatchCriterionRequest;
+
+    fn try_from(request: PreviewRuleRequest) -> Result<Self, Self::Error> {
+        let criteria = request
+            .criteria
+            .into_iter()
+            .map(MatchCriterion::try_from)
+            .collect::<Result<Vec<_>, _>>()?;
+        Ok(MatchCriteria(criteria))
+    }
 }
 
 /// Custom serde module for handling `Option<Option<T>>` fields correctly.
