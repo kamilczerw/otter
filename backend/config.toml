@@ -21,17 +21,22 @@ allowed_origins = ["http://localhost:5173", "http://192.168.99.10:5173"]
 green_threshold = 100
 yellow_threshold = 110
 
-# To split categorization rules into their own file instead of inlining them
-# below, list it under a top-level `include` (paths are resolved relative to
-# this file; absolute paths also work):
-# include = ["crates/csv_import/rules.toml"]
-
 # [transaction.import]
-# CSV import categorization rules, inline or pulled in via `include` above.
-# Leaving unset means nothing categorizes; all imported transactions fall to
-# "uncategorized".
+# `rules_file` names the hand-editable TOML file that holds CSV import
+# categorization rules (also readable/writable live via the app's
+# uncategorized-transactions review queue, with no server restart needed
+# after an edit). Resolved relative to this file; absolute paths also work.
+# Defaults to "rules.toml" next to this file when unset.
 #
-# [[transaction.import.matching_rules]]
+# rules_file = "rules.toml"
+#
+# Example `rules.toml` contents — a rule is an ordered, AND'ed list of
+# criteria, each naming one of five fields (merchant/raw_type/city/country/
+# description) and a match type (contains: substring, case/diacritic
+# insensitive; or regex: unmodified regular expression):
+#
+# [[matching_rules]]
 # category = "groceries"
-# [transaction.import.matching_rules.match]
-# merchant_contains = "netto"
+# [[matching_rules.match]]
+# field = "merchant"
+# contains = "netto"
