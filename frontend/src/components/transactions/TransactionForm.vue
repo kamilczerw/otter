@@ -31,6 +31,26 @@
       :label="$t('transactions.date')"
       type="date"
     />
+
+    <div v-if="tags.length > 0" class="mb-2">
+      <v-chip v-for="tag in tags" :key="tag" size="small" class="mr-1" variant="tonal">
+        {{ tag }}
+      </v-chip>
+    </div>
+
+    <v-card v-if="metadata" variant="tonal" class="mb-2 pa-3">
+      <div class="text-caption text-medium-emphasis mb-2">{{ $t('transactions.importedFromCsv') }}</div>
+      <div v-if="metadata.merchant">{{ $t('transactions.merchant') }}: {{ metadata.merchant }}</div>
+      <div v-if="metadata.city">{{ $t('transactions.city') }}: {{ metadata.city }}</div>
+      <div v-if="metadata.country">{{ $t('transactions.country') }}: {{ metadata.country }}</div>
+      <div v-if="metadata.card_last4">{{ $t('transactions.cardLast4') }}: {{ metadata.card_last4 }}</div>
+      <div v-if="metadata.raw_type">{{ $t('transactions.rawType') }}: {{ metadata.raw_type }}</div>
+      <div v-if="metadata.currency">{{ $t('transactions.currency') }}: {{ metadata.currency }}</div>
+      <div v-if="metadata.original_amount_fragment">
+        {{ $t('transactions.originalAmountFragment') }}: {{ metadata.original_amount_fragment }}
+      </div>
+    </v-card>
+
     <v-alert v-if="error" type="error" variant="tonal" density="compact" class="mt-2">
       {{ error }}
     </v-alert>
@@ -71,6 +91,10 @@ const amount = ref('')
 const date = ref('')
 const error = ref('')
 const saving = ref(false)
+
+// Read-only import metadata/tags from the transaction being edited (absent for manually-created transactions)
+const metadata = computed(() => props.transaction?.metadata ?? null)
+const tags = computed(() => props.transaction?.tags ?? [])
 
 // Map entries to include display name for the select
 const entriesWithDisplayName = computed(() =>

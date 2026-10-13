@@ -76,7 +76,16 @@
     "titleHint": "Optional description (max 50 characters)",
     "noTitle": "No title",
     "addTransaction": "Add Transaction",
-    "noTransactions": "No transactions yet"
+    "noTransactions": "No transactions yet",
+    "importedFromCsv": "Imported from CSV",
+    "merchant": "Merchant",
+    "city": "City",
+    "country": "Country",
+    "cardLast4": "Card",
+    "rawType": "Type",
+    "currency": "Currency",
+    "originalAmountFragment": "Original amount",
+    "tags": "Tags"
   },
   "summary": {
     "totalBudgeted": "Total Budgeted",

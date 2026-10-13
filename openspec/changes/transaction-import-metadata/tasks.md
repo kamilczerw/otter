@@ -27,10 +27,10 @@
 
 ## 6. Frontend
 
-- [ ] 6.1 Add `tags: string[]` and `metadata: ImportMetadata | null` (camelCased: `source`, `merchant`, `city`, `country`, `cardLast4`, `rawType`, `currency`, `rawDescription`, `originalAmountFragment`) to the `Transaction` type in `src/api/types.ts`, and verify with `npm run type-check`.
-- [ ] 6.2 Show `metadata?.merchant` as a muted subtitle under the title in `TransactionList.vue` and `PanelTransactionList.vue` when present, and verify manually in the browser with an imported transaction that has a merchant and one without.
-- [ ] 6.3 Add a read-only "Imported from CSV" section to `TransactionForm.vue` (merchant, city, country, card last 4, type, currency, original amount fragment) rendered only when `metadata` is non-null, plus `tags` rendered as chips, and verify manually in the browser that the section is absent for a manually-created transaction and populated for an imported one.
-- [ ] 6.4 Add PL and EN i18n keys for the new labels (merchant, city, country, card, type, currency, original amount, tags), and verify with `npm run type-check` and a manual language-toggle check in the browser.
+- [x] 6.1 Add `tags: string[]` and `metadata: ImportMetadata | null` (camelCased: `source`, `merchant`, `city`, `country`, `cardLast4`, `rawType`, `currency`, `rawDescription`, `originalAmountFragment`) to the `Transaction` type in `src/api/types.ts`, and verify with `npm run type-check`.
+- [x] 6.2 Show `metadata?.merchant` as a muted subtitle under the title in `TransactionList.vue` and `PanelTransactionList.vue` when present, and verify manually in the browser with an imported transaction that has a merchant and one without.
+- [x] 6.3 Add a read-only "Imported from CSV" section to `TransactionForm.vue` (merchant, city, country, card last 4, type, currency, original amount fragment) rendered only when `metadata` is non-null, plus `tags` rendered as chips, and verify manually in the browser that the section is absent for a manually-created transaction and populated for an imported one.
+- [x] 6.4 Add PL and EN i18n keys for the new labels (merchant, city, country, card, type, currency, original amount, tags), and verify with `npm run type-check` and a manual language-toggle check in the browser.
 
 ## 7. Full verification
 

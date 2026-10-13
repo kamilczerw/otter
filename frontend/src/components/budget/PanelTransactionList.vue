@@ -32,8 +32,13 @@
           </span>
 
           <!-- Title column -->
-          <span :class="getTitleClass(tx.title)">
-            {{ getDisplayTitle(tx.title) }}
+          <span class="transaction-title-column">
+            <span :class="getTitleClass(tx.title)">
+              {{ getDisplayTitle(tx.title) }}
+            </span>
+            <span v-if="tx.metadata?.merchant" class="transaction-merchant text-medium-emphasis">
+              {{ tx.metadata.merchant }}
+            </span>
           </span>
 
           <!-- Amount column -->
@@ -194,6 +199,13 @@ function onScroll(): void {
   min-width: 80px;
 }
 
+.transaction-title-column {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-width: 0;
+}
+
 .transaction-title {
   font-size: 0.875rem;
   overflow: hidden;
@@ -204,6 +216,13 @@ function onScroll(): void {
 .transaction-title-empty {
   font-style: italic;
   opacity: 0.5;
+}
+
+.transaction-merchant {
+  font-size: 0.75rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .transaction-amount {
