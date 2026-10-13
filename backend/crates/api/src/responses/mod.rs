@@ -247,6 +247,8 @@ mod tests {
             title: None,
             created_at: now,
             updated_at: now,
+            import_details: None,
+            tags: vec![],
         }
     }
 

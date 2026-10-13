@@ -115,6 +115,8 @@ impl TransactionService {
             amount,
             date,
             title: normalized_title,
+            import_details: None,
+            tags: vec![],
         };
 
         self.transaction_repo.create(new_transaction).await

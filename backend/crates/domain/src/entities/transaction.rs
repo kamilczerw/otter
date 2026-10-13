@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use crate::entities::ImportDetails;
 use crate::types::{Money, TransactionDate};
 
 /// Maximum length for transaction title
@@ -26,6 +27,12 @@ pub struct Transaction {
     pub title: Option<String>,
     pub created_at: chrono::DateTime<chrono::Utc>,
     pub updated_at: chrono::DateTime<chrono::Utc>,
+    /// Import-time provenance (merchant, location, raw bank fields, etc.),
+    /// present only for transactions created via an importer.
+    pub import_details: Option<ImportDetails>,
+    /// Free-form labels attached to the transaction, independent of its
+    /// budget category.
+    pub tags: Vec<String>,
 }
 
 impl Transaction {
@@ -53,6 +60,12 @@ pub struct NewTransaction {
     pub amount: Money,
     pub date: TransactionDate,
     pub title: Option<String>,
+    /// Import-time provenance (merchant, location, raw bank fields, etc.),
+    /// present only for transactions created via an importer.
+    pub import_details: Option<ImportDetails>,
+    /// Free-form labels attached to the transaction, independent of its
+    /// budget category.
+    pub tags: Vec<String>,
 }
 
 #[cfg(test)]
@@ -72,6 +85,8 @@ mod tests {
             title: None,
             created_at: now,
             updated_at: now,
+            import_details: None,
+            tags: vec![],
         }
     }
 

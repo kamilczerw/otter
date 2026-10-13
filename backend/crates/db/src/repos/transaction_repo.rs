@@ -56,6 +56,8 @@ fn map_row_to_transaction(
         title,
         created_at,
         updated_at,
+        import_details: None,
+        tags: vec![],
     })
 }
 
@@ -392,6 +394,8 @@ mod tests {
             amount: Money::new(-1500),
             date,
             title: None,
+            import_details: None,
+            tags: vec![],
         })
         .await
         .unwrap();
@@ -413,6 +417,8 @@ mod tests {
             amount: Money::new(1500),
             date,
             title: None,
+            import_details: None,
+            tags: vec![],
         })
         .await
         .unwrap();
@@ -435,6 +441,8 @@ mod tests {
                 amount: Money::new(1500),
                 date,
                 title: Some("Lidl".to_string()),
+                import_details: None,
+                tags: vec![],
             })
             .await
             .unwrap();
@@ -460,6 +468,8 @@ mod tests {
                 amount: Money::new(2000),
                 date,
                 title: None,
+                import_details: None,
+                tags: vec![],
             })
             .await
             .unwrap();
@@ -484,6 +494,8 @@ mod tests {
             amount: Money::new(1500),
             date,
             title: Some("Lidl".to_string()),
+            import_details: None,
+            tags: vec![],
         })
         .await
         .unwrap();
