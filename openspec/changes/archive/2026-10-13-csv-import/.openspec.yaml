@@ -1,0 +1,5 @@
+schema: spec-driven
+created: 2026-10-12
+goal: Ship a standalone Rust CLI prototype that parses Windows-1250 bank CSVs,
+  extracts merchant/location/card fields, and categorizes transactions via
+  hand-editable + self-learning rules

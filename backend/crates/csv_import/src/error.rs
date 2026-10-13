@@ -1,0 +1,44 @@
+//! Top-level error type for the `csv_import` crate.
+//!
+//! Each pipeline stage (decoding, parsing, extraction, rules, etc.) will
+//! define its own focused error enum; this type aggregates them via
+//! `#[from]` so callers only need to handle one error type.
+
+use crate::csv_input::CsvParseError;
+use crate::decode::DecodeError;
+use crate::extract::ExtractError;
+use crate::rules::RulesError;
+
+/// Aggregate error type returned by the CSV import pipeline.
+///
+/// Sub-module error types are wired in here with `#[from]` as they are
+/// introduced, so this stays the single error type library consumers (and
+/// the CLI binary) need to match on.
+#[derive(Debug, thiserror::Error)]
+pub enum CsvImportError {
+    /// The input bytes could not be decoded as Windows-1250.
+    #[error(transparent)]
+    Decode(#[from] DecodeError),
+
+    /// The decoded CSV text could not be parsed.
+    #[error(transparent)]
+    CsvParse(#[from] CsvParseError),
+
+    /// A row's always-present fields (`Kwota`, `Data waluty`) could not be
+    /// extracted into a structured transaction.
+    #[error(transparent)]
+    Extract(#[from] ExtractError),
+
+    /// The rules file couldn't be loaded or parsed.
+    #[error(transparent)]
+    Rules(#[from] RulesError),
+
+    /// The JSON breakdown output could not be serialized.
+    #[error("failed to serialize breakdown as JSON: {0}")]
+    Json(#[from] serde_json::Error),
+
+    /// Interactive prompting or persisting a learned rule failed (see
+    /// [`crate::categorize_or_learn`]).
+    #[error("interactive categorization failed: {0}")]
+    Io(#[from] std::io::Error),
+}

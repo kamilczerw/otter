@@ -14,7 +14,10 @@
         <tr v-for="tx in transactions" :key="tx.id">
           <td>{{ getCategoryName(tx.entry_id) }}</td>
           <td :class="getTitleCellClass(tx.title)">
-            {{ getDisplayTitle(tx.title) }}
+            <div>{{ getDisplayTitle(tx.title) }}</div>
+            <div v-if="tx.metadata?.merchant" class="text-caption text-medium-emphasis">
+              {{ tx.metadata.merchant }}
+            </div>
           </td>
           <td class="text-right">{{ formatCurrency(tx.amount) }}</td>
           <td>{{ tx.date }}</td>

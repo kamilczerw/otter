@@ -76,7 +76,16 @@
     "titleHint": "Opcjonalny opis (maksymalnie 50 znaków)",
     "noTitle": "Brak tytułu",
     "addTransaction": "Dodaj transakcję",
-    "noTransactions": "Brak transakcji"
+    "noTransactions": "Brak transakcji",
+    "importedFromCsv": "Zaimportowano z CSV",
+    "merchant": "Sprzedawca",
+    "city": "Miasto",
+    "country": "Kraj",
+    "cardLast4": "Karta",
+    "rawType": "Typ",
+    "currency": "Waluta",
+    "originalAmountFragment": "Oryginalna kwota",
+    "tags": "Tagi"
   },
   "summary": {
     "totalBudgeted": "Zaplanowano łącznie",

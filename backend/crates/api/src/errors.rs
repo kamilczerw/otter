@@ -158,11 +158,6 @@ impl From<TransactionError> for ApiError {
                 code: "TRANSACTION_ENTRY_NOT_FOUND".into(),
                 details: None,
             },
-            TransactionError::InvalidAmount { value } => ApiError {
-                status: StatusCode::UNPROCESSABLE_ENTITY,
-                code: "TRANSACTION_INVALID_AMOUNT".into(),
-                details: Some(json!({ "value": value })),
-            },
             TransactionError::InvalidDate { value } => ApiError {
                 status: StatusCode::UNPROCESSABLE_ENTITY,
                 code: "TRANSACTION_INVALID_DATE".into(),

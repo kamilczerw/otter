@@ -28,6 +28,19 @@ export interface Entry {
   updated_at: string
 }
 
+// Metadata captured when a transaction is created via CSV import (null for manually-created transactions)
+export interface ImportMetadata {
+  source: string
+  merchant: string | null
+  city: string | null
+  country: string | null
+  card_last4: string | null
+  raw_type: string | null
+  currency: string | null
+  raw_description: string | null
+  original_amount_fragment: string | null
+}
+
 export interface Transaction {
   id: string
   entry_id: string
@@ -36,6 +49,8 @@ export interface Transaction {
   title: string | null
   created_at: string
   updated_at: string
+  tags: string[]
+  metadata: ImportMetadata | null
 }
 
 export interface MonthSummary {

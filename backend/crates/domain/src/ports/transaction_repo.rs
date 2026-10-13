@@ -12,4 +12,22 @@ pub trait TransactionRepository: Send + Sync {
     async fn delete(&self, id: &ulid::Ulid) -> Result<(), TransactionError>;
     async fn sum_by_entry(&self, entry_id: &ulid::Ulid) -> Result<Money, TransactionError>;
     async fn list_by_entry(&self, entry_id: &ulid::Ulid, limit: u32, offset: u32) -> Result<Vec<Transaction>, TransactionError>;
+
+    /// Looks up an existing transaction matching `(entry_id, date, amount, title)`.
+    ///
+    /// Used by CSV import to skip rows that were already imported: a transaction
+    /// is considered a duplicate of another if all four fields match exactly
+    /// (title included, so an untitled transaction only matches other untitled
+    /// transactions on the same entry/date/amount).
+    ///
+    /// # Errors
+    ///
+    /// Returns `TransactionError::Repository` if the underlying query fails.
+    async fn find_duplicate(
+        &self,
+        entry_id: &ulid::Ulid,
+        date: &TransactionDate,
+        amount: &Money,
+        title: Option<&str>,
+    ) -> Result<Option<Transaction>, TransactionError>;
 }

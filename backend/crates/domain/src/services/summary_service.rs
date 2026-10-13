@@ -129,6 +129,14 @@ impl SummaryService {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use async_trait::async_trait;
+    use chrono::Utc;
+
+    use crate::entities::{
+        BudgetEntry, BudgetEntryWithCategory, CategorySummary, Month, NewBudgetEntry, NewMonth,
+    };
+    use crate::errors::EntryError;
+    use crate::types::{BudgetMonth, CategoryName, DueDay};
 
     fn status(budgeted: i64, paid: i64) -> BudgetStatus {
         derive_status(Money::new(budgeted), Money::new(paid))
@@ -168,5 +176,202 @@ mod tests {
     fn test_zero_budget_with_payment() {
         // budgeted == 0, paid > 0 -> Overspent
         assert_eq!(status(0, 500), BudgetStatus::Overspent);
+    }
+
+    /// Fake `BudgetEntryRepository` returning a single, fixed entry so the
+    /// summary pipeline can be exercised without a database.
+    struct FakeEntryRepo {
+        entry: BudgetEntryWithCategory,
+    }
+
+    #[async_trait]
+    impl BudgetEntryRepository for FakeEntryRepo {
+        async fn list_by_month(
+            &self,
+            _month_id: &Ulid,
+        ) -> Result<Vec<BudgetEntryWithCategory>, EntryError> {
+            Ok(vec![self.entry.clone()])
+        }
+
+        async fn find_by_id(&self, _id: &Ulid) -> Result<Option<BudgetEntry>, EntryError> {
+            unimplemented!("not needed for summary pipeline tests")
+        }
+
+        async fn create(
+            &self,
+            _entry: NewBudgetEntry,
+        ) -> Result<BudgetEntryWithCategory, EntryError> {
+            unimplemented!("not needed for summary pipeline tests")
+        }
+
+        async fn update(
+            &self,
+            _id: &Ulid,
+            _budgeted: Option<Money>,
+            _due_day: Option<Option<DueDay>>,
+        ) -> Result<BudgetEntryWithCategory, EntryError> {
+            unimplemented!("not needed for summary pipeline tests")
+        }
+
+        async fn delete(&self, _id: &Ulid) -> Result<(), EntryError> {
+            unimplemented!("not needed for summary pipeline tests")
+        }
+
+        async fn transaction_count(&self, _entry_id: &Ulid) -> Result<i64, EntryError> {
+            unimplemented!("not needed for summary pipeline tests")
+        }
+    }
+
+    /// Fake `TransactionRepository` whose `sum_by_entry` returns a fixed
+    /// magnitude, standing in for the real `SUM(ABS(amount))` aggregation.
+    struct FakeTransactionRepo {
+        sum: Money,
+    }
+
+    #[async_trait]
+    impl crate::ports::TransactionRepository for FakeTransactionRepo {
+        async fn list_by_month(
+            &self,
+            _month_id: &Ulid,
+        ) -> Result<Vec<crate::entities::Transaction>, crate::errors::TransactionError> {
+            unimplemented!("not needed for summary pipeline tests")
+        }
+
+        async fn find_by_id(
+            &self,
+            _id: &Ulid,
+        ) -> Result<Option<crate::entities::Transaction>, crate::errors::TransactionError> {
+            unimplemented!("not needed for summary pipeline tests")
+        }
+
+        async fn create(
+            &self,
+            _transaction: crate::entities::NewTransaction,
+        ) -> Result<crate::entities::Transaction, crate::errors::TransactionError> {
+            unimplemented!("not needed for summary pipeline tests")
+        }
+
+        async fn update(
+            &self,
+            _id: &Ulid,
+            _entry_id: Option<Ulid>,
+            _amount: Option<Money>,
+            _date: Option<crate::types::TransactionDate>,
+            _title: Option<Option<String>>,
+        ) -> Result<crate::entities::Transaction, crate::errors::TransactionError> {
+            unimplemented!("not needed for summary pipeline tests")
+        }
+
+        async fn delete(&self, _id: &Ulid) -> Result<(), crate::errors::TransactionError> {
+            unimplemented!("not needed for summary pipeline tests")
+        }
+
+        async fn sum_by_entry(
+            &self,
+            _entry_id: &Ulid,
+        ) -> Result<Money, crate::errors::TransactionError> {
+            Ok(self.sum)
+        }
+
+        async fn list_by_entry(
+            &self,
+            _entry_id: &Ulid,
+            _limit: u32,
+            _offset: u32,
+        ) -> Result<Vec<crate::entities::Transaction>, crate::errors::TransactionError> {
+            unimplemented!("not needed for summary pipeline tests")
+        }
+
+        async fn find_duplicate(
+            &self,
+            _entry_id: &Ulid,
+            _date: &crate::types::TransactionDate,
+            _amount: &Money,
+            _title: Option<&str>,
+        ) -> Result<Option<crate::entities::Transaction>, crate::errors::TransactionError> {
+            unimplemented!("not needed for summary pipeline tests")
+        }
+    }
+
+    /// Fake `MonthRepository` returning a single, fixed month.
+    struct FakeMonthRepo {
+        month: Month,
+    }
+
+    #[async_trait]
+    impl MonthRepository for FakeMonthRepo {
+        async fn list_all(&self) -> Result<Vec<Month>, MonthError> {
+            unimplemented!("not needed for summary pipeline tests")
+        }
+
+        async fn find_by_id(&self, _id: &Ulid) -> Result<Option<Month>, MonthError> {
+            Ok(Some(self.month.clone()))
+        }
+
+        async fn find_by_month(
+            &self,
+            _month: &BudgetMonth,
+        ) -> Result<Option<Month>, MonthError> {
+            unimplemented!("not needed for summary pipeline tests")
+        }
+
+        async fn create(&self, _month: NewMonth) -> Result<Month, MonthError> {
+            unimplemented!("not needed for summary pipeline tests")
+        }
+
+        async fn find_latest(&self) -> Result<Option<Month>, MonthError> {
+            unimplemented!("not needed for summary pipeline tests")
+        }
+
+        async fn find_latest_excluding(
+            &self,
+            _exclude_id: &Ulid,
+        ) -> Result<Option<Month>, MonthError> {
+            unimplemented!("not needed for summary pipeline tests")
+        }
+    }
+
+    /// Builds a `BudgetEntryWithCategory` with the given budgeted amount,
+    /// for use as a fixed fixture entry in pipeline tests.
+    fn make_entry(budgeted: Money) -> BudgetEntryWithCategory {
+        BudgetEntryWithCategory {
+            id: Ulid::new(),
+            category: CategorySummary {
+                id: Ulid::new(),
+                name: CategoryName::new("income/salary").unwrap(),
+                label: None,
+            },
+            budgeted,
+            due_day: None,
+            created_at: Utc::now(),
+            updated_at: Utc::now(),
+        }
+    }
+
+    #[tokio::test]
+    async fn income_entry_with_matching_paid_amount_is_on_budget() {
+        // Income category: transactions recorded with positive amounts.
+        // `sum_by_entry` (SUM(ABS(amount))) returns the same magnitude as the
+        // budgeted amount, so the derived status must be OnBudget, not
+        // Overspent.
+        let budgeted = Money::new(500_00);
+        let entry = make_entry(budgeted);
+        let month = Month {
+            id: Ulid::new(),
+            month: BudgetMonth::new(2026, 1).unwrap(),
+            created_at: Utc::now(),
+            updated_at: Utc::now(),
+        };
+
+        let service = SummaryService::new(
+            Arc::new(FakeEntryRepo { entry }),
+            Arc::new(FakeTransactionRepo { sum: budgeted }),
+            Arc::new(FakeMonthRepo { month }),
+        );
+
+        let summary = service.get_month_summary(&Ulid::new()).await.unwrap();
+
+        assert_eq!(summary.categories.len(), 1);
+        assert_eq!(summary.categories[0].status, BudgetStatus::OnBudget);
     }
 }

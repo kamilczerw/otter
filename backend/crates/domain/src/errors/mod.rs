@@ -56,8 +56,6 @@ pub enum EntryError {
 
 #[derive(Debug, Error)]
 pub enum TransactionError {
-    #[error("Invalid amount: {value}")]
-    InvalidAmount { value: i64 },
     #[error("Transaction not found")]
     NotFound,
     #[error("Entry not found")]
