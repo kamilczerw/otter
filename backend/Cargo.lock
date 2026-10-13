@@ -509,6 +509,7 @@ dependencies = [
  "csv",
  "domain",
  "encoding_rs",
+ "regex",
  "serde",
  "serde_json",
  "thiserror",

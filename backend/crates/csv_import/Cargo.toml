@@ -17,6 +17,7 @@ toml = "0.8"
 serde_json = "1"
 clap = { version = "4", features = ["derive"] }
 thiserror = "2"
+regex = "1"
 
 [dev-dependencies]
 assert2 = "0.3"
