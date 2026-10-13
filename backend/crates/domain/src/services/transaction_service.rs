@@ -79,7 +79,7 @@ impl TransactionService {
     /// # Arguments
     ///
     /// * `entry_id` - Budget entry this transaction belongs to
-    /// * `amount` - Transaction amount (must be non-negative)
+    /// * `amount` - Transaction amount; sign is the sole indicator of direction (negative = expense, zero/positive = income)
     /// * `date` - Transaction date
     /// * `title` - Optional transaction title (max 50 characters)
     ///
@@ -89,7 +89,6 @@ impl TransactionService {
     ///
     /// # Errors
     ///
-    /// * `TransactionError::InvalidAmount` - Amount is negative
     /// * `TransactionError::EntryNotFound` - Budget entry does not exist
     /// * `TransactionError::TitleTooLong` - Title exceeds maximum length
     /// * `TransactionError::Repository` - Database error
@@ -100,13 +99,6 @@ impl TransactionService {
         date: TransactionDate,
         title: Option<String>,
     ) -> Result<Transaction, TransactionError> {
-        // Validate amount >= 0
-        if amount.value() < 0 {
-            return Err(TransactionError::InvalidAmount {
-                value: amount.value(),
-            });
-        }
-
         // Normalize and validate title
         let normalized_title = normalize_title(title);
         validate_title_length(&normalized_title)?;
@@ -134,7 +126,7 @@ impl TransactionService {
     ///
     /// * `id` - Transaction ID to update
     /// * `entry_id` - Optional new budget entry ID
-    /// * `amount` - Optional new amount (must be non-negative)
+    /// * `amount` - Optional new amount; sign is the sole indicator of direction (negative = expense, zero/positive = income)
     /// * `date` - Optional new date
     /// * `title` - Optional title update: `None` = don't change, `Some(None)` = clear, `Some(Some(v))` = set value
     ///
@@ -145,7 +137,6 @@ impl TransactionService {
     /// # Errors
     ///
     /// * `TransactionError::NotFound` - Transaction does not exist
-    /// * `TransactionError::InvalidAmount` - Amount is negative
     /// * `TransactionError::EntryNotFound` - Budget entry does not exist
     /// * `TransactionError::TitleTooLong` - Title exceeds maximum length
     /// * `TransactionError::Repository` - Database error
@@ -164,15 +155,6 @@ impl TransactionService {
                 .await
                 .map_err(|e| TransactionError::Repository(e.to_string()))?
                 .ok_or(TransactionError::EntryNotFound)?;
-        }
-
-        // If amount provided, validate >= 0
-        if let Some(ref amt) = amount
-            && amt.value() < 0
-        {
-            return Err(TransactionError::InvalidAmount {
-                value: amt.value(),
-            });
         }
 
         // If title provided, normalize and validate

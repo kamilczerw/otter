@@ -1,9 +1,9 @@
 ## 1. Domain: allow signed amounts, derive TransactionKind
 
-- [ ] 1.1 Remove the `amount.value() < 0` rejection from `TransactionService::create` and `TransactionService::update` (`backend/crates/domain/src/services/transaction_service.rs`); update their doc comments accordingly. Verify by updating the existing tests that asserted `InvalidAmount` on negative input so they instead assert the transaction is created/updated successfully with a negative amount.
-- [ ] 1.2 Remove the now-unreachable `TransactionError::InvalidAmount { value: i64 }` variant (`backend/crates/domain/src/errors/mod.rs`) and its match arm in `backend/crates/api/src/errors.rs`. Verify with `cargo build -p domain -p api` (no unreachable-pattern or missing-variant errors).
-- [ ] 1.3 Add a `TransactionKind` enum (`Expense`, `Income`) and `Transaction::kind(&self) -> TransactionKind` (negative amount → `Expense`, zero or positive → `Income`) in `backend/crates/domain/src/entities/transaction.rs`. Add unit tests covering a negative amount, a positive amount, and zero.
-- [ ] 1.4 Run `nix build ./nix#backend-tests-cargo` and verify the `domain` crate's tests pass.
+- [x] 1.1 Remove the `amount.value() < 0` rejection from `TransactionService::create` and `TransactionService::update` (`backend/crates/domain/src/services/transaction_service.rs`); update their doc comments accordingly. Verify by updating the existing tests that asserted `InvalidAmount` on negative input so they instead assert the transaction is created/updated successfully with a negative amount.
+- [x] 1.2 Remove the now-unreachable `TransactionError::InvalidAmount { value: i64 }` variant (`backend/crates/domain/src/errors/mod.rs`) and its match arm in `backend/crates/api/src/errors.rs`. Verify with `cargo build -p domain -p api` (no unreachable-pattern or missing-variant errors).
+- [x] 1.3 Add a `TransactionKind` enum (`Expense`, `Income`) and `Transaction::kind(&self) -> TransactionKind` (negative amount → `Expense`, zero or positive → `Income`) in `backend/crates/domain/src/entities/transaction.rs`. Add unit tests covering a negative amount, a positive amount, and zero.
+- [x] 1.4 Run `nix build ./nix#backend-tests-cargo` and verify the `domain` crate's tests pass.
 
 ## 2. API: expose transaction direction
 
