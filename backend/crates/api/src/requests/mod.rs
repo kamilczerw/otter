@@ -147,13 +147,38 @@ impl TryFrom<PreviewRuleRequest> for MatchCriteria {
     type Error = InvalidMatchCriterionRequest;
 
     fn try_from(request: PreviewRuleRequest) -> Result<Self, Self::Error> {
-        let criteria = request
-            .criteria
-            .into_iter()
-            .map(MatchCriterion::try_from)
-            .collect::<Result<Vec<_>, _>>()?;
-        Ok(MatchCriteria(criteria))
+        criteria_from_requests(request.criteria)
     }
+}
+
+/// Request body for `POST /api/v1/uncategorized-transactions/rules`: a new
+/// rule to persist, built from the same draft-rule criteria shape as
+/// [`PreviewRuleRequest`] plus the category to assign on a match.
+#[derive(Debug, Deserialize, ToSchema)]
+pub struct SaveRuleRequest {
+    pub criteria: Vec<MatchCriterionRequest>,
+    pub category: String,
+}
+
+impl TryFrom<SaveRuleRequest> for MatchCriteria {
+    type Error = InvalidMatchCriterionRequest;
+
+    fn try_from(request: SaveRuleRequest) -> Result<Self, Self::Error> {
+        criteria_from_requests(request.criteria)
+    }
+}
+
+/// Shared conversion step behind both [`PreviewRuleRequest`] and
+/// [`SaveRuleRequest`]'s `TryFrom<_> for MatchCriteria` impls, so the
+/// per-criterion conversion logic lives in exactly one place.
+fn criteria_from_requests(
+    criteria: Vec<MatchCriterionRequest>,
+) -> Result<MatchCriteria, InvalidMatchCriterionRequest> {
+    let criteria = criteria
+        .into_iter()
+        .map(MatchCriterion::try_from)
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(MatchCriteria(criteria))
 }
 
 /// Custom serde module for handling `Option<Option<T>>` fields correctly.

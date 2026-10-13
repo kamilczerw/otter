@@ -187,6 +187,14 @@ pub struct PreviewRuleResponse {
     pub count: u32,
 }
 
+/// Response body for `POST /api/v1/uncategorized-transactions/rules`: how
+/// many transactions remain in the "uncategorized" category after the new
+/// rule was saved and applied to every currently-matching transaction.
+#[derive(Debug, Serialize, ToSchema)]
+pub struct SaveRuleResponse {
+    pub remaining: u32,
+}
+
 impl From<MatchField> for MatchFieldResponse {
     fn from(field: MatchField) -> Self {
         match field {

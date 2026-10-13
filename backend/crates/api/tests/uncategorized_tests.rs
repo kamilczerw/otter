@@ -11,6 +11,12 @@
 //! `POST /api/v1/uncategorized-transactions/preview` coverage: broader vs.
 //! narrower draft rules, the empty-criteria vacuous match, a `regex`
 //! criterion end-to-end, and rejection of a malformed criterion.
+//!
+//! `POST /api/v1/uncategorized-transactions/rules` coverage (task 3.3):
+//! saving a rule persists it and re-categorizes exactly the matching
+//! transactions, a later CSV import picks up the saved rule from the same
+//! shared rules file, and an invalid regex/category is rejected without
+//! touching the rules file or the queue.
 
 mod common;
 
@@ -24,7 +30,7 @@ use chrono::NaiveDate;
 use domain::entities::ImportDetails;
 use domain::types::{BudgetMonth, CategoryName, Money, TransactionDate};
 
-use common::setup;
+use common::{post_file, setup};
 
 /// GETs `/api/v1/uncategorized-transactions` and returns the parsed JSON
 /// body alongside the status code.
@@ -280,4 +286,155 @@ async fn preview_rejects_criterion_missing_match_type() {
     let (status, _) = preview_rule(&app.router, body).await;
 
     assert_eq!(status, StatusCode::BAD_REQUEST);
+}
+
+/// POSTs `/api/v1/uncategorized-transactions/rules` with the given raw JSON
+/// `body` and returns the parsed response alongside the status code.
+async fn save_rule(router: &axum::Router, body: Value) -> (StatusCode, Value) {
+    let response = router
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/api/v1/uncategorized-transactions/rules")
+                .header("content-type", "application/json")
+                .body(Body::from(body.to_string()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    let status = response.status();
+    let bytes = response.into_body().collect().await.unwrap().to_bytes();
+    let json: Value = serde_json::from_slice(&bytes).unwrap_or_default();
+    (status, json)
+}
+
+/// Builds a `{ "criteria": [...], "category": ... }` save-rule request body
+/// from `(field, contains)` pairs.
+fn save_rule_body(criteria: Vec<(&str, &str)>, category: &str) -> Value {
+    serde_json::json!({
+        "criteria": criteria
+            .into_iter()
+            .map(|(field, contains)| serde_json::json!({ "field": field, "contains": contains }))
+            .collect::<Vec<_>>(),
+        "category": category,
+    })
+}
+
+/// Saving a rule persists it to the rules file, re-categorizes exactly the
+/// transactions it matches onto a budget entry under the new category, and
+/// leaves non-matching transactions untouched.
+#[tokio::test]
+async fn saving_rule_persists_and_recategorizes_matches() {
+    let app = setup(vec![]).await;
+    let entry_id = uncategorized_entry_id(&app).await;
+    seed_transaction_under(&app, entry_id, Some(import_details(Some("NETTO 5567 K.2"), None))).await;
+    seed_transaction_under(&app, entry_id, Some(import_details(Some("NETTO 1234 K.9"), None))).await;
+    seed_transaction_under(&app, entry_id, Some(import_details(Some("ZABKA 42"), None))).await;
+
+    let (status, body) = save_rule(
+        &app.router,
+        save_rule_body(vec![("merchant", "netto")], "groceries"),
+    )
+    .await;
+
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(body["remaining"], 1); // only the ZABKA one is left uncategorized
+
+    let rules = csv_import::load_rules(&app.import_deps.rules_path).unwrap();
+    assert_eq!(rules.len(), 1);
+    assert_eq!(rules[0].category, "groceries");
+
+    let remaining = app
+        .import_deps
+        .transaction_repo
+        .list_by_category_name("uncategorized")
+        .await
+        .unwrap();
+    assert_eq!(remaining.len(), 1);
+    assert_eq!(
+        remaining[0].import_details.as_ref().unwrap().merchant,
+        Some("ZABKA 42".to_string())
+    );
+
+    app.category_service
+        .list_all()
+        .await
+        .unwrap()
+        .into_iter()
+        .find(|c| c.name.as_str() == "groceries")
+        .expect("groceries category was auto-created by the recategorization");
+}
+
+/// A rule saved via the API is picked up by a later CSV import through the
+/// same shared rules file, without reconstructing `ImportDeps`.
+#[tokio::test]
+async fn saved_rule_applies_to_later_import() {
+    const FIXTURE_BYTES: &[u8] =
+        include_bytes!("../../csv_import/tests/fixtures/sample_export.csv");
+
+    let app = setup(vec![]).await;
+
+    let (status, _) = save_rule(
+        &app.router,
+        save_rule_body(vec![("merchant", "netto")], "groceries"),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+
+    let (status, body) = post_file(
+        &app.router,
+        "/api/v1/imports",
+        "sample_export.csv",
+        Some("text/csv; charset=windows-1250"),
+        FIXTURE_BYTES,
+    )
+    .await;
+
+    assert_eq!(status, StatusCode::CREATED);
+    assert!(body["created_categories"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|c| c == "groceries"));
+    assert_eq!(body["uncategorized"], 11); // 12 rows minus the 1 NETTO row
+}
+
+/// A `regex` criterion that fails to compile is rejected with a `400`,
+/// leaving the rules file and the queue untouched.
+#[tokio::test]
+async fn saving_rule_rejects_uncompilable_regex() {
+    let app = setup(vec![]).await;
+    let entry_id = uncategorized_entry_id(&app).await;
+    seed_transaction_under(&app, entry_id, Some(import_details(Some("NETTO 5567"), None))).await;
+
+    let body = serde_json::json!({
+        "criteria": [{ "field": "merchant", "regex": "(unterminated" }],
+        "category": "groceries",
+    });
+    let (status, _) = save_rule(&app.router, body).await;
+
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+    assert!(!app.import_deps.rules_path.exists());
+
+    let (_, queue_body) = get_queue(&app.router).await;
+    assert_eq!(queue_body["remaining"], 1);
+}
+
+/// An invalid (empty) category name is rejected with a `400`, leaving the
+/// rules file and the queue untouched.
+#[tokio::test]
+async fn saving_rule_rejects_invalid_category() {
+    let app = setup(vec![]).await;
+    let entry_id = uncategorized_entry_id(&app).await;
+    seed_transaction_under(&app, entry_id, Some(import_details(Some("NETTO 5567"), None))).await;
+
+    let body = save_rule_body(vec![("merchant", "netto")], "");
+    let (status, _) = save_rule(&app.router, body).await;
+
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+    assert!(!app.import_deps.rules_path.exists());
+
+    let (_, queue_body) = get_queue(&app.router).await;
+    assert_eq!(queue_body["remaining"], 1);
 }

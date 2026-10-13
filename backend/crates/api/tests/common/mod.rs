@@ -35,6 +35,9 @@ pub struct TestApp {
     pub category_service: Arc<CategoryService>,
     pub entry_service: Arc<EntryService>,
     pub transaction_service: Arc<TransactionService>,
+    /// Exposed so rule-saving tests can inspect the on-disk rules file
+    /// directly (e.g. to confirm a rejected request left it untouched).
+    pub import_deps: Arc<ImportDeps>,
 }
 
 /// Builds a [`TestApp`] backed by a fresh in-memory SQLite database with
@@ -116,8 +119,12 @@ pub async fn setup(rules: Vec<csv_import::Rule>) -> TestApp {
         .route(
             "/uncategorized-transactions/preview",
             post(otter::handlers::uncategorized::preview_uncategorized_rule),
+        )
+        .route(
+            "/uncategorized-transactions/rules",
+            post(otter::handlers::uncategorized::save_uncategorized_rule),
         );
-    let router = Router::new().nest("/api/v1", api).with_state(state);
+    let router = Router::new().nest("/api/v1", api).with_state(state.clone());
 
     TestApp {
         router,
@@ -125,6 +132,7 @@ pub async fn setup(rules: Vec<csv_import::Rule>) -> TestApp {
         category_service,
         entry_service,
         transaction_service,
+        import_deps: state.import_deps,
     }
 }
 

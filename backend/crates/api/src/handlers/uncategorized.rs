@@ -6,21 +6,28 @@
 //!   the head of that queue, plus the starting rule it would learn.
 //! - `POST /api/v1/uncategorized-transactions/preview` previews how many of
 //!   those transactions a client-drafted rule would match, before it's
-//!   saved. "Save rule" (3.3) is a separate, later endpoint.
+//!   saved.
+//! - `POST /api/v1/uncategorized-transactions/rules` saves a new rule and
+//!   immediately re-categorizes every currently-matching uncategorized
+//!   transaction.
 
 use axum::extract::State;
 use axum::Json;
 
 use domain::entities::Transaction;
+use domain::types::CategoryName;
 
 use csv_import::{match_rule, MatchCriteria, Rule};
 
 use crate::errors::ApiError;
-use crate::import::{MatchableImportDetails, UNCATEGORIZED};
-use crate::requests::PreviewRuleRequest;
+use crate::import::{
+    find_or_create_category, find_or_create_entry, find_or_create_month, ImportDeps,
+    MatchableImportDetails, UNCATEGORIZED,
+};
+use crate::requests::{PreviewRuleRequest, SaveRuleRequest};
 use crate::responses::{
-    MatchCriterionResponse, PreviewRuleResponse, TransactionResponse, UncategorizedHeadResponse,
-    UncategorizedQueueResponse,
+    MatchCriterionResponse, PreviewRuleResponse, SaveRuleResponse, TransactionResponse,
+    UncategorizedHeadResponse, UncategorizedQueueResponse,
 };
 
 use super::AppState;
@@ -144,6 +151,131 @@ fn count_matches(queue: &[Transaction], rule: &Rule) -> u32 {
 fn derive_rule_criteria(import_details: &domain::entities::ImportDetails) -> Vec<MatchCriterionResponse> {
     let rule = csv_import::derive_rule(&MatchableImportDetails(import_details), &String::new());
     rule.pattern.0.into_iter().map(MatchCriterionResponse::from).collect()
+}
+
+/// Saves a new categorization rule and immediately re-categorizes every
+/// transaction currently sitting in the "uncategorized" queue that it
+/// matches, moving each one onto its own (auto-provisioned) budget entry
+/// under the target category.
+///
+/// # Errors
+///
+/// Returns an [`ApiError`]:
+/// - `400` if a criterion is malformed (see [`SaveRuleRequest`]'s
+///   `TryFrom`), any `regex` criterion fails to compile, or `category`
+///   isn't a valid [`CategoryName`].
+/// - Otherwise, any error from loading/persisting the rules file,
+///   provisioning a month/category/entry, or updating a transaction.
+#[utoipa::path(
+    post,
+    path = "/api/v1/uncategorized-transactions/rules",
+    tag = "uncategorized",
+    request_body = SaveRuleRequest,
+    responses(
+        (status = 200, description = "Remaining uncategorized count after applying the new rule", body = SaveRuleResponse),
+        (status = 400, description = "A criterion was malformed, a `regex` failed to compile, or `category` is invalid"),
+    )
+)]
+pub async fn save_uncategorized_rule(
+    State(state): State<AppState>,
+    Json(request): Json<SaveRuleRequest>,
+) -> Result<Json<SaveRuleResponse>, ApiError> {
+    let category_name = CategoryName::new(request.category.clone())
+        .map_err(|e| ApiError::bad_request(&e.to_string()))?;
+
+    let criteria = MatchCriteria::try_from(request)
+        .map_err(|e| ApiError::bad_request(&e.to_string()))?;
+    reject_uncompilable_regexes(&criteria)?;
+
+    let rule = Rule {
+        pattern: criteria,
+        category: category_name.as_str().to_string(),
+    };
+    persist_rule(&state.import_deps, rule.clone()).await?;
+
+    apply_rule_to_queue(&state.import_deps, &rule, &category_name).await?;
+
+    let remaining = state
+        .import_deps
+        .transaction_repo
+        .list_by_category_name(UNCATEGORIZED)
+        .await?
+        .len() as u32;
+    Ok(Json(SaveRuleResponse { remaining }))
+}
+
+/// Checks that every `regex` criterion in `criteria` compiles, rejecting
+/// the whole rule with a `400` naming the offending pattern otherwise. Run
+/// before any persistence so an uncompilable pattern never reaches the
+/// rules file (it would silently never match, per [`csv_import`]'s
+/// treatment of a bad pattern at match time).
+fn reject_uncompilable_regexes(criteria: &MatchCriteria) -> Result<(), ApiError> {
+    for criterion in &criteria.0 {
+        if let csv_import::MatchType::Regex(pattern) = &criterion.match_type {
+            if regex::Regex::new(pattern).is_err() {
+                return Err(ApiError::bad_request(&format!(
+                    "invalid regex pattern: {pattern}"
+                )));
+            }
+        }
+    }
+    Ok(())
+}
+
+/// Appends `rule` to the current rules file and writes it back, so it's
+/// persisted before any transaction gets re-categorized against it.
+async fn persist_rule(deps: &ImportDeps, rule: Rule) -> Result<(), ApiError> {
+    let mut rules = deps.current_rules()?;
+    rules.push(rule);
+    csv_import::save_rules(&deps.rules_path, &rules)?;
+    Ok(())
+}
+
+/// Re-categorizes every uncategorized transaction that `rule` matches:
+/// moves it onto the budget entry for `category_name` in its own
+/// transaction month, auto-provisioning that month/category/entry if
+/// they don't exist yet (same provisioning helpers the import pipeline
+/// uses).
+async fn apply_rule_to_queue(
+    deps: &ImportDeps,
+    rule: &Rule,
+    category_name: &CategoryName,
+) -> Result<(), ApiError> {
+    let queue = deps.transaction_repo.list_by_category_name(UNCATEGORIZED).await?;
+
+    for transaction in queue {
+        if transaction_matches_rule(&transaction, rule) {
+            recategorize_transaction(deps, &transaction, category_name).await?;
+        }
+    }
+    Ok(())
+}
+
+/// Whether `transaction` matches `rule`, via its import metadata. A
+/// transaction with no import metadata never matches, mirroring
+/// [`count_matches`].
+fn transaction_matches_rule(transaction: &Transaction, rule: &Rule) -> bool {
+    transaction
+        .import_details
+        .as_ref()
+        .is_some_and(|details| match_rule(&MatchableImportDetails(details), rule))
+}
+
+/// Moves one matching transaction onto the budget entry for
+/// `category_name`, in the budget month its own `date` falls in.
+async fn recategorize_transaction(
+    deps: &ImportDeps,
+    transaction: &Transaction,
+    category_name: &CategoryName,
+) -> Result<(), ApiError> {
+    let (category, _) = find_or_create_category(deps, category_name).await?;
+    let (month, _) = find_or_create_month(deps, transaction.date.value()).await?;
+    let entry = find_or_create_entry(deps, month.id, category.id).await?;
+
+    deps.transaction_service
+        .update(&transaction.id, Some(entry.id), None, None, None)
+        .await?;
+    Ok(())
 }
 
 #[cfg(test)]
