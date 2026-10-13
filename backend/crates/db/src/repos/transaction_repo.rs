@@ -4,7 +4,7 @@ use sqlx::sqlite::SqlitePool;
 use sqlx::Row;
 use std::str::FromStr;
 
-use domain::entities::{NewTransaction, Transaction};
+use domain::entities::{ImportDetails, NewTransaction, Transaction};
 use domain::errors::TransactionError;
 use domain::ports::TransactionRepository;
 use domain::types::{Money, TransactionDate};
@@ -17,6 +17,34 @@ impl SqliteTransactionRepository {
     pub fn new(pool: SqlitePool) -> Self {
         Self { pool }
     }
+}
+
+/// Serializes `import_details` to a JSON string for storage, or `None` when
+/// absent so the column is written as SQL `NULL`.
+///
+/// # Errors
+///
+/// Returns `TransactionError::Repository` if serialization fails.
+fn serialize_import_details(
+    import_details: &Option<ImportDetails>,
+) -> Result<Option<String>, TransactionError> {
+    import_details
+        .as_ref()
+        .map(|d| {
+            serde_json::to_string(d)
+                .map_err(|e| TransactionError::Repository(format!("invalid import_details: {}", e)))
+        })
+        .transpose()
+}
+
+/// Serializes `tags` to a JSON array string for storage (`"[]"` when empty).
+///
+/// # Errors
+///
+/// Returns `TransactionError::Repository` if serialization fails.
+fn serialize_tags(tags: &[String]) -> Result<String, TransactionError> {
+    serde_json::to_string(tags)
+        .map_err(|e| TransactionError::Repository(format!("invalid tags: {}", e)))
 }
 
 fn map_row_to_transaction(
@@ -38,6 +66,18 @@ fn map_row_to_transaction(
 
     let title: Option<String> = row.get("title");
 
+    let import_details_json: Option<String> = row.get("import_details");
+    let import_details = import_details_json
+        .map(|json| {
+            serde_json::from_str::<ImportDetails>(&json)
+                .map_err(|e| TransactionError::Repository(format!("invalid import_details: {}", e)))
+        })
+        .transpose()?;
+
+    let tags_json: String = row.get("tags");
+    let tags: Vec<String> = serde_json::from_str(&tags_json)
+        .map_err(|e| TransactionError::Repository(format!("invalid tags: {}", e)))?;
+
     let created_at_str: String = row.get("created_at");
     let created_at = DateTime::parse_from_rfc3339(&created_at_str)
         .map(|dt| dt.with_timezone(&Utc))
@@ -56,8 +96,8 @@ fn map_row_to_transaction(
         title,
         created_at,
         updated_at,
-        import_details: None,
-        tags: vec![],
+        import_details,
+        tags,
     })
 }
 
@@ -68,7 +108,8 @@ impl TransactionRepository for SqliteTransactionRepository {
         month_id: &ulid::Ulid,
     ) -> Result<Vec<Transaction>, TransactionError> {
         let rows = sqlx::query(
-            "SELECT t.id, t.entry_id, t.amount, t.date, t.title, t.created_at, t.updated_at \
+            "SELECT t.id, t.entry_id, t.amount, t.date, t.title, t.import_details, t.tags, \
+             t.created_at, t.updated_at \
              FROM transactions t \
              JOIN budget_entries e ON t.entry_id = e.id \
              WHERE e.month_id = ? \
@@ -107,15 +148,20 @@ impl TransactionRepository for SqliteTransactionRepository {
         let id = ulid::Ulid::new();
         let now = Utc::now().format("%Y-%m-%dT%H:%M:%S%.3fZ").to_string();
 
+        let import_details_json = serialize_import_details(&transaction.import_details)?;
+        let tags_json = serialize_tags(&transaction.tags)?;
+
         let result = sqlx::query(
-            "INSERT INTO transactions (id, entry_id, amount, date, title, created_at, updated_at) \
-             VALUES (?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO transactions (id, entry_id, amount, date, title, import_details, tags, created_at, updated_at) \
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
         )
         .bind(id.to_string())
         .bind(transaction.entry_id.to_string())
         .bind(transaction.amount.value())
         .bind(transaction.date.to_string())
         .bind(&transaction.title)
+        .bind(&import_details_json)
+        .bind(&tags_json)
         .bind(&now)
         .bind(&now)
         .execute(&self.pool)
@@ -234,7 +280,7 @@ impl TransactionRepository for SqliteTransactionRepository {
         offset: u32,
     ) -> Result<Vec<Transaction>, TransactionError> {
         let rows = sqlx::query(
-            "SELECT id, entry_id, amount, date, title, created_at, updated_at \
+            "SELECT id, entry_id, amount, date, title, import_details, tags, created_at, updated_at \
              FROM transactions \
              WHERE entry_id = ? \
              ORDER BY date DESC, created_at DESC \
@@ -286,7 +332,7 @@ impl TransactionRepository for SqliteTransactionRepository {
         let row = match title {
             Some(t) => {
                 sqlx::query(
-                    "SELECT id, entry_id, amount, date, title, created_at, updated_at \
+                    "SELECT id, entry_id, amount, date, title, import_details, tags, created_at, updated_at \
                      FROM transactions \
                      WHERE entry_id = ? AND date = ? AND amount = ? AND title = ? \
                      LIMIT 1",
@@ -300,7 +346,7 @@ impl TransactionRepository for SqliteTransactionRepository {
             }
             None => {
                 sqlx::query(
-                    "SELECT id, entry_id, amount, date, title, created_at, updated_at \
+                    "SELECT id, entry_id, amount, date, title, import_details, tags, created_at, updated_at \
                      FROM transactions \
                      WHERE entry_id = ? AND date = ? AND amount = ? AND title IS NULL \
                      LIMIT 1",
@@ -528,5 +574,92 @@ mod tests {
             .await
             .unwrap()
             .is_none());
+    }
+
+    #[tokio::test]
+    async fn create_and_find_by_id_round_trip_populated_import_details_and_tags() {
+        let pool = setup_pool().await;
+        let repo = SqliteTransactionRepository::new(pool.clone());
+        let entry_id = seed_entry(&pool).await;
+        let date: TransactionDate = "2026-01-15".parse().unwrap();
+
+        let import_details = ImportDetails {
+            source: "mbank_csv".to_string(),
+            merchant: Some("Lidl".to_string()),
+            city: Some("Warsaw".to_string()),
+            country: Some("PL".to_string()),
+            card_last4: Some("1234".to_string()),
+            raw_type: Some("Płatność kartą".to_string()),
+            currency: Some("PLN".to_string()),
+            raw_description: Some("PLATNOSC KARTA LIDL WARSZAWA".to_string()),
+            original_amount_fragment: Some("-123,45".to_string()),
+        };
+        let tags = vec!["groceries".to_string(), "recurring".to_string()];
+
+        let created = repo
+            .create(NewTransaction {
+                entry_id,
+                amount: Money::new(-12345),
+                date,
+                title: Some("Lidl".to_string()),
+                import_details: Some(import_details.clone()),
+                tags: tags.clone(),
+            })
+            .await
+            .unwrap();
+
+        let found = repo
+            .find_by_id(&created.id)
+            .await
+            .unwrap()
+            .expect("transaction should exist");
+
+        assert_eq!(found.id, created.id);
+        assert_eq!(found.entry_id, entry_id);
+        assert_eq!(found.amount, Money::new(-12345));
+        assert_eq!(found.title, Some("Lidl".to_string()));
+        assert_eq!(found.import_details, Some(import_details));
+        assert_eq!(found.tags, tags);
+    }
+
+    #[tokio::test]
+    async fn create_and_find_by_id_round_trip_absent_import_details_and_tags() {
+        let pool = setup_pool().await;
+        let repo = SqliteTransactionRepository::new(pool.clone());
+        let entry_id = seed_entry(&pool).await;
+        let date: TransactionDate = "2026-01-15".parse().unwrap();
+
+        let created = repo
+            .create(NewTransaction {
+                entry_id,
+                amount: Money::new(1000),
+                date,
+                title: None,
+                import_details: None,
+                tags: vec![],
+            })
+            .await
+            .unwrap();
+
+        // Verify the raw column values directly: import_details is SQL
+        // NULL and tags is the literal empty-array JSON string.
+        let row = sqlx::query("SELECT import_details, tags FROM transactions WHERE id = ?")
+            .bind(created.id.to_string())
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+        let raw_import_details: Option<String> = row.get("import_details");
+        let raw_tags: String = row.get("tags");
+        assert_eq!(raw_import_details, None);
+        assert_eq!(raw_tags, "[]");
+
+        let found = repo
+            .find_by_id(&created.id)
+            .await
+            .unwrap()
+            .expect("transaction should exist");
+
+        assert_eq!(found.import_details, None);
+        assert_eq!(found.tags, Vec::<String>::new());
     }
 }

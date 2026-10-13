@@ -5,9 +5,9 @@
 
 ## 2. Database layer
 
-- [ ] 2.1 Add a migration adding `import_details TEXT` (nullable) and `tags TEXT NOT NULL DEFAULT '[]'` to the `transactions` table, and verify it applies cleanly via `sqlx migrate run` against a fresh database.
-- [ ] 2.2 Update `transaction_repo.rs` to serialize `import_details`/`tags` to JSON on write and deserialize on read, and verify with a repo test that creates a transaction with populated `import_details`/`tags`, reads it back, and asserts equality.
-- [ ] 2.3 Verify a transaction created with `import_details: None`, `tags: vec![]` round-trips as `NULL`/`'[]'` respectively via the same repo test suite.
+- [x] 2.1 Add a migration adding `import_details TEXT` (nullable) and `tags TEXT NOT NULL DEFAULT '[]'` to the `transactions` table, and verify it applies cleanly via `sqlx migrate run` against a fresh database.
+- [x] 2.2 Update `transaction_repo.rs` to serialize `import_details`/`tags` to JSON on write and deserialize on read, and verify with a repo test that creates a transaction with populated `import_details`/`tags`, reads it back, and asserts equality.
+- [x] 2.3 Verify a transaction created with `import_details: None`, `tags: vec![]` round-trips as `NULL`/`'[]'` respectively via the same repo test suite.
 
 ## 3. CSV extraction
 
