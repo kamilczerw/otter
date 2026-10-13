@@ -5,6 +5,8 @@ use serde_json::{json, Value};
 
 use domain::errors::{CategoryError, EntryError, MonthError, TransactionError};
 
+use crate::import::RowError;
+
 pub struct ApiError {
     pub status: StatusCode,
     pub code: String,
@@ -176,6 +178,40 @@ impl From<TransactionError> for ApiError {
                     details: None,
                 }
             }
+        }
+    }
+}
+
+/// The categorization rules file exists but failed to parse, or couldn't be
+/// read/written — always an operational/internal issue (the file is
+/// server-managed, not user input) rather than something a client request
+/// caused, so every variant maps to `500`.
+impl From<csv_import::RulesError> for ApiError {
+    fn from(err: csv_import::RulesError) -> Self {
+        tracing::error!("Rules file error: {}", err);
+        ApiError {
+            status: StatusCode::INTERNAL_SERVER_ERROR,
+            code: "INTERNAL_ERROR".into(),
+            details: None,
+        }
+    }
+}
+
+/// Maps a find-or-create failure from the import pipeline's provisioning
+/// helpers (also reused by the bulk-categorize endpoints) to the same HTTP
+/// status its wrapped domain error would map to on its own, except
+/// `InvalidMonth`, which has no domain-error equivalent of its own.
+impl From<RowError> for ApiError {
+    fn from(err: RowError) -> Self {
+        match err {
+            RowError::InvalidMonth { date, source } => ApiError::bad_request(&format!(
+                "transaction date {date} doesn't fall in a valid budget month: {source}"
+            )),
+            RowError::Month(e) => e.into(),
+            RowError::Category(e) => e.into(),
+            RowError::Entry(e) => e.into(),
+            RowError::Transaction(e) => e.into(),
+            RowError::Rules(e) => e.into(),
         }
     }
 }

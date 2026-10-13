@@ -17,6 +17,8 @@ use domain::services::{BudgetStatus, CategoryBudgetSummary, MonthSummary};
 
 use crate::import::{ImportOutcome, RowFailure};
 
+use csv_import::{MatchCriterion, MatchField, MatchType};
+
 #[derive(Debug, Serialize, ToSchema)]
 pub struct CategoryResponse {
     pub id: String,
@@ -131,6 +133,75 @@ pub struct ImportResponse {
     pub created_months: Vec<String>,
     pub created_categories: Vec<String>,
     pub failed: Vec<FailedRowResponse>,
+}
+
+/// Wire-format mirror of [`MatchField`], so the `csv_import` crate's internal
+/// enum isn't serialized directly into the API's JSON contract (keeps the
+/// two free to diverge later even though they're identical today).
+#[derive(Debug, Serialize, ToSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum MatchFieldResponse {
+    Merchant,
+    RawType,
+    City,
+    Country,
+    Description,
+}
+
+/// Wire-format mirror of a [`MatchCriterion`]: a flat `{ field, contains,
+/// regex }` shape (exactly one of `contains`/`regex` set) rather than
+/// `csv_import`'s flattened enum, since a flat shape with two optional
+/// fields is simpler for a frontend to deserialize than a tagged union.
+#[derive(Debug, Serialize, ToSchema)]
+pub struct MatchCriterionResponse {
+    pub field: MatchFieldResponse,
+    pub contains: Option<String>,
+    pub regex: Option<String>,
+}
+
+/// The transaction at the head of the uncategorized queue, plus the starting
+/// rule [`csv_import::derive_rule`] would learn from it. `derived_rule` is
+/// `None` only when the transaction has no import metadata at all (it was
+/// created manually, so no rule could ever have matched it).
+#[derive(Debug, Serialize, ToSchema)]
+pub struct UncategorizedHeadResponse {
+    pub transaction: TransactionResponse,
+    pub derived_rule: Option<Vec<MatchCriterionResponse>>,
+}
+
+/// Response body for `GET /api/v1/uncategorized-transactions`: how many
+/// transactions remain in the "uncategorized" category, and the one at the
+/// head of that queue (if any) for the bulk-categorize UI to act on.
+#[derive(Debug, Serialize, ToSchema)]
+pub struct UncategorizedQueueResponse {
+    pub remaining: u32,
+    pub head: Option<UncategorizedHeadResponse>,
+}
+
+impl From<MatchField> for MatchFieldResponse {
+    fn from(field: MatchField) -> Self {
+        match field {
+            MatchField::Merchant => Self::Merchant,
+            MatchField::RawType => Self::RawType,
+            MatchField::City => Self::City,
+            MatchField::Country => Self::Country,
+            MatchField::Description => Self::Description,
+        }
+    }
+}
+
+impl From<MatchCriterion> for MatchCriterionResponse {
+    fn from(criterion: MatchCriterion) -> Self {
+        let (contains, regex) = match criterion.match_type {
+            MatchType::Contains(pattern) => (Some(pattern), None),
+            MatchType::Regex(pattern) => (None, Some(pattern)),
+        };
+        Self {
+            field: criterion.field.into(),
+            contains,
+            regex,
+        }
+    }
 }
 
 // --- From impls ---

@@ -168,7 +168,11 @@ async fn main() {
             "/months/{id}/summary",
             get(handlers::summary::get_month_summary),
         )
-        .route("/imports", post(handlers::imports::import_transactions));
+        .route("/imports", post(handlers::imports::import_transactions))
+        .route(
+            "/uncategorized-transactions",
+            get(handlers::uncategorized::get_uncategorized_queue),
+        );
 
     // Static file serving under /ui with SPA fallback.
     // Any request under /ui/ that doesn't match a file returns index.html

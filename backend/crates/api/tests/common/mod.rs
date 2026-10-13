@@ -11,7 +11,7 @@ use std::sync::Arc;
 
 use axum::body::Body;
 use axum::http::{Request, StatusCode};
-use axum::routing::post;
+use axum::routing::{get, post};
 use axum::Router;
 use http_body_util::BodyExt;
 use serde_json::Value;
@@ -43,9 +43,10 @@ pub struct TestApp {
 /// `rules` list is instead left pointing at a nonexistent path, which
 /// `ImportDeps::current_rules` treats as no rules).
 ///
-/// Only the `/imports` route is mounted — this harness is for the import
-/// test file, which has no need for the other resource routes that
-/// `api_tests.rs`'s own `setup()` mounts.
+/// Only `/imports` and `/uncategorized-transactions` are mounted — this
+/// harness is shared by the import and uncategorized-queue test files, which
+/// have no need for the other resource routes that `api_tests.rs`'s own
+/// `setup()` mounts.
 pub async fn setup(rules: Vec<csv_import::Rule>) -> TestApp {
     let pool = db::create_pool("sqlite::memory:")
         .await
@@ -106,7 +107,12 @@ pub async fn setup(rules: Vec<csv_import::Rule>) -> TestApp {
         import_deps,
     };
 
-    let api = Router::new().route("/imports", post(otter::handlers::imports::import_transactions));
+    let api = Router::new()
+        .route("/imports", post(otter::handlers::imports::import_transactions))
+        .route(
+            "/uncategorized-transactions",
+            get(otter::handlers::uncategorized::get_uncategorized_queue),
+        );
     let router = Router::new().nest("/api/v1", api).with_state(state);
 
     TestApp {

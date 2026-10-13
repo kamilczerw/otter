@@ -12,9 +12,19 @@ use std::io::{self, Write as _};
 use std::path::Path;
 
 use crate::extract::ParsedTransaction;
-use crate::rules::{categorize, save_rules, Category, MatchCriteria, MatchCriterion, MatchField, MatchType, Rule};
+use crate::rules::{
+    categorize, save_rules, Category, Matchable, MatchCriteria, MatchCriterion, MatchField,
+    MatchType, Rule,
+};
 
 /// Derives a new rule that matches `transaction` and assigns it `category`.
+///
+/// Generic over [`Matchable`] (not just [`ParsedTransaction`]) so the
+/// bulk-categorize API (section 3 of the `bulk-categorize-transactions`
+/// change) can derive a starting rule from an already-persisted
+/// transaction's stored `ImportDetails` too, via its own `Matchable`
+/// wrapper — this function's logic is identical either way, it only reads
+/// `merchant`/`raw_type`.
 ///
 /// Mirrors `categorize`'s matching semantics: prefers a `Contains` pattern
 /// on `merchant` (substring match) when the transaction has a merchant,
@@ -23,15 +33,20 @@ use crate::rules::{categorize, save_rules, Category, MatchCriteria, MatchCriteri
 /// since that's the only field such rows reliably carry. Pure function, no
 /// I/O.
 #[must_use]
-pub fn derive_rule(transaction: &ParsedTransaction, category: &Category) -> Rule {
-    let criterion = match &transaction.merchant {
+pub fn derive_rule<T: Matchable>(transaction: &T, category: &Category) -> Rule {
+    let criterion = match transaction.merchant() {
         Some(merchant) => MatchCriterion {
             field: MatchField::Merchant,
-            match_type: MatchType::Contains(merchant.clone()),
+            match_type: MatchType::Contains(merchant.to_string()),
         },
         None => MatchCriterion {
             field: MatchField::RawType,
-            match_type: MatchType::Contains(transaction.raw_type.clone()),
+            // `raw_type()` is always present on a `ParsedTransaction`, but
+            // `Matchable` only guarantees `Option<&str>` in general (e.g. an
+            // `ImportDetails` whose `raw_type` was never captured) — fall
+            // back to an empty pattern, which matches nothing, rather than
+            // panicking on a `None`.
+            match_type: MatchType::Contains(transaction.raw_type().unwrap_or_default().to_string()),
         },
     };
     Rule {
