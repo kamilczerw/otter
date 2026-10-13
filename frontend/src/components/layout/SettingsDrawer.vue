@@ -88,8 +88,12 @@
         <!-- Data -->
         <div class="settings-section">
           <div class="section-label">{{ $t('settings.data') }}</div>
-          <div class="settings-placeholder">
-            <span class="text-cosmic-secondary">{{ $t('settings.comingSoon') }}</span>
+          <div class="settings-item" @click="goToUncategorized">
+            <div class="settings-item-left">
+              <v-icon class="settings-item-icon" size="large">mdi-tag-off-outline</v-icon>
+              <div class="settings-item-label">{{ $t('uncategorized.title') }}</div>
+            </div>
+            <v-icon size="small" class="text-cosmic-secondary">mdi-chevron-right</v-icon>
           </div>
         </div>
       </div>
@@ -100,16 +104,18 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useRouter } from 'vue-router'
 import { useUiPreferences, type BudgetBarSize } from '@/composables/useUiPreferences'
 
 defineProps<{
   modelValue: boolean
 }>()
 
-defineEmits<{
+const emit = defineEmits<{
   'update:modelValue': [value: boolean]
 }>()
 
+const router = useRouter()
 const { locale, t } = useI18n()
 const { budgetBarSize } = useUiPreferences()
 
@@ -151,6 +157,12 @@ function changeLanguage(newLocale: string) {
 
 function changeBudgetBarSize(size: BudgetBarSize) {
   budgetBarSize.value = size
+}
+
+/** Closes the settings drawer and navigates to the uncategorized transactions review view. */
+function goToUncategorized() {
+  emit('update:modelValue', false)
+  router.push('/uncategorized')
 }
 </script>
 

@@ -25,6 +25,11 @@ const routes: RouteRecordRaw[] = [
     name: 'categories',
     component: () => import('@/views/CategoryListView.vue'),
   },
+  {
+    path: '/uncategorized',
+    name: 'uncategorized',
+    component: () => import('@/views/UncategorizedReviewView.vue'),
+  },
 ]
 
 // Detect base path dynamically to support HA Ingress subpaths.
