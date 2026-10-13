@@ -3,8 +3,16 @@ use utoipa::ToSchema;
 
 use domain::entities::{
     BudgetEntryWithCategory, Category, CategorySummary as DomainCategorySummary, Month,
-    Transaction,
+    Transaction, TransactionKind,
 };
+
+/// Maps a transaction's derived direction to its API string representation.
+fn transaction_kind_str(kind: TransactionKind) -> &'static str {
+    match kind {
+        TransactionKind::Expense => "expense",
+        TransactionKind::Income => "income",
+    }
+}
 use domain::services::{BudgetStatus, CategoryBudgetSummary, MonthSummary};
 
 use crate::import::{ImportOutcome, RowFailure};
@@ -48,6 +56,8 @@ pub struct TransactionResponse {
     pub id: String,
     pub entry_id: String,
     pub amount: i64,
+    /// Direction derived from `amount`'s sign: `"expense"` or `"income"`.
+    pub kind: String,
     pub date: String, // "YYYY-MM-DD"
     pub title: Option<String>,
     pub created_at: String,
@@ -179,6 +189,7 @@ impl From<Transaction> for TransactionResponse {
             id: t.id.to_string(),
             entry_id: t.entry_id.to_string(),
             amount: t.amount.value(),
+            kind: transaction_kind_str(t.kind()).to_string(),
             date: t.date.to_string(),
             title: t.title,
             created_at: t.created_at.to_rfc3339(),
@@ -215,5 +226,41 @@ impl From<CategoryBudgetSummary> for CategoryBudgetSummaryResponse {
             remaining: c.remaining.value(),
             status: status.to_string(),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use domain::types::{Money, TransactionDate};
+    use chrono::NaiveDate;
+
+    /// Builds a `Transaction` with the given amount, leaving all other
+    /// fields as arbitrary fixed values irrelevant to `kind` serialization.
+    fn transaction_with_amount(amount: i64) -> Transaction {
+        let now = chrono::Utc::now();
+        Transaction {
+            id: ulid::Ulid::new(),
+            entry_id: ulid::Ulid::new(),
+            amount: Money::new(amount),
+            date: TransactionDate::new(NaiveDate::from_ymd_opt(2026, 1, 1).unwrap()),
+            title: None,
+            created_at: now,
+            updated_at: now,
+        }
+    }
+
+    #[test]
+    fn negative_amount_serializes_kind_as_expense() {
+        let response = TransactionResponse::from(transaction_with_amount(-500));
+        let json = serde_json::to_value(&response).unwrap();
+        assert_eq!(json["kind"], "expense");
+    }
+
+    #[test]
+    fn positive_amount_serializes_kind_as_income() {
+        let response = TransactionResponse::from(transaction_with_amount(500));
+        let json = serde_json::to_value(&response).unwrap();
+        assert_eq!(json["kind"], "income");
     }
 }

@@ -7,9 +7,9 @@
 
 ## 2. API: expose transaction direction
 
-- [ ] 2.1 Add a `kind: TransactionKind` field to `TransactionResponse` (`backend/crates/api/src/responses/mod.rs`), populated from `Transaction::kind()` in its `From<Transaction>` impl. `TransactionKind` must derive `Serialize` + `ToSchema` to match the existing response DTO conventions.
-- [ ] 2.2 Add/update a unit or integration test asserting `TransactionResponse` serializes `kind: "expense"` for a negative-amount transaction and `kind: "income"` for a positive-amount transaction.
-- [ ] 2.3 Run `nix build ./nix#backend-tests-cargo` and verify the `api` crate's tests pass.
+- [x] 2.1 Add a `kind` field to `TransactionResponse` (`backend/crates/api/src/responses/mod.rs`), populated from `Transaction::kind()` in its `From<Transaction>` impl. Serialized as a plain `String` (`"expense"`/`"income"`), matching the existing `CategoryBudgetSummaryResponse.status` convention — domain enums are stringified at the API boundary rather than giving domain types a `utoipa::ToSchema` dependency, which would violate the "domain has no framework dependencies" architectural rule.
+- [x] 2.2 Add/update a unit or integration test asserting `TransactionResponse` serializes `kind: "expense"` for a negative-amount transaction and `kind: "income"` for a positive-amount transaction.
+- [x] 2.3 Run `nix build ./nix#backend-tests-cargo` and verify the `api` crate's tests pass.
 
 ## 3. Budget summary: paid as magnitude
 
