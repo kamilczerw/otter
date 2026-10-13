@@ -24,7 +24,7 @@ yellow_threshold = 110
 # [transaction.import]
 # `rules_file` names the hand-editable TOML file that holds CSV import
 # categorization rules (also readable/writable live via the app's
-# uncategorized-transactions review queue, with no server restart needed
+# transactions-review review queue, with no server restart needed
 # after an edit). Resolved relative to this file; absolute paths also work.
 # Defaults to "rules.toml" next to this file when unset.
 #

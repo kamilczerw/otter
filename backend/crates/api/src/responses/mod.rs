@@ -169,7 +169,7 @@ pub struct UncategorizedHeadResponse {
     pub derived_rule: Option<Vec<MatchCriterionResponse>>,
 }
 
-/// Response body for `GET /api/v1/uncategorized-transactions`: how many
+/// Response body for `GET /api/v1/transactions-review`: how many
 /// transactions remain in the "uncategorized" category, and the one at the
 /// head of that queue (if any) for the bulk-categorize UI to act on.
 #[derive(Debug, Serialize, ToSchema)]
@@ -178,7 +178,7 @@ pub struct UncategorizedQueueResponse {
     pub head: Option<UncategorizedHeadResponse>,
 }
 
-/// Response body for `POST /api/v1/uncategorized-transactions/preview`: how
+/// Response body for `POST /api/v1/transactions-review/preview`: how
 /// many transactions currently in the "uncategorized" category a draft
 /// rule's match criteria would match, so the UI can preview a rule live
 /// before saving it.
@@ -187,7 +187,7 @@ pub struct PreviewRuleResponse {
     pub count: u32,
 }
 
-/// Response body for `POST /api/v1/uncategorized-transactions/rules`: how
+/// Response body for `POST /api/v1/transactions-review/rules`: how
 /// many transactions remain in the "uncategorized" category after the new
 /// rule was saved and applied to every currently-matching transaction.
 #[derive(Debug, Serialize, ToSchema)]

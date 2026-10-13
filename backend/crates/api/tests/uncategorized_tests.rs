@@ -3,16 +3,16 @@
 //! change), exercised against a real in-memory SQLite database through the
 //! actual HTTP router.
 //!
-//! `GET /api/v1/uncategorized-transactions` coverage: an empty queue, a
+//! `GET /api/v1/transactions-review` coverage: an empty queue, a
 //! head transaction with a merchant (derives a `merchant` rule), a head
 //! transaction with only a `raw_type` (derives a `raw_type` rule), and a
 //! head transaction with no import metadata at all (no derived rule).
 //!
-//! `POST /api/v1/uncategorized-transactions/preview` coverage: broader vs.
+//! `POST /api/v1/transactions-review/preview` coverage: broader vs.
 //! narrower draft rules, the empty-criteria vacuous match, a `regex`
 //! criterion end-to-end, and rejection of a malformed criterion.
 //!
-//! `POST /api/v1/uncategorized-transactions/rules` coverage (task 3.3):
+//! `POST /api/v1/transactions-review/rules` coverage (task 3.3):
 //! saving a rule persists it and re-categorizes exactly the matching
 //! transactions, a later CSV import picks up the saved rule from the same
 //! shared rules file, and an invalid regex/category is rejected without
@@ -32,14 +32,14 @@ use domain::types::{BudgetMonth, CategoryName, Money, TransactionDate};
 
 use common::{post_file, setup};
 
-/// GETs `/api/v1/uncategorized-transactions` and returns the parsed JSON
+/// GETs `/api/v1/transactions-review` and returns the parsed JSON
 /// body alongside the status code.
 async fn get_queue(router: &axum::Router) -> (StatusCode, Value) {
     let response = router
         .clone()
         .oneshot(
             Request::builder()
-                .uri("/api/v1/uncategorized-transactions")
+                .uri("/api/v1/transactions-review")
                 .body(Body::empty())
                 .unwrap(),
         )
@@ -200,7 +200,7 @@ async fn seed_transaction_under(app: &common::TestApp, entry_id: ulid::Ulid, imp
         .unwrap();
 }
 
-/// POSTs `/api/v1/uncategorized-transactions/preview` with the given raw
+/// POSTs `/api/v1/transactions-review/preview` with the given raw
 /// JSON `body` and returns the parsed response alongside the status code.
 async fn preview_rule(router: &axum::Router, body: Value) -> (StatusCode, Value) {
     let response = router
@@ -208,7 +208,7 @@ async fn preview_rule(router: &axum::Router, body: Value) -> (StatusCode, Value)
         .oneshot(
             Request::builder()
                 .method("POST")
-                .uri("/api/v1/uncategorized-transactions/preview")
+                .uri("/api/v1/transactions-review/preview")
                 .header("content-type", "application/json")
                 .body(Body::from(body.to_string()))
                 .unwrap(),
@@ -288,7 +288,7 @@ async fn preview_rejects_criterion_missing_match_type() {
     assert_eq!(status, StatusCode::BAD_REQUEST);
 }
 
-/// POSTs `/api/v1/uncategorized-transactions/rules` with the given raw JSON
+/// POSTs `/api/v1/transactions-review/rules` with the given raw JSON
 /// `body` and returns the parsed response alongside the status code.
 async fn save_rule(router: &axum::Router, body: Value) -> (StatusCode, Value) {
     let response = router
@@ -296,7 +296,7 @@ async fn save_rule(router: &axum::Router, body: Value) -> (StatusCode, Value) {
         .oneshot(
             Request::builder()
                 .method("POST")
-                .uri("/api/v1/uncategorized-transactions/rules")
+                .uri("/api/v1/transactions-review/rules")
                 .header("content-type", "application/json")
                 .body(Body::from(body.to_string()))
                 .unwrap(),

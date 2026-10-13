@@ -170,15 +170,15 @@ async fn main() {
         )
         .route("/imports", post(handlers::imports::import_transactions))
         .route(
-            "/uncategorized-transactions",
+            "/transactions-review",
             get(handlers::uncategorized::get_uncategorized_queue),
         )
         .route(
-            "/uncategorized-transactions/preview",
+            "/transactions-review/preview",
             post(handlers::uncategorized::preview_uncategorized_rule),
         )
         .route(
-            "/uncategorized-transactions/rules",
+            "/transactions-review/rules",
             post(handlers::uncategorized::save_uncategorized_rule),
         );
 

@@ -1,13 +1,13 @@
 //! HTTP handlers for the "uncategorized" transaction queue (section 3 of
 //! the `bulk-categorize-transactions` change):
 //!
-//! - `GET /api/v1/uncategorized-transactions` reports how many transactions
+//! - `GET /api/v1/transactions-review` reports how many transactions
 //!   are currently sitting in the "uncategorized" category and the one at
 //!   the head of that queue, plus the starting rule it would learn.
-//! - `POST /api/v1/uncategorized-transactions/preview` previews how many of
+//! - `POST /api/v1/transactions-review/preview` previews how many of
 //!   those transactions a client-drafted rule would match, before it's
 //!   saved.
-//! - `POST /api/v1/uncategorized-transactions/rules` saves a new rule and
+//! - `POST /api/v1/transactions-review/rules` saves a new rule and
 //!   immediately re-categorizes every currently-matching uncategorized
 //!   transaction.
 
@@ -41,7 +41,7 @@ use super::AppState;
 /// Returns an [`ApiError`] if the underlying transaction lookup fails.
 #[utoipa::path(
     get,
-    path = "/api/v1/uncategorized-transactions",
+    path = "/api/v1/transactions-review",
     tag = "uncategorized",
     responses(
         (status = 200, description = "Current uncategorized queue state", body = UncategorizedQueueResponse),
@@ -98,7 +98,7 @@ fn build_head_response(transaction: Transaction) -> UncategorizedHeadResponse {
 /// lookup fails.
 #[utoipa::path(
     post,
-    path = "/api/v1/uncategorized-transactions/preview",
+    path = "/api/v1/transactions-review/preview",
     tag = "uncategorized",
     request_body = PreviewRuleRequest,
     responses(
@@ -168,7 +168,7 @@ fn derive_rule_criteria(import_details: &domain::entities::ImportDetails) -> Vec
 ///   provisioning a month/category/entry, or updating a transaction.
 #[utoipa::path(
     post,
-    path = "/api/v1/uncategorized-transactions/rules",
+    path = "/api/v1/transactions-review/rules",
     tag = "uncategorized",
     request_body = SaveRuleRequest,
     responses(

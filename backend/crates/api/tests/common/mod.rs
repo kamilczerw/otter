@@ -46,7 +46,7 @@ pub struct TestApp {
 /// `rules` list is instead left pointing at a nonexistent path, which
 /// `ImportDeps::current_rules` treats as no rules).
 ///
-/// Only `/imports` and the `/uncategorized-transactions` routes are mounted
+/// Only `/imports` and the `/transactions-review` routes are mounted
 /// — this harness is shared by the import and uncategorized-queue test
 /// files, which have no need for the other resource routes that
 /// `api_tests.rs`'s own `setup()` mounts.
@@ -113,15 +113,15 @@ pub async fn setup(rules: Vec<csv_import::Rule>) -> TestApp {
     let api = Router::new()
         .route("/imports", post(otter::handlers::imports::import_transactions))
         .route(
-            "/uncategorized-transactions",
+            "/transactions-review",
             get(otter::handlers::uncategorized::get_uncategorized_queue),
         )
         .route(
-            "/uncategorized-transactions/preview",
+            "/transactions-review/preview",
             post(otter::handlers::uncategorized::preview_uncategorized_rule),
         )
         .route(
-            "/uncategorized-transactions/rules",
+            "/transactions-review/rules",
             post(otter::handlers::uncategorized::save_uncategorized_rule),
         );
     let router = Router::new().nest("/api/v1", api).with_state(state.clone());

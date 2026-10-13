@@ -134,7 +134,7 @@ impl TryFrom<MatchCriterionRequest> for MatchCriterion {
     }
 }
 
-/// Request body for `POST /api/v1/uncategorized-transactions/preview`: a
+/// Request body for `POST /api/v1/transactions-review/preview`: a
 /// draft rule's match criteria, ANDed together exactly like a saved
 /// [`csv_import::Rule`]'s `match` list, so the UI can preview how many
 /// uncategorized transactions it would match before saving it.
@@ -151,7 +151,7 @@ impl TryFrom<PreviewRuleRequest> for MatchCriteria {
     }
 }
 
-/// Request body for `POST /api/v1/uncategorized-transactions/rules`: a new
+/// Request body for `POST /api/v1/transactions-review/rules`: a new
 /// rule to persist, built from the same draft-rule criteria shape as
 /// [`PreviewRuleRequest`] plus the category to assign on a match.
 #[derive(Debug, Deserialize, ToSchema)]
