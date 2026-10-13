@@ -45,7 +45,7 @@
           inherit src;
           strictDeps = true;
 
-          pname = "squirrel-backend";
+          pname = "otter-backend";
           version = "0.1.0";
 
           buildInputs = with pkgs; [
@@ -64,7 +64,7 @@
         cargoArtifacts = craneLib.buildDepsOnly (
           commonArgs
           // {
-            pname = "squirrel-backend-deps";
+            pname = "otter-backend-deps";
           }
         );
 

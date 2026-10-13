@@ -78,7 +78,6 @@ fn default_transaction() -> TransactionConfig {
 
 fn default_import() -> ImportConfig {
     ImportConfig {
-        rules_file: None,
         matching_rules: None,
     }
 }
@@ -169,42 +168,24 @@ pub struct TransactionConfig {
 
 /// CSV import categorization settings (`[transaction.import]`).
 ///
-/// Categorization rules can be supplied two ways, with inline `matching_rules`
-/// taking precedence over `rules_file` when both are set — see
-/// [`ImportConfig::resolve_rules`].
+/// Rules are supplied as `matching_rules`, either written inline here or
+/// pulled in from a separate file via the top-level `include` directive (see
+/// [`AppConfig::load`]) — both produce the same `matching_rules` list, so
+/// there's no separate precedence rule to document.
 #[derive(Debug, Deserialize, Clone, Default)]
 pub struct ImportConfig {
-    /// Path to a standalone TOML rules file (same `matching_rules`-wrapped
-    /// shape as `csv_import`'s internal `RulesFile`), loaded on demand.
-    #[serde(default)]
-    pub rules_file: Option<PathBuf>,
-    /// Rules supplied inline in the config file. Wins over `rules_file` when
-    /// both are set.
+    /// Categorization rules. Empty/unset means nothing categorizes;
+    /// everything falls to `"uncategorized"`.
     #[serde(default)]
     pub matching_rules: Option<Vec<csv_import::Rule>>,
 }
 
 impl ImportConfig {
-    /// Resolves the effective set of categorization rules for this config,
-    /// per the precedence documented in the design doc: inline
-    /// `matching_rules` wins when set; otherwise rules are loaded from
-    /// `rules_file`; otherwise the result is empty (nothing categorizes;
+    /// Resolves the effective set of categorization rules for this config:
+    /// `matching_rules` if set, otherwise empty (nothing categorizes;
     /// everything falls to `"uncategorized"`).
-    ///
-    /// # Errors
-    ///
-    /// Returns [`csv_import::RulesError`] if `rules_file` is set but its
-    /// contents can't be read or don't parse as valid rules TOML. A missing
-    /// `rules_file` is not an error — it resolves to an empty rule set, same
-    /// as [`csv_import::load_rules_or_empty`].
-    pub fn resolve_rules(&self) -> Result<Vec<csv_import::Rule>, csv_import::RulesError> {
-        if let Some(inline) = &self.matching_rules {
-            return Ok(inline.clone());
-        }
-        match &self.rules_file {
-            Some(path) => csv_import::load_rules_or_empty(path),
-            None => Ok(Vec::new()),
-        }
+    pub fn resolve_rules(&self) -> Vec<csv_import::Rule> {
+        self.matching_rules.clone().unwrap_or_default()
     }
 }
 
@@ -256,6 +237,46 @@ fn convert_flat_json(value: serde_json::Value) -> serde_json::Value {
     serde_json::Value::Object(result)
 }
 
+/// Top-level `include = [...]` directive read from a TOML config file, e.g.
+/// `include = ["./rules.toml", "/etc/otter/shared.toml"]`.
+#[derive(Debug, Deserialize, Default)]
+struct IncludeDirective {
+    #[serde(default)]
+    include: Vec<String>,
+}
+
+/// Resolves the `include` paths listed at the top of `config_file`, relative
+/// to `config_file`'s own parent directory (absolute paths are used as-is).
+///
+/// Only one level of includes is supported — an included file's own
+/// `include` list, if any, is ignored. Good enough for splitting out things
+/// like categorization rules; add recursive resolution if nested includes
+/// are ever needed.
+fn resolve_includes(config_file: &Path) -> Result<Vec<PathBuf>, config::ConfigError> {
+    let directive_source = config::Config::builder()
+        .add_source(
+            config::File::with_name(config_file.to_string_lossy().as_ref())
+                .format(config::FileFormat::Toml)
+                .required(true),
+        )
+        .build()?;
+    let directive: IncludeDirective = directive_source.try_deserialize()?;
+
+    let base_dir = config_file.parent().unwrap_or_else(|| Path::new("."));
+    Ok(directive
+        .include
+        .into_iter()
+        .map(|p| {
+            let p = PathBuf::from(p);
+            if p.is_absolute() {
+                p
+            } else {
+                base_dir.join(p)
+            }
+        })
+        .collect())
+}
+
 impl AppConfig {
     /// Load configuration with the following precedence (highest wins):
     /// CLI flags > Environment variables > Config file > Defaults
@@ -303,7 +324,14 @@ impl AppConfig {
                             config::FileFormat::Json,
                         ));
                     }
+                    // ponytail: JSON config has no `include` support — it's the
+                    // flat/legacy format, not used for multi-file setups.
                     _ => {
+                        for include_path in resolve_includes(path_ref)? {
+                            builder = builder.add_source(
+                                config::File::from(include_path).required(true),
+                            );
+                        }
                         builder = builder.add_source(
                             config::File::with_name(path)
                                 .format(config::FileFormat::Toml)
@@ -451,70 +479,84 @@ green_threshold = 50
         }
     }
 
-    /// Inline-only: `matching_rules` set, `rules_file` unset — resolves to
-    /// the inline rules.
+    /// `matching_rules` set resolves to those rules.
     #[test]
     fn resolve_rules_inline_only() {
         let config = ImportConfig {
-            rules_file: None,
             matching_rules: Some(vec![rule_with_category("inline")]),
         };
-        let rules = config.resolve_rules().unwrap();
+        let rules = config.resolve_rules();
         assert_eq!(rules.len(), 1);
         assert_eq!(rules[0].category, "inline");
     }
 
-    /// File-only: `rules_file` set, `matching_rules` unset — resolves to the
-    /// rules loaded from disk.
-    #[test]
-    fn resolve_rules_file_only() {
-        let f = write_toml(
-            r#"
-[[matching_rules]]
-category = "from_file"
-[matching_rules.match]
-merchant_contains = "netto"
-"#,
-        );
-        let config = ImportConfig {
-            rules_file: Some(f.path().to_path_buf()),
-            matching_rules: None,
-        };
-        let rules = config.resolve_rules().unwrap();
-        assert_eq!(rules.len(), 1);
-        assert_eq!(rules[0].category, "from_file");
-    }
-
-    /// Both set: inline `matching_rules` wins, and the file's rules are not
-    /// used at all.
-    #[test]
-    fn resolve_rules_inline_wins_over_file() {
-        let f = write_toml(
-            r#"
-[[matching_rules]]
-category = "from_file"
-[matching_rules.match]
-merchant_contains = "netto"
-"#,
-        );
-        let config = ImportConfig {
-            rules_file: Some(f.path().to_path_buf()),
-            matching_rules: Some(vec![rule_with_category("inline")]),
-        };
-        let rules = config.resolve_rules().unwrap();
-        assert_eq!(rules.len(), 1);
-        assert_eq!(rules[0].category, "inline");
-        assert!(rules.iter().all(|r| r.category != "from_file"));
-    }
-
-    /// Neither set: resolves to an empty rule set, not an error.
+    /// Unset resolves to an empty rule set.
     #[test]
     fn resolve_rules_neither_set_is_empty() {
         let config = ImportConfig {
-            rules_file: None,
             matching_rules: None,
         };
-        let rules = config.resolve_rules().unwrap();
+        let rules = config.resolve_rules();
         assert!(rules.is_empty());
+    }
+
+    /// A relative `include` path in the main config file pulls in
+    /// `matching_rules` from the included file, resolved against the main
+    /// file's own directory.
+    #[test]
+    fn include_pulls_in_matching_rules_from_relative_path() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(
+            dir.path().join("rules.toml"),
+            r#"
+[[transaction.import.matching_rules]]
+category = "from_include"
+[transaction.import.matching_rules.match]
+merchant_contains = "netto"
+"#,
+        )
+        .unwrap();
+        let main_path = dir.path().join("config.toml");
+        std::fs::write(&main_path, r#"include = ["./rules.toml"]"#).unwrap();
+
+        let config = AppConfig::load(Some(main_path.to_str().unwrap()), true).unwrap();
+        let rules = config.transaction.import.resolve_rules();
+        assert_eq!(rules.len(), 1);
+        assert_eq!(rules[0].category, "from_include");
+    }
+
+    /// The main config file's own `matching_rules` take precedence over an
+    /// included file's, since the main file is added as a source last.
+    #[test]
+    fn main_file_matching_rules_override_included() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(
+            dir.path().join("rules.toml"),
+            r#"
+[[transaction.import.matching_rules]]
+category = "from_include"
+[transaction.import.matching_rules.match]
+merchant_contains = "netto"
+"#,
+        )
+        .unwrap();
+        let main_path = dir.path().join("config.toml");
+        std::fs::write(
+            &main_path,
+            r#"
+include = ["./rules.toml"]
+
+[[transaction.import.matching_rules]]
+category = "from_main"
+[transaction.import.matching_rules.match]
+merchant_contains = "biedronka"
+"#,
+        )
+        .unwrap();
+
+        let config = AppConfig::load(Some(main_path.to_str().unwrap()), true).unwrap();
+        let rules = config.transaction.import.resolve_rules();
+        assert_eq!(rules.len(), 1);
+        assert_eq!(rules[0].category, "from_main");
     }
 }

@@ -117,7 +117,7 @@ pub async fn setup(rules: Vec<csv_import::Rule>) -> TestApp {
 /// `(boundary, body_bytes)` — the boundary is needed to build the
 /// request's own `Content-Type` header.
 fn build_multipart_body(filename: &str, part_content_type: Option<&str>, file_bytes: &[u8]) -> (&'static str, Vec<u8>) {
-    const BOUNDARY: &str = "----squirrel-test-boundary";
+    const BOUNDARY: &str = "----otter-test-boundary";
 
     let mut body = Vec::new();
     body.extend_from_slice(format!("--{BOUNDARY}\r\n").as_bytes());

@@ -97,11 +97,7 @@ async fn main() {
         month_repo.clone(),
     ));
 
-    let import_rules = app_config
-        .transaction
-        .import
-        .resolve_rules()
-        .expect("Failed to resolve CSV import categorization rules");
+    let import_rules = app_config.transaction.import.resolve_rules();
     let import_deps = Arc::new(import::ImportDeps {
         month_repo: month_repo.clone(),
         month_service: month_service.clone(),

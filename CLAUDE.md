@@ -15,6 +15,8 @@ When working on a feature, check the corresponding `STATUS.md` for current state
 
 ## Project Overview
 
+**Project name: Otter.** Use "otter" (not "squirrel") in package names, identifiers, and any new docs — the working directory path still says `squirrel` but that's just a leftover folder name, not the project's name.
+
 Family Budget Tracker — a web application for household budget management with a Vue 3 frontend and Rust/Axum backend following hexagonal architecture.
 
 **Key characteristics:**

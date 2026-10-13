@@ -13,8 +13,8 @@
 
 ## 3. Backend config for import rules
 
-- [x] 3.1 Add a `[transaction.import]` section to `AppConfig` (`backend/crates/api/src/config.rs`) with `rules_file: Option<PathBuf>` and `matching_rules: Option<Vec<Rule>>` (reusing `csv_import::Rule`), following the existing `APP__SECTION__KEY` override pattern.
-- [x] 3.2 Implement rules resolution: inline `matching_rules` wins when both are set; otherwise load from `rules_file`; otherwise empty. Add unit tests for all three cases (inline-only, file-only, both-set-inline-wins, neither-set-empty).
+- [x] 3.1 Add a `[transaction.import]` section to `AppConfig` (`backend/crates/api/src/config.rs`) with `matching_rules: Option<Vec<Rule>>` (reusing `csv_import::Rule`), following the existing `APP__SECTION__KEY` override pattern. A standalone rules file is pulled in via a generic top-level `include = [...]` directive in `AppConfig::load`, not a dedicated `rules_file` field.
+- [x] 3.2 Implement rules resolution: `matching_rules` if set, otherwise empty. Add unit tests: inline-only, neither-set-empty, include-from-relative-path, main-file-overrides-included.
 - [x] 3.3 Document the new config section in `backend/config.toml` (commented example) and verify `nix build ./nix#backend-tests-cargo` passes.
 
 ## 4. Import orchestration
