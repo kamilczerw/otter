@@ -32,8 +32,24 @@ pub struct ImportDeps {
     /// detection, which has no service-level equivalent.
     pub transaction_repo: Arc<dyn TransactionRepository>,
     pub transaction_service: Arc<TransactionService>,
-    /// Categorization rules resolved from config, in first-match-wins order.
-    pub rules: Vec<csv_import::Rule>,
+    /// Path to the on-disk rules file (see `csv_import::load_rules_or_empty`).
+    /// Read fresh on every [`ImportDeps::current_rules`] call rather than
+    /// cached once at construction, so a rule saved mid-session (e.g. by the
+    /// bulk-categorize API) is picked up without restarting the server.
+    pub rules_path: std::path::PathBuf,
+}
+
+impl ImportDeps {
+    /// Loads the current set of categorization rules from `rules_path`,
+    /// re-reading the file on every call (see the field doc above).
+    ///
+    /// # Errors
+    ///
+    /// Returns [`csv_import::RulesError`] if the file exists but fails to
+    /// parse as valid rules TOML.
+    pub fn current_rules(&self) -> Result<Vec<csv_import::Rule>, csv_import::RulesError> {
+        csv_import::load_rules_or_empty(&self.rules_path)
+    }
 }
 
 /// Errors that can occur while resolving or auto-creating a row's month,
@@ -55,6 +71,9 @@ pub enum RowError {
     Entry(#[from] EntryError),
     #[error(transparent)]
     Transaction(#[from] TransactionError),
+    /// The categorization rules file exists but failed to parse.
+    #[error(transparent)]
+    Rules(#[from] csv_import::RulesError),
 }
 
 /// Finds the `Month` covering `date`'s year/month, creating an empty month
@@ -159,7 +178,10 @@ mod tests {
     /// Builds `ImportDeps` backed by a fresh in-memory SQLite database,
     /// following the same setup pattern as the `api` crate's integration
     /// tests (there's no lighter-weight repository fake in this codebase).
-    async fn test_deps(rules: Vec<csv_import::Rule>) -> ImportDeps {
+    /// `rules_path` is pointed at a nonexistent temp path, so
+    /// `current_rules()` resolves to an empty rule set (these tests don't
+    /// exercise categorization).
+    async fn test_deps() -> ImportDeps {
         let pool = db::create_pool("sqlite::memory:")
             .await
             .expect("failed to create in-memory pool");
@@ -186,7 +208,10 @@ mod tests {
                 transaction_repo.clone(),
                 entry_repo.clone(),
             )),
-            rules,
+            rules_path: std::env::temp_dir().join(format!(
+                "otter_test_no_rules_{}.toml",
+                ulid::Ulid::new()
+            )),
         }
     }
 
@@ -194,7 +219,7 @@ mod tests {
     /// second call for the same date finds it instead of creating another.
     #[tokio::test]
     async fn find_or_create_month_creates_then_finds() {
-        let deps = test_deps(vec![]).await;
+        let deps = test_deps().await;
         let date = NaiveDate::from_ymd_opt(2026, 10, 9).unwrap();
 
         let (created, was_created) = find_or_create_month(&deps, date).await.unwrap();
@@ -211,7 +236,7 @@ mod tests {
     /// call for the same name finds it instead of creating another.
     #[tokio::test]
     async fn find_or_create_category_creates_then_finds() {
-        let deps = test_deps(vec![]).await;
+        let deps = test_deps().await;
         let name = CategoryName::new("groceries").unwrap();
 
         let (created, was_created) = find_or_create_category(&deps, &name).await.unwrap();
@@ -227,7 +252,7 @@ mod tests {
     /// zero-budgeted entry; a second call finds the same entry instead.
     #[tokio::test]
     async fn find_or_create_entry_creates_then_finds() {
-        let deps = test_deps(vec![]).await;
+        let deps = test_deps().await;
         let date = NaiveDate::from_ymd_opt(2026, 10, 9).unwrap();
         let (month, _) = find_or_create_month(&deps, date).await.unwrap();
         let name = CategoryName::new("groceries").unwrap();

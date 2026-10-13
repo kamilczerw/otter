@@ -12,7 +12,7 @@
 mod common;
 
 use axum::http::StatusCode;
-use csv_import::{MatchCriteria, Rule};
+use csv_import::{MatchCriteria, MatchCriterion, MatchField, MatchType, Rule};
 
 use common::{post_file, setup};
 
@@ -26,10 +26,10 @@ const FIXTURE_BYTES: &[u8] = include_bytes!("../../csv_import/tests/fixtures/sam
 /// other row in the fixture falls to.
 fn netto_rule() -> Rule {
     Rule {
-        pattern: MatchCriteria {
-            merchant_contains: Some("netto".to_string()),
-            ..Default::default()
-        },
+        pattern: MatchCriteria(vec![MatchCriterion {
+            field: MatchField::Merchant,
+            match_type: MatchType::Contains("netto".to_string()),
+        }]),
         category: "groceries".to_string(),
     }
 }

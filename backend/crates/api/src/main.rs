@@ -93,7 +93,6 @@ async fn main() {
         month_repo.clone(),
     ));
 
-    let import_rules = app_config.transaction.import.resolve_rules();
     let import_deps = Arc::new(import::ImportDeps {
         month_repo: month_repo.clone(),
         month_service: month_service.clone(),
@@ -101,7 +100,7 @@ async fn main() {
         entry_service: entry_service.clone(),
         transaction_repo: transaction_repo.clone(),
         transaction_service: transaction_service.clone(),
-        rules: import_rules,
+        rules_path: app_config.transaction.import.rules_file.clone(),
     });
 
     let state = AppState {

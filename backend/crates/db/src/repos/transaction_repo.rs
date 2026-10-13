@@ -365,6 +365,27 @@ impl TransactionRepository for SqliteTransactionRepository {
             None => Ok(None),
         }
     }
+
+    async fn list_by_category_name(
+        &self,
+        category_name: &str,
+    ) -> Result<Vec<Transaction>, TransactionError> {
+        let rows = sqlx::query(
+            "SELECT t.id, t.entry_id, t.amount, t.date, t.title, t.import_details, t.tags, \
+             t.created_at, t.updated_at \
+             FROM transactions t \
+             JOIN budget_entries e ON t.entry_id = e.id \
+             JOIN categories c ON e.category_id = c.id \
+             WHERE c.name = ? \
+             ORDER BY t.date DESC, t.created_at DESC",
+        )
+        .bind(category_name)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| TransactionError::Repository(e.to_string()))?;
+
+        rows.iter().map(map_row_to_transaction).collect()
+    }
 }
 
 #[cfg(test)]
@@ -426,6 +447,123 @@ mod tests {
         .unwrap();
 
         entry_id
+    }
+
+    /// Inserts a category named `category_name` if it doesn't already
+    /// exist, returning its id either way. Lets `seed_entry_in` link
+    /// multiple months/entries to the *same* category row, since
+    /// `categories.name` is globally unique.
+    async fn find_or_insert_category(pool: &SqlitePool, category_name: &str) -> ulid::Ulid {
+        if let Some(row) = sqlx::query("SELECT id FROM categories WHERE name = ?")
+            .bind(category_name)
+            .fetch_optional(pool)
+            .await
+            .unwrap()
+        {
+            let id_str: String = row.get("id");
+            return ulid::Ulid::from_string(&id_str).unwrap();
+        }
+
+        let category_id = ulid::Ulid::new();
+        let now = "2026-01-01T00:00:00.000Z";
+        sqlx::query("INSERT INTO categories (id, name, created_at, updated_at) VALUES (?, ?, ?, ?)")
+            .bind(category_id.to_string())
+            .bind(category_name)
+            .bind(now)
+            .bind(now)
+            .execute(pool)
+            .await
+            .unwrap();
+        category_id
+    }
+
+    /// Inserts a budget entry for `category_name` (reusing that category's
+    /// row if one already exists — see `find_or_insert_category`) in a
+    /// new month named `month_str`, returning the entry's id. Like
+    /// `seed_entry` but with a caller-chosen category/month, so
+    /// `list_by_category_name` tests can seed multiple months under the
+    /// same category.
+    async fn seed_entry_in(pool: &SqlitePool, category_name: &str, month_str: &str) -> ulid::Ulid {
+        let category_id = find_or_insert_category(pool, category_name).await;
+        let month_id = ulid::Ulid::new();
+        let entry_id = ulid::Ulid::new();
+        let now = "2026-01-01T00:00:00.000Z";
+
+        sqlx::query("INSERT INTO months (id, month, created_at, updated_at) VALUES (?, ?, ?, ?)")
+            .bind(month_id.to_string())
+            .bind(month_str)
+            .bind(now)
+            .bind(now)
+            .execute(pool)
+            .await
+            .unwrap();
+
+        sqlx::query(
+            "INSERT INTO budget_entries (id, month_id, category_id, budgeted, due_day, created_at, updated_at) \
+             VALUES (?, ?, ?, ?, ?, ?, ?)",
+        )
+        .bind(entry_id.to_string())
+        .bind(month_id.to_string())
+        .bind(category_id.to_string())
+        .bind(0_i64)
+        .bind(Option::<i64>::None)
+        .bind(now)
+        .bind(now)
+        .execute(pool)
+        .await
+        .unwrap();
+
+        entry_id
+    }
+
+    #[tokio::test]
+    async fn list_by_category_name_spans_all_months() {
+        let pool = setup_pool().await;
+        let repo = SqliteTransactionRepository::new(pool.clone());
+
+        let jan_entry = seed_entry_in(&pool, "uncategorized", "2026-01").await;
+        let feb_entry = seed_entry_in(&pool, "uncategorized", "2026-02").await;
+        let other_entry = seed_entry_in(&pool, "groceries", "2026-03").await;
+
+        let jan_txn = repo
+            .create(NewTransaction {
+                entry_id: jan_entry,
+                amount: Money::new(-100),
+                date: "2026-01-10".parse().unwrap(),
+                title: None,
+                import_details: None,
+                tags: vec![],
+            })
+            .await
+            .unwrap();
+        let feb_txn = repo
+            .create(NewTransaction {
+                entry_id: feb_entry,
+                amount: Money::new(-200),
+                date: "2026-02-10".parse().unwrap(),
+                title: None,
+                import_details: None,
+                tags: vec![],
+            })
+            .await
+            .unwrap();
+        repo.create(NewTransaction {
+            entry_id: other_entry,
+            amount: Money::new(-300),
+            date: "2026-03-11".parse().unwrap(),
+            title: None,
+            import_details: None,
+            tags: vec![],
+        })
+        .await
+        .unwrap();
+
+        let found = repo.list_by_category_name("uncategorized").await.unwrap();
+        let found_ids: Vec<ulid::Ulid> = found.iter().map(|t| t.id).collect();
+
+        assert_eq!(found.len(), 2);
+        assert!(found_ids.contains(&jan_txn.id));
+        assert!(found_ids.contains(&feb_txn.id));
     }
 
     #[tokio::test]

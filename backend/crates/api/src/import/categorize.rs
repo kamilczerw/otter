@@ -43,7 +43,7 @@ pub fn resolve_category_name(transaction: &ParsedTransaction, rules: &[Rule]) ->
 mod tests {
     use super::*;
     use chrono::NaiveDate;
-    use csv_import::MatchCriteria;
+    use csv_import::{MatchCriteria, MatchCriterion, MatchField, MatchType};
     use domain::types::Money;
 
     /// Minimal `ParsedTransaction` fixture with just the fields a rule
@@ -66,10 +66,10 @@ mod tests {
 
     fn rule(merchant_contains: &str, category: &str) -> Rule {
         Rule {
-            pattern: MatchCriteria {
-                merchant_contains: Some(merchant_contains.to_string()),
-                ..Default::default()
-            },
+            pattern: MatchCriteria(vec![MatchCriterion {
+                field: MatchField::Merchant,
+                match_type: MatchType::Contains(merchant_contains.to_string()),
+            }]),
             category: category.to_string(),
         }
     }

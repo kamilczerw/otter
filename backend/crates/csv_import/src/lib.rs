@@ -24,5 +24,5 @@ pub use extract::{extract_transaction, ExtractError, ParsedTransaction};
 pub use learn::{categorize_or_learn, derive_rule, prompt_for_category};
 pub use rules::{
     categorize, load_rules, load_rules_or_empty, match_rule, normalize, save_rules, Category,
-    MatchCriteria, Rule, RulesError,
+    Matchable, MatchCriteria, MatchCriterion, MatchField, MatchType, Rule, RulesError,
 };

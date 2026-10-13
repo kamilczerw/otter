@@ -30,4 +30,20 @@ pub trait TransactionRepository: Send + Sync {
         amount: &Money,
         title: Option<&str>,
     ) -> Result<Option<Transaction>, TransactionError>;
+
+    /// Lists every transaction currently assigned (via its budget entry) to
+    /// the category named `category_name`, across all months.
+    ///
+    /// Used by the bulk-categorize feature to find every transaction still
+    /// sitting in `"uncategorized"`, regardless of which month it landed
+    /// in — a single query, rather than the API layer looping over
+    /// `list_by_month` for every month.
+    ///
+    /// # Errors
+    ///
+    /// Returns `TransactionError::Repository` if the underlying query fails.
+    async fn list_by_category_name(
+        &self,
+        category_name: &str,
+    ) -> Result<Vec<Transaction>, TransactionError>;
 }
