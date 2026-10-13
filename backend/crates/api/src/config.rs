@@ -262,17 +262,19 @@ fn resolve_includes(config_file: &Path) -> Result<Vec<PathBuf>, config::ConfigEr
         .build()?;
     let directive: IncludeDirective = directive_source.try_deserialize()?;
 
+    tracing::debug!(
+        "Found {} include paths in {}",
+        directive.include.len(),
+        config_file.display()
+    );
+
     let base_dir = config_file.parent().unwrap_or_else(|| Path::new("."));
     Ok(directive
         .include
         .into_iter()
         .map(|p| {
             let p = PathBuf::from(p);
-            if p.is_absolute() {
-                p
-            } else {
-                base_dir.join(p)
-            }
+            if p.is_absolute() { p } else { base_dir.join(p) }
         })
         .collect())
 }
@@ -280,10 +282,7 @@ fn resolve_includes(config_file: &Path) -> Result<Vec<PathBuf>, config::ConfigEr
 impl AppConfig {
     /// Load configuration with the following precedence (highest wins):
     /// CLI flags > Environment variables > Config file > Defaults
-    pub fn load(
-        config_path: Option<&str>,
-        explicit: bool,
-    ) -> Result<Self, config::ConfigError> {
+    pub fn load(config_path: Option<&str>, explicit: bool) -> Result<Self, config::ConfigError> {
         let mut builder = config::Config::builder();
 
         if let Some(path) = config_path {
@@ -297,10 +296,7 @@ impl AppConfig {
             }
 
             if exists {
-                let ext = path_ref
-                    .extension()
-                    .and_then(|e| e.to_str())
-                    .unwrap_or("");
+                let ext = path_ref.extension().and_then(|e| e.to_str()).unwrap_or("");
 
                 match ext {
                     "json" => {
@@ -309,9 +305,7 @@ impl AppConfig {
                         })?;
                         let raw: serde_json::Value =
                             serde_json::from_str(&contents).map_err(|e| {
-                                config::ConfigError::Message(format!(
-                                    "Invalid JSON in {path}: {e}"
-                                ))
+                                config::ConfigError::Message(format!("Invalid JSON in {path}: {e}"))
                             })?;
                         let nested = convert_flat_json(raw);
                         let nested_str = serde_json::to_string(&nested).map_err(|e| {
@@ -328,9 +322,8 @@ impl AppConfig {
                     // flat/legacy format, not used for multi-file setups.
                     _ => {
                         for include_path in resolve_includes(path_ref)? {
-                            builder = builder.add_source(
-                                config::File::from(include_path).required(true),
-                            );
+                            builder =
+                                builder.add_source(config::File::from(include_path).required(true));
                         }
                         builder = builder.add_source(
                             config::File::with_name(path)
@@ -343,13 +336,12 @@ impl AppConfig {
         }
 
         // Environment variables always override config file
-        builder = builder.add_source(
-            config::Environment::with_prefix("APP").separator("__"),
-        );
+        builder = builder.add_source(config::Environment::with_prefix("APP").separator("__"));
 
         let config = builder.build()?;
         let app_config: Self = config.try_deserialize()?;
         app_config.validate()?;
+        tracing::info!("Loaded configuration: {:#?}", app_config);
         Ok(app_config)
     }
 
@@ -382,10 +374,7 @@ mod tests {
     use tempfile::NamedTempFile;
 
     fn write_toml(content: &str) -> NamedTempFile {
-        let mut f = tempfile::Builder::new()
-            .suffix(".toml")
-            .tempfile()
-            .unwrap();
+        let mut f = tempfile::Builder::new().suffix(".toml").tempfile().unwrap();
         f.write_all(content.as_bytes()).unwrap();
         f
     }

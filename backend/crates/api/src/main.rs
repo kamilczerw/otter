@@ -9,8 +9,8 @@ pub mod responses;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use axum::routing::{get, patch, post};
 use axum::Router;
+use axum::routing::{get, patch, post};
 use clap::Parser;
 use tower_http::cors::{AllowOrigin, CorsLayer};
 use tower_http::request_id::{PropagateRequestIdLayer, SetRequestIdLayer};
@@ -47,8 +47,7 @@ struct Cli {
 async fn main() {
     tracing_subscriber::fmt()
         .with_env_filter(
-            EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| EnvFilter::new("info"))
+            EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("debug")),
         )
         .init();
 
@@ -59,8 +58,8 @@ async fn main() {
     // If an explicit path was given and doesn't exist, we fail with a clear error.
     let explicit = std::env::args().any(|a| a == "--config" || a == "-c");
 
-    let app_config = AppConfig::load(Some(&cli.config), explicit)
-        .expect("Failed to load configuration");
+    let app_config =
+        AppConfig::load(Some(&cli.config), explicit).expect("Failed to load configuration");
 
     let pool = db::create_pool(&app_config.database.url)
         .await
@@ -78,10 +77,7 @@ async fn main() {
 
     // Create service instances
     let category_service = Arc::new(CategoryService::new(category_repo.clone()));
-    let month_service = Arc::new(MonthService::new(
-        month_repo.clone(),
-        entry_repo.clone(),
-    ));
+    let month_service = Arc::new(MonthService::new(month_repo.clone(), entry_repo.clone()));
     let entry_service = Arc::new(EntryService::new(
         entry_repo.clone(),
         category_repo.clone(),
@@ -140,8 +136,7 @@ async fn main() {
         .route("/health", get(handlers::health::health_check))
         .route(
             "/categories",
-            get(handlers::categories::list_categories)
-                .post(handlers::categories::create_category),
+            get(handlers::categories::list_categories).post(handlers::categories::create_category),
         )
         .route(
             "/categories/{id}",
@@ -174,24 +169,22 @@ async fn main() {
             "/months/{id}/summary",
             get(handlers::summary::get_month_summary),
         )
-        .route(
-            "/imports",
-            post(handlers::imports::import_transactions),
-        );
+        .route("/imports", post(handlers::imports::import_transactions));
 
     // Static file serving under /ui with SPA fallback.
     // Any request under /ui/ that doesn't match a file returns index.html
     // so Vue Router can handle client-side routing.
     let index_file = cli.static_dir.join("index.html");
-    let spa_service = ServeDir::new(&cli.static_dir)
-        .not_found_service(ServeFile::new(&index_file));
+    let spa_service = ServeDir::new(&cli.static_dir).not_found_service(ServeFile::new(&index_file));
 
     let app = Router::new()
         .nest("/api/v1", api)
         .nest_service("/ui", spa_service)
         .layer(cors)
         .layer(TraceLayer::new_for_http())
-        .layer(SetRequestIdLayer::x_request_id(RequestIdGenerator::default()))
+        .layer(SetRequestIdLayer::x_request_id(
+            RequestIdGenerator::default(),
+        ))
         .layer(PropagateRequestIdLayer::x_request_id())
         .with_state(state);
 
@@ -211,7 +204,5 @@ async fn main() {
         .await
         .expect("Failed to bind address");
 
-    axum::serve(listener, app)
-        .await
-        .expect("Server error");
+    axum::serve(listener, app).await.expect("Server error");
 }
