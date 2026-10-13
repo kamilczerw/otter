@@ -12,29 +12,30 @@ use std::io::{self, Write as _};
 use std::path::Path;
 
 use crate::extract::ParsedTransaction;
-use crate::rules::{categorize, save_rules, Category, MatchCriteria, Rule};
+use crate::rules::{categorize, save_rules, Category, MatchCriteria, MatchCriterion, MatchField, MatchType, Rule};
 
 /// Derives a new rule that matches `transaction` and assigns it `category`.
 ///
-/// Mirrors `categorize`'s matching semantics: prefers a `merchant_contains`
-/// pattern (substring match) when the transaction has a merchant, since
-/// that's the common card-payment case; falls back to an exact `raw_type`
-/// match when there's no merchant (e.g. a transfer row), since that's the
-/// only field such rows reliably carry. Pure function, no I/O.
+/// Mirrors `categorize`'s matching semantics: prefers a `Contains` pattern
+/// on `merchant` (substring match) when the transaction has a merchant,
+/// since that's the common card-payment case; falls back to a `Contains`
+/// match on `raw_type` when there's no merchant (e.g. a transfer row),
+/// since that's the only field such rows reliably carry. Pure function, no
+/// I/O.
 #[must_use]
 pub fn derive_rule(transaction: &ParsedTransaction, category: &Category) -> Rule {
-    let pattern = match &transaction.merchant {
-        Some(merchant) => MatchCriteria {
-            merchant_contains: Some(merchant.clone()),
-            ..Default::default()
+    let criterion = match &transaction.merchant {
+        Some(merchant) => MatchCriterion {
+            field: MatchField::Merchant,
+            match_type: MatchType::Contains(merchant.clone()),
         },
-        None => MatchCriteria {
-            raw_type: Some(transaction.raw_type.clone()),
-            ..Default::default()
+        None => MatchCriterion {
+            field: MatchField::RawType,
+            match_type: MatchType::Contains(transaction.raw_type.clone()),
         },
     };
     Rule {
-        pattern,
+        pattern: MatchCriteria(vec![criterion]),
         category: category.clone(),
     }
 }
@@ -152,8 +153,13 @@ mod tests {
         let category = "groceries".to_string();
 
         let rule = derive_rule(&txn, &category);
-        check!(rule.pattern.merchant_contains == Some("NETTO 5567 K.2".to_string()));
-        check!(rule.pattern.raw_type == None);
+        check!(
+            rule.pattern.0
+                == vec![MatchCriterion {
+                    field: MatchField::Merchant,
+                    match_type: MatchType::Contains("NETTO 5567 K.2".to_string()),
+                }]
+        );
 
         check!(categorize(&txn, &[rule]) == Some(category));
     }
@@ -166,8 +172,13 @@ mod tests {
         let category = "savings".to_string();
 
         let rule = derive_rule(&txn, &category);
-        check!(rule.pattern.merchant_contains == None);
-        check!(rule.pattern.raw_type == Some("Autooszczędzanie".to_string()));
+        check!(
+            rule.pattern.0
+                == vec![MatchCriterion {
+                    field: MatchField::RawType,
+                    match_type: MatchType::Contains("Autooszczędzanie".to_string()),
+                }]
+        );
 
         check!(categorize(&txn, &[rule]) == Some(category));
     }

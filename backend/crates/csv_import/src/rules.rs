@@ -31,27 +31,74 @@ pub struct Rule {
     pub category: Category,
 }
 
-/// The `match:` block of a [`Rule`]. All fields are optional; a rule matches
-/// a transaction when every field it specifies matches (AND semantics).
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
-pub struct MatchCriteria {
-    /// Case/diacritic-insensitive *substring* match against the
-    /// transaction's `merchant` field.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub merchant_contains: Option<String>,
-    /// Case/diacritic-insensitive *exact* match against the transaction's
-    /// `city` field.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub city: Option<String>,
-    /// Case/diacritic-insensitive *exact* match against the transaction's
-    /// `country` field.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub country: Option<String>,
-    /// Case/diacritic-insensitive *exact* match against the transaction's
-    /// `raw_type` field.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub raw_type: Option<String>,
+/// A transaction field a [`MatchCriterion`] can be checked against.
+///
+/// `Description` maps to [`ParsedTransaction::raw_description`] — named
+/// `Description` here since that's the user-facing/TOML-facing name, even
+/// though the underlying struct field is prefixed `raw_`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum MatchField {
+    /// The transaction's merchant name.
+    Merchant,
+    /// The transaction's raw, bank-reported type string.
+    RawType,
+    /// The transaction's merchant city.
+    City,
+    /// The transaction's merchant country.
+    Country,
+    /// The transaction's raw description text.
+    Description,
 }
+
+/// How a [`MatchCriterion`] compares its field's value against a pattern.
+///
+/// Serializes as a single TOML key (`contains = "..."` or `regex = "..."`)
+/// flattened into the enclosing [`MatchCriterion`] table, so a hand-written
+/// rule reads naturally as `field = "merchant"` + `contains = "netto"` in
+/// the same `[[matching_rules.match]]` table.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum MatchType {
+    /// Case/diacritic-insensitive substring match (via [`normalized_contains`]).
+    Contains(String),
+    /// Regex match against the raw (non-normalized) field value. A pattern
+    /// that fails to compile is treated as never matching — see
+    /// [`criterion_matches`].
+    Regex(String),
+}
+
+/// One field check within a [`MatchCriteria`] list: "does `field` match
+/// `match_type`'s pattern?".
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MatchCriterion {
+    /// The transaction field to check.
+    pub field: MatchField,
+    /// How to compare that field's value against the pattern.
+    #[serde(flatten)]
+    pub match_type: MatchType,
+}
+
+/// The `match:` block of a [`Rule`]: a list of [`MatchCriterion`]s, ANDed
+/// together — a rule matches a transaction only when *every* criterion in
+/// the list matches it. An empty list matches every transaction (vacuous
+/// AND), which is intentional: it lets a rule be defined by `category`
+/// alone during manual TOML editing/testing, though in practice
+/// [`derive_rule`](crate::learn::derive_rule) always emits at least one
+/// criterion.
+///
+/// A flat list of criteria (rather than one `Option<String>` struct field
+/// per possible field/match-type combination) keeps matching a single loop
+/// over a 2-case match type, instead of ~10 near-duplicate optional struct
+/// fields that would need updating every time a new field or match type is
+/// added.
+///
+/// `#[serde(transparent)]` makes this serialize/deserialize as exactly its
+/// inner `Vec<MatchCriterion>` — i.e. a TOML array of tables — rather than
+/// as a wrapping table with a single field.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct MatchCriteria(pub Vec<MatchCriterion>);
 
 /// On-disk shape of the rules file: a TOML document with a single
 /// `matching_rules` array of tables.
@@ -135,54 +182,96 @@ fn normalized_contains(value: &str, pattern: &str) -> bool {
     normalize(value).contains(&normalize(pattern))
 }
 
-/// Checks whether `pattern` normalized-equals `value`.
-fn normalized_eq(value: &str, pattern: &str) -> bool {
-    normalize(value) == normalize(pattern)
+/// A transaction-like type whose fields [`MatchCriterion`]s can be checked
+/// against. Lets `match_rule`/`categorize` stay generic instead of coupling
+/// directly to `ParsedTransaction`, and keeps field lookup in one place
+/// (one `match` on [`MatchField`]) rather than duplicated per caller.
+pub trait Matchable {
+    /// The merchant name, if present.
+    fn merchant(&self) -> Option<&str>;
+    /// The raw, bank-reported transaction type.
+    fn raw_type(&self) -> Option<&str>;
+    /// The merchant city, if present.
+    fn city(&self) -> Option<&str>;
+    /// The merchant country, if present.
+    fn country(&self) -> Option<&str>;
+    /// The raw description text.
+    fn description(&self) -> Option<&str>;
 }
 
-/// Checks a single optional match criterion against an optional transaction
-/// field, using the given comparison function. Matches trivially (`true`)
-/// when the rule doesn't specify this field; fails when the rule specifies
-/// it but the transaction field is absent.
-fn field_matches(
-    criterion: Option<&String>,
-    transaction_field: Option<&String>,
-    compare: impl Fn(&str, &str) -> bool,
-) -> bool {
-    match criterion {
-        None => true,
-        Some(pattern) => transaction_field.is_some_and(|value| compare(value, pattern)),
+impl Matchable for ParsedTransaction {
+    fn merchant(&self) -> Option<&str> {
+        self.merchant.as_deref()
+    }
+
+    fn raw_type(&self) -> Option<&str> {
+        Some(self.raw_type.as_str())
+    }
+
+    fn city(&self) -> Option<&str> {
+        self.city.as_deref()
+    }
+
+    fn country(&self) -> Option<&str> {
+        self.country.as_deref()
+    }
+
+    fn description(&self) -> Option<&str> {
+        Some(self.raw_description.as_str())
     }
 }
 
-/// Checks whether every `match` field specified on `rule` matches
-/// `transaction`. Pure function, no I/O.
+/// Reads the transaction field named by `field` off `transaction`, via the
+/// matching [`Matchable`] accessor. The single place that maps a
+/// [`MatchField`] variant to its accessor, so adding a field means touching
+/// one `match` arm here instead of every call site.
+fn field_value<T: Matchable>(transaction: &T, field: MatchField) -> Option<&str> {
+    match field {
+        MatchField::Merchant => transaction.merchant(),
+        MatchField::RawType => transaction.raw_type(),
+        MatchField::City => transaction.city(),
+        MatchField::Country => transaction.country(),
+        MatchField::Description => transaction.description(),
+    }
+}
+
+/// Checks whether `value` satisfies `match_type`'s pattern.
+///
+/// A `Regex` pattern that fails to compile is treated as non-matching
+/// rather than erroring: validating regex patterns at save time is a
+/// separate, later concern, and a match-time failure must not panic or
+/// bubble an error through `categorize`'s otherwise-infallible signature.
+fn match_type_matches(value: &str, match_type: &MatchType) -> bool {
+    match match_type {
+        MatchType::Contains(pattern) => normalized_contains(value, pattern),
+        MatchType::Regex(pattern) => regex::Regex::new(pattern).is_ok_and(|re| re.is_match(value)),
+    }
+}
+
+/// Checks a single [`MatchCriterion`] against `transaction`. The criterion
+/// never matches if its field is absent on the transaction (e.g. a
+/// `city` criterion against a transaction with no `city`).
+fn criterion_matches<T: Matchable>(transaction: &T, criterion: &MatchCriterion) -> bool {
+    field_value(transaction, criterion.field)
+        .is_some_and(|value| match_type_matches(value, &criterion.match_type))
+}
+
+/// Checks whether every criterion in `rule`'s `match` list matches
+/// `transaction`. Pure function, no I/O. An empty criteria list matches
+/// vacuously (see [`MatchCriteria`]).
 #[must_use]
-pub fn match_rule(transaction: &ParsedTransaction, rule: &Rule) -> bool {
-    let criteria = &rule.pattern;
-    field_matches(
-        criteria.merchant_contains.as_ref(),
-        transaction.merchant.as_ref(),
-        normalized_contains,
-    ) && field_matches(
-        criteria.city.as_ref(),
-        transaction.city.as_ref(),
-        normalized_eq,
-    ) && field_matches(
-        criteria.country.as_ref(),
-        transaction.country.as_ref(),
-        normalized_eq,
-    ) && criteria
-        .raw_type
-        .as_ref()
-        .is_none_or(|pattern| normalized_eq(&transaction.raw_type, pattern))
+pub fn match_rule<T: Matchable>(transaction: &T, rule: &Rule) -> bool {
+    rule.pattern
+        .0
+        .iter()
+        .all(|criterion| criterion_matches(transaction, criterion))
 }
 
 /// Categorizes `transaction` against `rules`, first-rule-wins: returns the
-/// `category` of the first rule in file order whose `match` fields all
+/// `category` of the first rule in file order whose `match` criteria all
 /// match, or `None` if no rule matches. Pure function, no I/O.
 #[must_use]
-pub fn categorize(transaction: &ParsedTransaction, rules: &[Rule]) -> Option<Category> {
+pub fn categorize<T: Matchable>(transaction: &T, rules: &[Rule]) -> Option<Category> {
     rules
         .iter()
         .find(|rule| match_rule(transaction, rule))
@@ -197,8 +286,9 @@ pub fn categorize(transaction: &ParsedTransaction, rules: &[Rule]) -> Option<Cat
 /// ```toml
 /// [[matching_rules]]
 /// category = "groceries"
-/// [matching_rules.match]
-/// merchant_contains = "netto"
+/// [[matching_rules.match]]
+/// field = "merchant"
+/// contains = "netto"
 /// ```
 ///
 /// # Errors
@@ -284,10 +374,28 @@ mod tests {
         }
     }
 
-    fn rule(criteria: MatchCriteria, category: &str) -> Rule {
+    /// Builds a `Rule` from a list of `(field, match_type)` pairs and a
+    /// category, so tests can write criteria tersely.
+    fn rule(criteria: Vec<MatchCriterion>, category: &str) -> Rule {
         Rule {
-            pattern: criteria,
+            pattern: MatchCriteria(criteria),
             category: category.to_string(),
+        }
+    }
+
+    /// Builds a `Contains` criterion for `field`.
+    fn contains(field: MatchField, pattern: &str) -> MatchCriterion {
+        MatchCriterion {
+            field,
+            match_type: MatchType::Contains(pattern.to_string()),
+        }
+    }
+
+    /// Builds a `Regex` criterion for `field`.
+    fn regex(field: MatchField, pattern: &str) -> MatchCriterion {
+        MatchCriterion {
+            field,
+            match_type: MatchType::Regex(pattern.to_string()),
         }
     }
 
@@ -301,91 +409,58 @@ mod tests {
         check!(normalize("łódź") == "LODZ");
     }
 
-    /// `merchant_contains` is a substring match, not exact equality.
+    /// A `Contains` criterion is a case/diacritic-insensitive substring
+    /// match, not exact equality.
     #[test]
-    fn matches_merchant_contains_as_substring() {
+    fn matches_contains_as_substring() {
         let txn = transaction(Some("NETTO 5567 K.2"), None, None, "Płatność kartą");
-        let r = rule(
-            MatchCriteria {
-                merchant_contains: Some("netto".to_string()),
-                ..Default::default()
-            },
-            "groceries",
-        );
+        let r = rule(vec![contains(MatchField::Merchant, "netto")], "groceries");
         check!(match_rule(&txn, &r));
     }
 
-    /// `city`/`country`/`raw_type` are exact (normalized) matches: a
-    /// substring isn't enough.
+    /// A `Regex` criterion matches the raw (non-normalized) field value
+    /// against the compiled pattern.
     #[test]
-    fn matches_city_country_raw_type_exactly() {
-        let txn = transaction(None, Some("Cieszyn"), Some("Polska"), "Płatność kartą");
+    fn matches_regex_criterion() {
+        let txn = transaction(Some("NETTO 5567 K.2"), None, None, "Płatność kartą");
+        let matching = rule(vec![regex(MatchField::Merchant, r"^NETTO \d+")], "groceries");
+        check!(match_rule(&txn, &matching));
 
-        let city_rule = rule(
-            MatchCriteria {
-                city: Some("CIESZYN".to_string()),
-                ..Default::default()
-            },
-            "local",
-        );
-        check!(match_rule(&txn, &city_rule));
-
-        let partial_city_rule = rule(
-            MatchCriteria {
-                city: Some("CIESZ".to_string()),
-                ..Default::default()
-            },
-            "local",
-        );
-        check!(!match_rule(&txn, &partial_city_rule));
-
-        let country_rule = rule(
-            MatchCriteria {
-                country: Some("POLSKA".to_string()),
-                ..Default::default()
-            },
-            "domestic",
-        );
-        check!(match_rule(&txn, &country_rule));
-
-        let type_rule = rule(
-            MatchCriteria {
-                raw_type: Some("platnosc karta".to_string()),
-                ..Default::default()
-            },
-            "card",
-        );
-        check!(match_rule(&txn, &type_rule));
+        let non_matching = rule(vec![regex(MatchField::Merchant, r"^ZABKA")], "snacks");
+        check!(!match_rule(&txn, &non_matching));
     }
 
-    /// A rule requiring multiple fields only matches if all of them match;
-    /// one mismatching field is enough to fail the whole rule.
+    /// `Description` matches against `raw_description`, not `merchant`.
     #[test]
-    fn requires_all_specified_fields_to_match() {
+    fn matches_description_field() {
+        let mut txn = transaction(None, None, None, "Przelew");
+        txn.raw_description = "Tytuł: Czynsz za mieszkanie".to_string();
+
+        let r = rule(vec![contains(MatchField::Description, "czynsz")], "rent");
+        check!(match_rule(&txn, &r));
+    }
+
+    /// A rule requiring multiple criteria only matches if all of them
+    /// match; one mismatching criterion is enough to fail the whole rule.
+    #[test]
+    fn requires_all_criteria_to_match() {
         let txn = transaction(Some("NETTO"), Some("Cieszyn"), None, "Płatność kartą");
         let r = rule(
-            MatchCriteria {
-                merchant_contains: Some("netto".to_string()),
-                city: Some("WARSZAWA".to_string()),
-                ..Default::default()
-            },
+            vec![
+                contains(MatchField::Merchant, "netto"),
+                contains(MatchField::City, "WARSZAWA"),
+            ],
             "groceries",
         );
         check!(!match_rule(&txn, &r));
     }
 
-    /// A rule requiring a field the transaction doesn't have (`None`) can
+    /// A criterion for a field the transaction doesn't have (`None`) can
     /// never match.
     #[test]
-    fn absent_transaction_field_never_matches_a_specified_criterion() {
+    fn absent_transaction_field_never_matches_a_criterion() {
         let txn = transaction(None, None, None, "Autooszczędzanie");
-        let r = rule(
-            MatchCriteria {
-                merchant_contains: Some("netto".to_string()),
-                ..Default::default()
-            },
-            "groceries",
-        );
+        let r = rule(vec![contains(MatchField::Merchant, "netto")], "groceries");
         check!(!match_rule(&txn, &r));
     }
 
@@ -395,19 +470,12 @@ mod tests {
     fn first_matching_rule_wins() {
         let txn = transaction(Some("NETTO 5567 K.2"), Some("Cieszyn"), None, "Płatność kartą");
         let rules = vec![
+            rule(vec![contains(MatchField::Merchant, "netto")], "groceries"),
             rule(
-                MatchCriteria {
-                    merchant_contains: Some("netto".to_string()),
-                    ..Default::default()
-                },
-                "groceries",
-            ),
-            rule(
-                MatchCriteria {
-                    merchant_contains: Some("netto".to_string()),
-                    city: Some("CIESZYN".to_string()),
-                    ..Default::default()
-                },
+                vec![
+                    contains(MatchField::Merchant, "netto"),
+                    contains(MatchField::City, "CIESZYN"),
+                ],
                 "groceries-cieszyn",
             ),
         ];
@@ -418,13 +486,7 @@ mod tests {
     #[test]
     fn no_match_returns_none() {
         let txn = transaction(Some("UNKNOWN SHOP"), None, None, "Płatność kartą");
-        let rules = vec![rule(
-            MatchCriteria {
-                merchant_contains: Some("netto".to_string()),
-                ..Default::default()
-            },
-            "groceries",
-        )];
+        let rules = vec![rule(vec![contains(MatchField::Merchant, "netto")], "groceries")];
         check!(categorize(&txn, &rules) == None);
     }
 
@@ -436,8 +498,8 @@ mod tests {
         let path = dir.join(format!("csv_import_rules_test_{}.toml", std::process::id()));
         std::fs::write(
             &path,
-            "[[matching_rules]]\ncategory = \"groceries\"\n[matching_rules.match]\nmerchant_contains = \"netto\"\n\n\
-             [[matching_rules]]\ncategory = \"local\"\n[matching_rules.match]\ncity = \"Cieszyn\"\nraw_type = \"Płatność kartą\"\n",
+            "[[matching_rules]]\ncategory = \"groceries\"\n[[matching_rules.match]]\nfield = \"merchant\"\ncontains = \"netto\"\n\n\
+             [[matching_rules]]\ncategory = \"local\"\n[[matching_rules.match]]\nfield = \"city\"\ncontains = \"Cieszyn\"\n[[matching_rules.match]]\nfield = \"raw_type\"\ncontains = \"Płatność kartą\"\n",
         )
         .unwrap();
 
@@ -446,9 +508,9 @@ mod tests {
 
         check!(rules.len() == 2);
         check!(rules[0].category == "groceries");
-        check!(rules[0].pattern.merchant_contains == Some("netto".to_string()));
+        check!(rules[0].pattern.0 == vec![contains(MatchField::Merchant, "netto")]);
         check!(rules[1].category == "local");
-        check!(rules[1].pattern.city == Some("Cieszyn".to_string()));
+        check!(rules[1].pattern.0[0] == contains(MatchField::City, "Cieszyn"));
     }
 
     /// Loading a file that doesn't exist is a clear `RulesError::Io`, not a
@@ -470,20 +532,8 @@ mod tests {
         ));
 
         let rules = vec![
-            rule(
-                MatchCriteria {
-                    merchant_contains: Some("netto".to_string()),
-                    ..Default::default()
-                },
-                "groceries",
-            ),
-            rule(
-                MatchCriteria {
-                    city: Some("Cieszyn".to_string()),
-                    ..Default::default()
-                },
-                "local",
-            ),
+            rule(vec![contains(MatchField::Merchant, "netto")], "groceries"),
+            rule(vec![contains(MatchField::City, "Cieszyn")], "local"),
         ];
 
         save_rules(&path, &rules).unwrap();
