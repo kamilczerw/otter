@@ -13,10 +13,10 @@
 
 ## 3. Budget summary: paid as magnitude
 
-- [ ] 3.1 Change `SqliteTransactionRepository::sum_by_entry`'s query (`backend/crates/db/src/repos/transaction_repo.rs`) from `SUM(amount)` to `SUM(ABS(amount))`.
-- [ ] 3.2 Add a test for `sum_by_entry` with a negative (expense) transaction, asserting the returned total is positive; add a test with a positive (income) transaction, asserting the total is also positive.
-- [ ] 3.3 Add a `SummaryService` test (or extend an existing one) with an income-category entry (positive-amount transactions) whose `paid` equals `budgeted`, asserting the derived status is `OnBudget`, not `Overspent`.
-- [ ] 3.4 Run `nix build ./nix#backend-tests-cargo` and verify the `db` and `domain` crates' tests pass.
+- [x] 3.1 Change `SqliteTransactionRepository::sum_by_entry`'s query (`backend/crates/db/src/repos/transaction_repo.rs`) from `SUM(amount)` to `SUM(ABS(amount))`.
+- [x] 3.2 Add a test for `sum_by_entry` with a negative (expense) transaction, asserting the returned total is positive; add a test with a positive (income) transaction, asserting the total is also positive.
+- [x] 3.3 Add a `SummaryService` test (or extend an existing one) with an income-category entry (positive-amount transactions) whose `paid` equals `budgeted`, asserting the derived status is `OnBudget`, not `Overspent`.
+- [x] 3.4 Run `nix build ./nix#backend-tests-cargo` and verify the `db` and `domain` crates' tests pass.
 
 ## 4. CSV import: preserve the bank's sign
 

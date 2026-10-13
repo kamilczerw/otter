@@ -250,16 +250,25 @@ impl TransactionRepository for SqliteTransactionRepository {
             .collect()
     }
 
+    /// Sums the magnitude of all transactions recorded against an entry.
+    ///
+    /// Amounts are summed as absolute values (`SUM(ABS(amount))`) so that
+    /// expense transactions (negative amounts) and income transactions
+    /// (positive amounts) both contribute a positive "paid" total. This is
+    /// an intentional magnitude sum, not ledger-accurate netting; a refund
+    /// recorded in the same category as its original expense will not
+    /// offset it.
     async fn sum_by_entry(
         &self,
         entry_id: &ulid::Ulid,
     ) -> Result<Money, TransactionError> {
-        let row =
-            sqlx::query("SELECT COALESCE(SUM(amount), 0) AS total FROM transactions WHERE entry_id = ?")
-                .bind(entry_id.to_string())
-                .fetch_one(&self.pool)
-                .await
-                .map_err(|e| TransactionError::Repository(e.to_string()))?;
+        let row = sqlx::query(
+            "SELECT COALESCE(SUM(ABS(amount)), 0) AS total FROM transactions WHERE entry_id = ?",
+        )
+        .bind(entry_id.to_string())
+        .fetch_one(&self.pool)
+        .await
+        .map_err(|e| TransactionError::Repository(e.to_string()))?;
 
         let total: i64 = row.get("total");
         Ok(Money::new(total))
@@ -369,6 +378,48 @@ mod tests {
         .unwrap();
 
         entry_id
+    }
+
+    #[tokio::test]
+    async fn sum_by_entry_returns_magnitude_for_expense_transaction() {
+        let pool = setup_pool().await;
+        let repo = SqliteTransactionRepository::new(pool.clone());
+        let entry_id = seed_entry(&pool).await;
+        let date: TransactionDate = "2026-01-15".parse().unwrap();
+
+        repo.create(NewTransaction {
+            entry_id,
+            amount: Money::new(-1500),
+            date,
+            title: None,
+        })
+        .await
+        .unwrap();
+
+        let total = repo.sum_by_entry(&entry_id).await.unwrap();
+
+        assert_eq!(total, Money::new(1500));
+    }
+
+    #[tokio::test]
+    async fn sum_by_entry_returns_magnitude_for_income_transaction() {
+        let pool = setup_pool().await;
+        let repo = SqliteTransactionRepository::new(pool.clone());
+        let entry_id = seed_entry(&pool).await;
+        let date: TransactionDate = "2026-01-15".parse().unwrap();
+
+        repo.create(NewTransaction {
+            entry_id,
+            amount: Money::new(1500),
+            date,
+            title: None,
+        })
+        .await
+        .unwrap();
+
+        let total = repo.sum_by_entry(&entry_id).await.unwrap();
+
+        assert_eq!(total, Money::new(1500));
     }
 
     #[tokio::test]
