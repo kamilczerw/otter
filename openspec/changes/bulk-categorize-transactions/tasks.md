@@ -22,7 +22,7 @@
 
 ## 4. Frontend: review queue view
 
-- [ ] 4.1 Add typed API client functions for the three new endpoints in `frontend/src/api/` (new `uncategorized.ts`, following `transactions.ts`'s patterns), with types added to `types.ts`.
+- [x] 4.1 Add typed API client functions for the three new endpoints in `frontend/src/api/` (new `uncategorized.ts`, following `transactions.ts`'s patterns), with types added to `types.ts`.
 - [ ] 4.2 Add a review-queue component (e.g. `UncategorizedReviewView.vue`) under `frontend/src/views/`: shows the head transaction's import metadata, an editable criteria-list form (field/match-type/pattern per criterion, add/remove criterion), a live match-count preview (debounced call to the preview endpoint on edit), a category picker, and a save-and-apply action that reloads the next head transaction and updated count.
 - [ ] 4.3 Add a route and navigation entry point to the new view, following the existing router/bottom-navigation conventions.
 - [ ] 4.4 Verify with `npm run type-check` and a manual run through `npm run dev`: import a CSV producing uncategorized transactions, confirm the queue count, save a rule from the first transaction, confirm the count drops by the expected amount and the queue advances.

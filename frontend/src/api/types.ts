@@ -117,6 +117,44 @@ export interface PaginatedTransactionsResponse {
   has_more: boolean
 }
 
+// Field a bulk-categorization rule can match against.
+export type MatchField = 'merchant' | 'raw_type' | 'city' | 'country' | 'description'
+
+// A single match condition for bulk-categorization rules.
+// Exactly one of `contains`/`regex` is set (backend validates/enforces this).
+export interface MatchCriterion {
+  field: MatchField
+  contains?: string | null
+  regex?: string | null
+}
+
+export interface UncategorizedHead {
+  transaction: Transaction
+  derived_rule: MatchCriterion[] | null
+}
+
+export interface UncategorizedQueue {
+  remaining: number
+  head: UncategorizedHead | null
+}
+
+export interface PreviewRuleRequest {
+  criteria: MatchCriterion[]
+}
+
+export interface PreviewRuleResponse {
+  count: number
+}
+
+export interface SaveRuleRequest {
+  criteria: MatchCriterion[]
+  category: string
+}
+
+export interface SaveRuleResponse {
+  remaining: number
+}
+
 // Error types
 export interface ApiErrorResponse {
   error: {
