@@ -47,6 +47,13 @@
             <div v-if="head.transaction.metadata.currency">
               {{ $t('transactions.currency') }}: {{ head.transaction.metadata.currency }}
             </div>
+            <div
+              v-if="head.transaction.metadata.raw_description"
+              :class="showFullDescription ? 'description-full' : 'description-truncated'"
+              @click="showFullDescription = !showFullDescription"
+            >
+              {{ $t('transactions.rawDescription') }}: {{ head.transaction.metadata.raw_description }}
+            </div>
           </template>
           <v-alert v-else type="info" variant="tonal" density="compact" class="mt-2">
             {{ $t('uncategorized.noMetadata') }}
@@ -136,6 +143,7 @@ const rows = ref<CriterionRow[]>([])
 const category = ref<string>('')
 const categoryNames = ref<string[]>([])
 const previewCount = ref<number | null>(null)
+const showFullDescription = ref(false)
 
 let nextRowId = 0
 let previewTimer: ReturnType<typeof setTimeout> | undefined
@@ -193,6 +201,7 @@ function resetFormForHead(newHead: UncategorizedHead | null): void {
   rows.value = rowsFromDerivedRule(newHead?.derived_rule ?? null)
   category.value = ''
   previewCount.value = null
+  showFullDescription.value = false
 }
 
 /**
@@ -342,5 +351,17 @@ onMounted(async () => {
 
 .mb-6 {
   margin-bottom: 24px;
+}
+
+.description-truncated {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.description-full {
+  white-space: normal;
+  cursor: pointer;
 }
 </style>
