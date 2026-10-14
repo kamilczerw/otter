@@ -23,42 +23,8 @@
         </p>
 
         <!-- Head transaction details -->
-        <v-card variant="tonal" class="mb-4 pa-3">
-          <div class="text-caption text-medium-emphasis mb-2">{{ $t('uncategorized.headTransaction') }}</div>
-          <div>{{ $t('transactions.title') }}: {{ head.transaction.title || $t('transactions.noTitle') }}</div>
-          <div>{{ $t('transactions.amount') }}: {{ formatCurrency(head.transaction.amount) }}</div>
-          <div>{{ $t('transactions.date') }}: {{ head.transaction.date }}</div>
-          <template v-if="head.transaction.metadata">
-            <div v-if="head.transaction.metadata.merchant">
-              {{ $t('transactions.merchant') }}: {{ head.transaction.metadata.merchant }}
-            </div>
-            <div v-if="head.transaction.metadata.city">
-              {{ $t('transactions.city') }}: {{ head.transaction.metadata.city }}
-            </div>
-            <div v-if="head.transaction.metadata.country">
-              {{ $t('transactions.country') }}: {{ head.transaction.metadata.country }}
-            </div>
-            <div v-if="head.transaction.metadata.raw_type">
-              {{ $t('transactions.rawType') }}: {{ head.transaction.metadata.raw_type }}
-            </div>
-            <div v-if="head.transaction.metadata.card_last4">
-              {{ $t('transactions.cardLast4') }}: {{ head.transaction.metadata.card_last4 }}
-            </div>
-            <div v-if="head.transaction.metadata.currency">
-              {{ $t('transactions.currency') }}: {{ head.transaction.metadata.currency }}
-            </div>
-            <div
-              v-if="head.transaction.metadata.raw_description"
-              :class="showFullDescription ? 'description-full' : 'description-truncated'"
-              @click="showFullDescription = !showFullDescription"
-            >
-              {{ $t('transactions.rawDescription') }}: {{ head.transaction.metadata.raw_description }}
-            </div>
-          </template>
-          <v-alert v-else type="info" variant="tonal" density="compact" class="mt-2">
-            {{ $t('uncategorized.noMetadata') }}
-          </v-alert>
-        </v-card>
+        <div class="text-caption text-medium-emphasis mb-2">{{ $t('uncategorized.headTransaction') }}</div>
+        <TransactionDetailCard :transaction="head.transaction" class="mb-4" />
 
         <!-- Criteria editor -->
         <div class="glass-card pa-3 mb-4">
@@ -117,8 +83,8 @@ import { uncategorizedApi } from '@/api/uncategorized'
 import { categoriesApi } from '@/api/categories'
 import { ApiError } from '@/api/types'
 import type { MatchCriterion, MatchField, UncategorizedHead } from '@/api/types'
-import { formatCurrency } from '@/utils/currency'
 import MatchCriterionRow from '@/components/uncategorized/MatchCriterionRow.vue'
+import TransactionDetailCard from '@/components/transactions/TransactionDetailCard.vue'
 
 const { t } = useI18n()
 const route = useRoute()
@@ -143,7 +109,6 @@ const rows = ref<CriterionRow[]>([])
 const category = ref<string>('')
 const categoryNames = ref<string[]>([])
 const previewCount = ref<number | null>(null)
-const showFullDescription = ref(false)
 
 let nextRowId = 0
 let previewTimer: ReturnType<typeof setTimeout> | undefined
@@ -201,7 +166,6 @@ function resetFormForHead(newHead: UncategorizedHead | null): void {
   rows.value = rowsFromDerivedRule(newHead?.derived_rule ?? null)
   category.value = ''
   previewCount.value = null
-  showFullDescription.value = false
 }
 
 /**
@@ -350,17 +314,5 @@ onMounted(async () => {
 
 .mb-6 {
   margin-bottom: 24px;
-}
-
-.description-truncated {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  cursor: pointer;
-}
-
-.description-full {
-  white-space: normal;
-  cursor: pointer;
 }
 </style>

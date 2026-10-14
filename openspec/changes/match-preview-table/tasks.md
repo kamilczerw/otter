@@ -13,9 +13,9 @@
 
 ## 3. Frontend: shared `TransactionDetailCard` component
 
-- [ ] 3.1 Extract the head-card markup (`frontend/src/views/UncategorizedReviewView.vue` lines 26–61: title/amount/date/metadata fields, raw-description truncate/expand) into `frontend/src/components/transactions/TransactionDetailCard.vue`, taking `transaction: Transaction` as a prop.
-- [ ] 3.2 Replace the head card's inline markup with `<TransactionDetailCard>` and verify existing tests in `UncategorizedReviewView.spec.ts` / `UncategorizedReviewView.descriptions.spec.ts` still pass unmodified (no behavior change).
-- [ ] 3.3 Add `TransactionDetailCard.spec.ts` covering metadata presence/absence and the raw-description expand toggle.
+- [x] 3.1 Extract the head-card markup (`frontend/src/views/UncategorizedReviewView.vue` lines 26–61: title/amount/date/metadata fields, raw-description truncate/expand) into `frontend/src/components/transactions/TransactionDetailCard.vue`, taking `transaction: Transaction` as a prop.
+- [x] 3.2 Replace the head card's inline markup with `<TransactionDetailCard>` and verify existing tests in `UncategorizedReviewView.spec.ts` / `UncategorizedReviewView.descriptions.spec.ts` still pass unmodified (no behavior change).
+- [x] 3.3 Add `TransactionDetailCard.spec.ts` covering metadata presence/absence and the raw-description expand toggle.
 
 ## 4. Frontend: `MatchPreviewTable` component
 
