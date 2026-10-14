@@ -59,6 +59,19 @@
             @load-more="handleLoadMoreMatches"
             @row-click="(t) => { peekTransaction = t }"
           />
+
+          <v-bottom-sheet :model-value="peekTransaction !== null" @update:model-value="(v) => { if (!v) peekTransaction = null }">
+            <v-card v-if="peekTransaction">
+              <v-card-title>{{ $t('uncategorized.transactionDetails') }}</v-card-title>
+              <v-card-text>
+                <TransactionDetailCard :transaction="peekTransaction" />
+              </v-card-text>
+              <v-card-actions>
+                <v-spacer />
+                <v-btn variant="text" @click="peekTransaction = null">{{ $t('common.close') }}</v-btn>
+              </v-card-actions>
+            </v-card>
+          </v-bottom-sheet>
         </div>
 
         <!-- Category + save -->
