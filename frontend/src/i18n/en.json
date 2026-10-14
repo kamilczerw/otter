@@ -119,6 +119,7 @@
     "matchCount": "Matches {count} uncategorized transactions",
     "showOtherMatches": "Show {count} other matches",
     "hideOtherMatches": "Hide other matches",
+    "transactionDetails": "Transaction details",
     "category": "Category",
     "saveAndApply": "Save & Apply",
     "fields": {

@@ -25,8 +25,8 @@
 
 ## 5. Frontend: wire into `UncategorizedReviewView`
 
-- [ ] 5.1 Add view state: `matchedTransactions`, `matchesExpanded`, `otherCount`, `hasMoreMatches`, `matchesLoading`, `peekTransaction`.
-- [ ] 5.2 Mount `<MatchPreviewTable>` below the existing match-count text, bound to that state.
+- [x] 5.1 Add view state: `matchedTransactions`, `matchesExpanded`, `otherCount`, `hasMoreMatches`, `matchesLoading`, `peekTransaction`.
+- [x] 5.2 Mount `<MatchPreviewTable>` below the existing match-count text, bound to that state.
 - [ ] 5.3 On `toggle`: flip `matchesExpanded`; if expanding and `matchedTransactions` is empty for the current criteria, fetch page `{offset: 0, limit: 20}` with `exclude_transaction_id` set to the head transaction's id.
 - [ ] 5.4 Extend the existing debounced criteria-change handler (`schedulePreview`) so that, when `matchesExpanded` is true, it also re-fetches page `{offset: 0, limit: 20}` and replaces `matchedTransactions` — the count-only call stays as-is otherwise.
 - [ ] 5.5 On `load-more`: fetch the next page at `offset: matchedTransactions.length`, append results, update `hasMoreMatches` from whether the page returned a full page.

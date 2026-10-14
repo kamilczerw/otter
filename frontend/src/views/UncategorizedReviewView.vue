@@ -48,6 +48,17 @@
               {{ $t('uncategorized.matchCount', { count: previewCount }) }}
             </template>
           </p>
+
+          <MatchPreviewTable
+            :transactions="matchedTransactions"
+            :expanded="matchesExpanded"
+            :other-count="otherCount ?? 0"
+            :loading="matchesLoading"
+            :has-more="hasMoreMatches"
+            @toggle="matchesExpanded = !matchesExpanded"
+            @load-more="() => {}"
+            @row-click="(t) => { peekTransaction = t }"
+          />
         </div>
 
         <!-- Category + save -->
@@ -82,8 +93,9 @@ import { useRoute, useRouter } from 'vue-router'
 import { uncategorizedApi } from '@/api/uncategorized'
 import { categoriesApi } from '@/api/categories'
 import { ApiError } from '@/api/types'
-import type { MatchCriterion, MatchField, UncategorizedHead } from '@/api/types'
+import type { MatchCriterion, MatchField, Transaction, UncategorizedHead } from '@/api/types'
 import MatchCriterionRow from '@/components/uncategorized/MatchCriterionRow.vue'
+import MatchPreviewTable from '@/components/uncategorized/MatchPreviewTable.vue'
 import TransactionDetailCard from '@/components/transactions/TransactionDetailCard.vue'
 
 const { t } = useI18n()
@@ -109,6 +121,18 @@ const rows = ref<CriterionRow[]>([])
 const category = ref<string>('')
 const categoryNames = ref<string[]>([])
 const previewCount = ref<number | null>(null)
+
+/** Other transactions matching the current draft rule (excluding the head), for the preview table. */
+const matchedTransactions = ref<Transaction[]>([])
+/** Whether the match preview table is expanded to show the transaction list. */
+const matchesExpanded = ref(false)
+/** Total count of other matching transactions not yet loaded into `matchedTransactions`. */
+const otherCount = ref<number | null>(null)
+/** Whether more matching transactions exist beyond what's currently loaded. */
+const hasMoreMatches = ref(false)
+const matchesLoading = ref(false)
+/** Transaction clicked in the preview table, shown in a detail peek. */
+const peekTransaction = ref<Transaction | null>(null)
 
 let nextRowId = 0
 let previewTimer: ReturnType<typeof setTimeout> | undefined
