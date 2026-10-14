@@ -19,6 +19,7 @@
       <template v-else>
         <p class="text-body-2 text-medium-emphasis mb-4">
           {{ $t('uncategorized.remaining', { count: remaining }) }}
+          <template v-if="skip > 0">&middot; {{ $t('uncategorized.skippedCount', { count: skip }) }}</template>
         </p>
 
         <!-- Head transaction details -->
@@ -88,7 +89,10 @@
           {{ error }}
         </v-alert>
 
-        <div class="d-flex justify-end">
+        <div class="d-flex justify-end ga-2">
+          <v-btn variant="text" :loading="loading" @click="handleSkip">
+            {{ $t('uncategorized.skip') }}
+          </v-btn>
           <v-btn class="btn-primary-glass" :loading="saving" :disabled="!category" @click="handleSave">
             {{ $t('uncategorized.saveAndApply') }}
           </v-btn>
@@ -99,8 +103,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
+import { computed, ref, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useRoute, useRouter } from 'vue-router'
 import { uncategorizedApi } from '@/api/uncategorized'
 import { categoriesApi } from '@/api/categories'
 import { ApiError } from '@/api/types'
@@ -109,6 +114,8 @@ import { formatCurrency } from '@/utils/currency'
 import MatchCriterionRow from '@/components/uncategorized/MatchCriterionRow.vue'
 
 const { t } = useI18n()
+const route = useRoute()
+const router = useRouter()
 
 /** A single editable criterion row, with a stable id for v-for keys. */
 interface CriterionRow {
@@ -132,6 +139,27 @@ const previewCount = ref<number | null>(null)
 
 let nextRowId = 0
 let previewTimer: ReturnType<typeof setTimeout> | undefined
+
+/**
+ * The raw (un-wrapped) skip offset, sourced from the route's `skip` query param so that
+ * reloading the page preserves the user's position in the queue. Defaults to 0 for an
+ * absent or non-numeric value.
+ */
+const skip = computed<number>(() => {
+  const parsed = Number(route.query.skip)
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : 0
+})
+
+/**
+ * Updates the `skip` route query param without pushing a new history entry, since every
+ * skip/save click shouldn't pollute browser back/forward navigation.
+ *
+ * @param value - The new skip offset. A value of 0 clears the query param entirely.
+ */
+async function setSkip(value: number): Promise<void> {
+  const query = { ...route.query, skip: value > 0 ? String(value) : undefined }
+  await router.replace({ query })
+}
 
 /**
  * Builds a fresh criterion row with an empty pattern, assigning it a unique id.
@@ -174,7 +202,7 @@ async function loadQueue(): Promise<void> {
   loading.value = true
   error.value = ''
   try {
-    const queue = await uncategorizedApi.getQueue()
+    const queue = await uncategorizedApi.getQueue(skip.value)
     remaining.value = queue.remaining
     resetFormForHead(queue.head)
   } catch (e) {
@@ -194,6 +222,15 @@ async function loadCategoryNames(): Promise<void> {
   } catch (e) {
     console.error('Failed to load categories', e)
   }
+}
+
+/**
+ * Advances the queue past the current head without deciding on it, by incrementing the
+ * `skip` route query param and reloading the queue at the new offset.
+ */
+async function handleSkip(): Promise<void> {
+  await setSkip(skip.value + 1)
+  await loadQueue()
 }
 
 /** Adds a new empty criterion row to the editor. */
@@ -279,6 +316,7 @@ async function handleSave(): Promise<void> {
   saving.value = true
   try {
     await uncategorizedApi.saveRule({ criteria: buildCriteria(), category: category.value })
+    await setSkip(0)
     await loadQueue()
   } catch (e) {
     if (e instanceof ApiError) {

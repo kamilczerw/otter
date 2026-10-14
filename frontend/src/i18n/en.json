@@ -105,6 +105,8 @@
     "title": "Review Uncategorized",
     "allCaughtUp": "All caught up — no uncategorized transactions left",
     "remaining": "{count} uncategorized transactions remaining",
+    "skip": "Skip",
+    "skippedCount": "skipped: {count}",
     "headTransaction": "Transaction",
     "noMetadata": "No import details available — this transaction has no suggested rule",
     "criteria": "Match criteria",

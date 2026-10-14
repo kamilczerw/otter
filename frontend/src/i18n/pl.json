@@ -105,6 +105,8 @@
     "title": "Przegląd nieskategoryzowanych",
     "allCaughtUp": "Wszystko gotowe — brak nieskategoryzowanych transakcji",
     "remaining": "Pozostało {count} nieskategoryzowanych transakcji",
+    "skip": "Pomiń",
+    "skippedCount": "pominięto: {count}",
     "headTransaction": "Transakcja",
     "noMetadata": "Brak danych importu — dla tej transakcji nie można zasugerować reguły",
     "criteria": "Kryteria dopasowania",

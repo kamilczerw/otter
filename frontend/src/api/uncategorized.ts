@@ -13,8 +13,14 @@ import type {
 } from './types'
 
 export const uncategorizedApi = {
-  /** Fetches the current uncategorized-transaction queue (count remaining + next transaction to review). */
-  getQueue: () => client.get<UncategorizedQueue>('/transactions-review'),
+  /**
+   * Fetches the current uncategorized-transaction queue (count remaining + next transaction to review).
+   *
+   * @param skip - How many positions to advance past the queue's natural head, wrapping once it
+   *   reaches the end. Omitted or 0 fetches the natural head.
+   */
+  getQueue: (skip?: number) =>
+    client.get<UncategorizedQueue>('/transactions-review', skip ? { skip: String(skip) } : undefined),
   /** Previews how many transactions a candidate set of match criteria would select, without saving anything. */
   preview: (data: PreviewRuleRequest) =>
     client.post<PreviewRuleResponse>('/transactions-review/preview', data),
