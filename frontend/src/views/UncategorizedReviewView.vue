@@ -239,7 +239,6 @@ async function loadCategoryNames(): Promise<void> {
  */
 async function handleSkip(): Promise<void> {
   await setSkip(skip.value + 1)
-  await loadQueue()
 }
 
 /** Adds a new empty criterion row to the editor. */
@@ -314,6 +313,7 @@ function schedulePreview(): void {
 }
 
 watch(rows, schedulePreview, { deep: true })
+watch(skip, loadQueue)
 
 /**
  * Saves the current rule, applying it to all matching transactions, then
@@ -325,7 +325,6 @@ async function handleSave(): Promise<void> {
   saving.value = true
   try {
     await uncategorizedApi.saveRule({ criteria: buildCriteria(), category: category.value })
-    await setSkip(0)
     await loadQueue()
   } catch (e) {
     if (e instanceof ApiError) {
