@@ -55,8 +55,8 @@
             :other-count="otherCount ?? 0"
             :loading="matchesLoading"
             :has-more="hasMoreMatches"
-            @toggle="matchesExpanded = !matchesExpanded"
-            @load-more="() => {}"
+            @toggle="handleToggleMatches"
+            @load-more="handleLoadMoreMatches"
             @row-click="(t) => { peekTransaction = t }"
           />
         </div>
@@ -93,7 +93,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { uncategorizedApi } from '@/api/uncategorized'
 import { categoriesApi } from '@/api/categories'
 import { ApiError } from '@/api/types'
-import type { MatchCriterion, MatchField, Transaction, UncategorizedHead } from '@/api/types'
+import type { MatchCriterion, MatchField, PreviewRuleRequest, PreviewRuleResponse, Transaction, UncategorizedHead } from '@/api/types'
 import MatchCriterionRow from '@/components/uncategorized/MatchCriterionRow.vue'
 import MatchPreviewTable from '@/components/uncategorized/MatchPreviewTable.vue'
 import TransactionDetailCard from '@/components/transactions/TransactionDetailCard.vue'
@@ -275,8 +275,34 @@ function criteriaAreComplete(): boolean {
 }
 
 /**
- * Fetches a live match count for the current criteria from the API.
- * Skipped entirely when criteria are incomplete (empty pattern).
+ * Builds the preview request for the current draft rule. Collapsed table means a
+ * count-only request (cheap); expanded means also requesting the first page of actual
+ * matches, since the table needs them to render.
+ */
+function buildPreviewRequest(): PreviewRuleRequest {
+  const criteria = buildCriteria()
+  if (!matchesExpanded.value) return { criteria }
+  return { criteria, exclude_transaction_id: head.value!.transaction.id, page: { offset: 0, limit: 20 } }
+}
+
+/**
+ * Applies a page of matched transactions from a preview response into the table's state.
+ *
+ * @param result - The preview response containing a page of matches.
+ * @param options.replace - True to replace `matchedTransactions` (fresh load/refresh),
+ *   false to append (load-more pagination).
+ */
+function applyMatchPage(result: PreviewRuleResponse, options: { replace: boolean }): void {
+  const page = result.transactions ?? []
+  matchedTransactions.value = options.replace ? page : [...matchedTransactions.value, ...page]
+  otherCount.value = result.other_count ?? 0
+  hasMoreMatches.value = page.length === 20
+}
+
+/**
+ * Fetches a live match count for the current criteria from the API. When the preview
+ * table is expanded, the same request also carries a page of matches so the table stays
+ * in sync without a second round-trip. Skipped entirely when criteria are incomplete.
  */
 async function runPreview(): Promise<void> {
   if (!criteriaAreComplete()) {
@@ -284,13 +310,48 @@ async function runPreview(): Promise<void> {
     return
   }
   previewLoading.value = true
+  if (matchesExpanded.value) matchesLoading.value = true
   try {
-    const result = await uncategorizedApi.preview({ criteria: buildCriteria() })
+    const result = await uncategorizedApi.preview(buildPreviewRequest())
     previewCount.value = result.count
+    if (result.transactions !== undefined) applyMatchPage(result, { replace: true })
   } catch (e) {
     console.error('Failed to preview rule', e)
   } finally {
     previewLoading.value = false
+    matchesLoading.value = false
+  }
+}
+
+/**
+ * Toggles the match preview table open/closed, fetching the first page of matches on
+ * first expand (later toggles reuse whatever's already loaded).
+ */
+function handleToggleMatches(): void {
+  matchesExpanded.value = !matchesExpanded.value
+  if (matchesExpanded.value && matchedTransactions.value.length === 0) {
+    void runPreview()
+  }
+}
+
+/**
+ * Loads the next page of matched transactions for the expanded preview table, appending
+ * to what's already loaded. No-ops while a fetch is in flight or no more pages exist.
+ */
+async function handleLoadMoreMatches(): Promise<void> {
+  if (matchesLoading.value || !hasMoreMatches.value || !head.value) return
+  matchesLoading.value = true
+  try {
+    const result = await uncategorizedApi.preview({
+      criteria: buildCriteria(),
+      exclude_transaction_id: head.value.transaction.id,
+      page: { offset: matchedTransactions.value.length, limit: 20 },
+    })
+    applyMatchPage(result, { replace: false })
+  } catch (e) {
+    console.error('Failed to load more matched transactions', e)
+  } finally {
+    matchesLoading.value = false
   }
 }
 
