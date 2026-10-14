@@ -6,6 +6,9 @@ export default mergeConfig(
   defineConfig({
     test: {
       environment: 'jsdom',
+      // Vuetify's component barrel pulls in per-component .css imports that only
+      // Vite's pipeline (not vitest's default SSR externalization) knows how to handle.
+      server: { deps: { inline: ['vuetify'] } },
     },
   }),
 )
