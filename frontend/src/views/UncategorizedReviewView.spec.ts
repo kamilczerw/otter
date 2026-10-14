@@ -16,7 +16,10 @@ import * as directives from 'vuetify/directives'
 import { i18n } from '@/i18n'
 import { uncategorizedApi } from '@/api/uncategorized'
 import { categoriesApi } from '@/api/categories'
-import type { UncategorizedQueue } from '@/api/types'
+import type { PreviewRuleResponse, Transaction, UncategorizedQueue } from '@/api/types'
+import MatchCriterionRow from '@/components/uncategorized/MatchCriterionRow.vue'
+import MatchPreviewTable from '@/components/uncategorized/MatchPreviewTable.vue'
+import TransactionDetailCard from '@/components/transactions/TransactionDetailCard.vue'
 import UncategorizedReviewView from './UncategorizedReviewView.vue'
 
 vi.mock('@/api/uncategorized', () => ({
@@ -42,6 +45,13 @@ globalThis.ResizeObserver ??= class {
   unobserve() {}
   disconnect() {}
 } as unknown as typeof ResizeObserver
+
+// jsdom has no visualViewport; Vuetify's overlay positioning (used by v-bottom-sheet) reads it.
+// ponytail: minimal stub, upgrade to a shared test-setup file if more specs need it.
+globalThis.visualViewport ??= {
+  addEventListener() {},
+  removeEventListener() {},
+} as unknown as VisualViewport
 
 /** Minimal fake queue response with a head transaction, enough to render the form. */
 function makeQueue(): UncategorizedQueue {
@@ -142,5 +152,133 @@ describe('UncategorizedReviewView skip reactivity', () => {
     await vi.waitFor(() => expect(uncategorizedApi.saveRule).toHaveBeenCalledTimes(1))
     await vi.waitFor(() => expect(uncategorizedApi.getQueue).toHaveBeenCalledTimes(2))
     expect(uncategorizedApi.getQueue).toHaveBeenNthCalledWith(2, 4)
+  })
+})
+
+describe('UncategorizedReviewView match preview table', () => {
+  /** A matched "other" transaction fixture for the preview table's paginated responses. */
+  function makeMatchedTransaction(id: string): Transaction {
+    return {
+      id,
+      entry_id: 'e1',
+      amount: 500,
+      date: '2026-02-02',
+      title: `Matched ${id}`,
+      created_at: '2026-02-02T00:00:00Z',
+      updated_at: '2026-02-02T00:00:00Z',
+      tags: [],
+      metadata: null,
+    }
+  }
+
+  /** Clicks "Add criterion" and sets the new row's pattern, triggering the rows watcher. */
+  async function addCriterionWithPattern(wrapper: ReturnType<typeof mountView>, pattern: string): Promise<void> {
+    const addButton = wrapper.findAll('button').find((b) => b.text() === i18n.global.t('uncategorized.addCriterion'))
+    expect(addButton).toBeTruthy()
+    await addButton!.trigger('click')
+    const row = wrapper.findComponent(MatchCriterionRow)
+    await row.vm.$emit('update', { field: 'merchant', matchType: 'contains', pattern })
+  }
+
+  /** Edits an already-present criterion row's pattern, triggering the rows watcher. */
+  async function editCriterionPattern(wrapper: ReturnType<typeof mountView>, pattern: string): Promise<void> {
+    const row = wrapper.findComponent(MatchCriterionRow)
+    await row.vm.$emit('update', { field: 'merchant', matchType: 'contains', pattern })
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.mocked(uncategorizedApi.getQueue).mockResolvedValue(makeQueue())
+    vi.mocked(categoriesApi.list).mockResolvedValue([])
+  })
+
+  it('does not request a page while the table is collapsed, even across multiple criteria edits', async () => {
+    vi.mocked(uncategorizedApi.preview).mockResolvedValue({ count: 3 })
+    const router = await makeRouter('/uncategorized')
+    const wrapper = mountView(router)
+    await vi.waitFor(() => expect(uncategorizedApi.getQueue).toHaveBeenCalledTimes(1))
+    await flushPromises()
+
+    await addCriterionWithPattern(wrapper, 'foo')
+    await vi.waitFor(() => expect(uncategorizedApi.preview).toHaveBeenCalledTimes(1))
+
+    await editCriterionPattern(wrapper, 'foobar')
+    await vi.waitFor(() => expect(uncategorizedApi.preview).toHaveBeenCalledTimes(2))
+
+    const calls = vi.mocked(uncategorizedApi.preview).mock.calls
+    expect(calls.every(([req]) => req.page === undefined)).toBe(true)
+  })
+
+  it('fetches a page of matches when the table is expanded', async () => {
+    const matched = [makeMatchedTransaction('m1'), makeMatchedTransaction('m2')]
+    vi.mocked(uncategorizedApi.preview).mockImplementation(
+      async (req): Promise<PreviewRuleResponse> =>
+        req.page
+          ? { count: 2, other_count: 2, transactions: matched }
+          : { count: 2 },
+    )
+    const router = await makeRouter('/uncategorized')
+    const wrapper = mountView(router)
+    await vi.waitFor(() => expect(uncategorizedApi.getQueue).toHaveBeenCalledTimes(1))
+    await flushPromises()
+
+    await wrapper.findComponent(MatchPreviewTable).vm.$emit('toggle')
+
+    await vi.waitFor(() => expect(uncategorizedApi.preview).toHaveBeenCalledTimes(1))
+    const [req] = vi.mocked(uncategorizedApi.preview).mock.calls[0]
+    expect(req.page).toEqual({ offset: 0, limit: 20 })
+    expect(req.exclude_transaction_id).toBe('t1')
+
+    await vi.waitFor(() => expect(wrapper.findComponent(MatchPreviewTable).props('transactions')).toEqual(matched))
+  })
+
+  it('re-fetches the expanded table on a criteria change', async () => {
+    const firstPage = [makeMatchedTransaction('m1')]
+    const secondPage = [makeMatchedTransaction('m2'), makeMatchedTransaction('m3')]
+    vi.mocked(uncategorizedApi.preview).mockImplementation(async (req): Promise<PreviewRuleResponse> => {
+      if (!req.page) return { count: 1 }
+      return req.criteria.length === 0
+        ? { count: 1, other_count: 1, transactions: firstPage }
+        : { count: 2, other_count: 2, transactions: secondPage }
+    })
+    const router = await makeRouter('/uncategorized')
+    const wrapper = mountView(router)
+    await vi.waitFor(() => expect(uncategorizedApi.getQueue).toHaveBeenCalledTimes(1))
+    await flushPromises()
+
+    await wrapper.findComponent(MatchPreviewTable).vm.$emit('toggle')
+    await vi.waitFor(() => expect(wrapper.findComponent(MatchPreviewTable).props('transactions')).toEqual(firstPage))
+
+    await addCriterionWithPattern(wrapper, 'foo')
+
+    await vi.waitFor(() => expect(wrapper.findComponent(MatchPreviewTable).props('transactions')).toEqual(secondPage))
+    const pagedCalls = vi.mocked(uncategorizedApi.preview).mock.calls.filter(([req]) => req.page !== undefined)
+    expect(pagedCalls.length).toBeGreaterThanOrEqual(2)
+  })
+
+  it('opens the peek with the clicked transaction, not the head transaction', async () => {
+    const matched = [makeMatchedTransaction('m1'), makeMatchedTransaction('m2')]
+    vi.mocked(uncategorizedApi.preview).mockImplementation(
+      async (req): Promise<PreviewRuleResponse> =>
+        req.page
+          ? { count: 2, other_count: 2, transactions: matched }
+          : { count: 2 },
+    )
+    const router = await makeRouter('/uncategorized')
+    const wrapper = mountView(router)
+    await vi.waitFor(() => expect(uncategorizedApi.getQueue).toHaveBeenCalledTimes(1))
+    await flushPromises()
+
+    const table = wrapper.findComponent(MatchPreviewTable)
+    await table.vm.$emit('toggle')
+    await vi.waitFor(() => expect(table.props('transactions')).toEqual(matched))
+
+    await table.vm.$emit('row-click', matched[1])
+    await flushPromises()
+
+    const sheet = wrapper.findComponent({ name: 'VBottomSheet' })
+    expect(sheet.props('modelValue')).toBe(true)
+    const peekCard = sheet.findComponent(TransactionDetailCard)
+    expect(peekCard.props('transaction')).toEqual(matched[1])
   })
 })

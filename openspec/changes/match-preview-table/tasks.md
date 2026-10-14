@@ -31,8 +31,8 @@
 - [x] 5.4 Extend the existing debounced criteria-change handler (`schedulePreview`) so that, when `matchesExpanded` is true, it also re-fetches page `{offset: 0, limit: 20}` and replaces `matchedTransactions` — the count-only call stays as-is otherwise.
 - [x] 5.5 On `load-more`: fetch the next page at `offset: matchedTransactions.length`, append results, update `hasMoreMatches` from whether the page returned a full page.
 - [x] 5.6 On `row-click`: set `peekTransaction`, opening a `v-dialog` (or `v-bottom-sheet`) containing `<TransactionDetailCard>` for that transaction, with a close action and no save/cancel.
-- [ ] 5.7 Add/extend `UncategorizedReviewView.spec.ts` covering: table only fetches matches once expanded (not on every keystroke while collapsed), expanded table refreshes on criteria change, row click opens the peek with the correct transaction.
-- [ ] 5.8 Run `npm run type-check` and the frontend test suite, and confirm both pass.
+- [x] 5.7 Add/extend `UncategorizedReviewView.spec.ts` covering: table only fetches matches once expanded (not on every keystroke while collapsed), expanded table refreshes on criteria change, row click opens the peek with the correct transaction.
+- [x] 5.8 Run `npm run type-check` and the frontend test suite, and confirm both pass.
 
 ## 6. Manual verification
 
