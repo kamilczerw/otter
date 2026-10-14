@@ -8,8 +8,8 @@
 
 ## 2. Frontend: types and API client
 
-- [ ] 2.1 Add `exclude_transaction_id?: string` and `page?: { offset: number; limit: number }` to `PreviewRuleRequest`, and `other_count?: number` and `transactions?: TransactionResponse[]` to `PreviewRuleResponse` in `frontend/src/api/types.ts`.
-- [ ] 2.2 Verify `uncategorizedApi.preview` (`frontend/src/api/uncategorized.ts`) passes the new optional request fields through unchanged (no client-side logic needed beyond the existing `client.post` call).
+- [x] 2.1 Add `exclude_transaction_id?: string` and `page?: { offset: number; limit: number }` to `PreviewRuleRequest`, and `other_count?: number` and `transactions?: TransactionResponse[]` to `PreviewRuleResponse` in `frontend/src/api/types.ts`.
+- [x] 2.2 Verify `uncategorizedApi.preview` (`frontend/src/api/uncategorized.ts`) passes the new optional request fields through unchanged (no client-side logic needed beyond the existing `client.post` call).
 
 ## 3. Frontend: shared `TransactionDetailCard` component
 

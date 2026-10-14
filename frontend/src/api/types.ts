@@ -138,12 +138,25 @@ export interface UncategorizedQueue {
   head: UncategorizedHead | null
 }
 
+export interface PageRequest {
+  offset: number
+  limit: number
+}
+
 export interface PreviewRuleRequest {
   criteria: MatchCriterion[]
+  /** Omits this transaction id from the paged "other matches" view and its count (e.g. the head transaction, already shown elsewhere). */
+  exclude_transaction_id?: string
+  /** Requests a page of the rule's actual matches alongside `count`. Omitted means count-only. */
+  page?: PageRequest
 }
 
 export interface PreviewRuleResponse {
   count: number
+  /** Match total for the requested page, excluding `exclude_transaction_id`. Present only when `page` was requested. */
+  other_count?: number
+  /** The requested page of matching transactions, in queue order. Present only when `page` was requested. */
+  transactions?: Transaction[]
 }
 
 export interface SaveRuleRequest {
