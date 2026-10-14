@@ -19,9 +19,9 @@
 
 ## 4. Frontend: `MatchPreviewTable` component
 
-- [ ] 4.1 Create `frontend/src/components/uncategorized/MatchPreviewTable.vue`: props `transactions`, `expanded`, `otherCount`, `loading`, `hasMore`; emits `toggle`, `load-more`, `row-click`. Collapsed state renders a `▸ Show N other matches` toggle; expanded state renders a `v-table` (columns: date, title, amount, merchant) inside a fixed-height scrollable container.
-- [ ] 4.2 Add a scroll listener on the container that emits `load-more` when scrolled near the bottom (and not already loading/no more pages).
-- [ ] 4.3 Add `MatchPreviewTable.spec.ts` covering: toggle emits `toggle`, scrolling near the bottom emits `load-more` only when `hasMore` and not `loading`, clicking a row emits `row-click` with that transaction.
+- [x] 4.1 Create `frontend/src/components/uncategorized/MatchPreviewTable.vue`: props `transactions`, `expanded`, `otherCount`, `loading`, `hasMore`; emits `toggle`, `load-more`, `row-click`. Collapsed state renders a `▸ Show N other matches` toggle; expanded state renders a `v-table` (columns: date, title, amount, merchant) inside a fixed-height scrollable container.
+- [x] 4.2 Add a scroll listener on the container that emits `load-more` when scrolled near the bottom (and not already loading/no more pages).
+- [x] 4.3 Add `MatchPreviewTable.spec.ts` covering: toggle emits `toggle`, scrolling near the bottom emits `load-more` only when `hasMore` and not `loading`, clicking a row emits `row-click` with that transaction.
 
 ## 5. Frontend: wire into `UncategorizedReviewView`
 

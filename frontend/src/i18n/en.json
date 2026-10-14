@@ -117,6 +117,8 @@
     "regex": "Regex",
     "pattern": "Pattern",
     "matchCount": "Matches {count} uncategorized transactions",
+    "showOtherMatches": "Show {count} other matches",
+    "hideOtherMatches": "Hide other matches",
     "category": "Category",
     "saveAndApply": "Save & Apply",
     "fields": {

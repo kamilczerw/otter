@@ -117,6 +117,8 @@
     "regex": "Regex",
     "pattern": "Wzorzec",
     "matchCount": "Dopasowuje {count} nieskategoryzowanych transakcji",
+    "showOtherMatches": "Pokaż {count} innych dopasowań",
+    "hideOtherMatches": "Skryj inne dopasowania",
     "category": "Kategoria",
     "saveAndApply": "Zapisz i zastosuj",
     "fields": {
