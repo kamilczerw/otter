@@ -25,7 +25,7 @@ use crate::import::{
     find_or_create_category, find_or_create_entry, find_or_create_month, ImportDeps,
     MatchableImportDetails, UNCATEGORIZED,
 };
-use crate::requests::{PreviewRuleRequest, SaveRuleRequest};
+use crate::requests::{PageRequest, PreviewRuleRequest, SaveRuleRequest};
 use crate::responses::{
     MatchCriterionResponse, PreviewRuleResponse, SaveRuleResponse, TransactionResponse,
     UncategorizedHeadResponse, UncategorizedQueueResponse,
@@ -120,7 +120,10 @@ fn build_head_response(transaction: Transaction) -> UncategorizedHeadResponse {
 /// Previews a draft rule: reports how many transactions currently in the
 /// "uncategorized" category its match criteria would match, so the UI can
 /// show a live count before the rule is saved (saving is a separate, later
-/// endpoint).
+/// endpoint). When the request includes a `page`, the response also
+/// includes that page of the actual matching transactions (in queue order)
+/// and `other_count`, their total with `exclude_transaction_id` (if given)
+/// left out — `count` always reports every match regardless of exclusion.
 ///
 /// # Errors
 ///
@@ -133,7 +136,7 @@ fn build_head_response(transaction: Transaction) -> UncategorizedHeadResponse {
     tag = "uncategorized",
     request_body = PreviewRuleRequest,
     responses(
-        (status = 200, description = "Count of uncategorized transactions the draft rule matches", body = PreviewRuleResponse),
+        (status = 200, description = "Count of uncategorized transactions the draft rule matches, plus an optional page of them", body = PreviewRuleResponse),
         (status = 400, description = "A criterion set neither or both of `contains`/`regex`"),
     )
 )]
@@ -141,6 +144,11 @@ pub async fn preview_uncategorized_rule(
     State(state): State<AppState>,
     Json(request): Json<PreviewRuleRequest>,
 ) -> Result<Json<PreviewRuleResponse>, ApiError> {
+    let exclude_transaction_id = request.exclude_transaction_id.clone();
+    let page_request = request.page.as_ref().map(|page| PageRequest {
+        offset: page.offset,
+        limit: page.limit,
+    });
     let criteria = MatchCriteria::try_from(request)
         .map_err(|e| ApiError::bad_request(&e.to_string()))?;
     let rule = Rule {
@@ -154,16 +162,29 @@ pub async fn preview_uncategorized_rule(
         .list_by_category_name(UNCATEGORIZED)
         .await?;
 
+    let count = count_matches(&queue, &rule);
+    let (other_count, transactions) = match &page_request {
+        Some(page) => {
+            let page = build_match_page(&queue, &rule, exclude_transaction_id.as_deref(), page);
+            (Some(page.other_count), Some(page.transactions))
+        }
+        None => (None, None),
+    };
+
     Ok(Json(PreviewRuleResponse {
-        count: count_matches(&queue, &rule),
+        count,
+        other_count,
+        transactions,
     }))
 }
 
-/// Counts how many transactions in `queue` match `rule`. A transaction with
-/// no import metadata never matches (there's nothing for the criteria to
-/// check), mirroring [`build_head_response`]'s treatment of such
-/// transactions.
-fn count_matches(queue: &[Transaction], rule: &Rule) -> u32 {
+/// Filters `queue` down to the transactions `rule` matches, preserving the
+/// queue's existing order. A transaction with no import metadata never
+/// matches (there's nothing for the criteria to check), mirroring
+/// [`build_head_response`]'s treatment of such transactions. Shared by
+/// [`count_matches`] and [`build_match_page`] so both read the same filter
+/// logic.
+fn matching_transactions<'a>(queue: &'a [Transaction], rule: &Rule) -> Vec<&'a Transaction> {
     queue
         .iter()
         .filter(|transaction| {
@@ -172,7 +193,72 @@ fn count_matches(queue: &[Transaction], rule: &Rule) -> u32 {
                 .as_ref()
                 .is_some_and(|details| match_rule(&MatchableImportDetails(details), rule))
         })
-        .count() as u32
+        .collect()
+}
+
+/// Counts how many transactions in `queue` match `rule`. Always reports the
+/// overall total, regardless of any `exclude_transaction_id` a paged
+/// request might also carry — exclusion only ever affects
+/// [`build_match_page`]'s `other_count`/page.
+fn count_matches(queue: &[Transaction], rule: &Rule) -> u32 {
+    matching_transactions(queue, rule).len() as u32
+}
+
+/// Server-side cap on how many transactions a single previewed page can
+/// return, regardless of the `limit` a client requests — keeps a
+/// pathological request from forcing a huge response.
+const MAX_PREVIEW_PAGE_SIZE: u32 = 50;
+
+/// One page of a draft rule's actual matches, plus the match total it was
+/// sliced from (`other_count`) — both excluding `exclude_transaction_id`,
+/// if one was given.
+struct MatchPage {
+    other_count: u32,
+    transactions: Vec<TransactionResponse>,
+}
+
+/// Builds a page of `rule`'s matches in `queue`: `exclude_transaction_id`
+/// (if any) is dropped from the matches first, then `[offset, offset +
+/// limit)` is sliced out of what's left, with `limit` clamped to
+/// [`MAX_PREVIEW_PAGE_SIZE`]. An `offset` at or beyond the number of
+/// (post-exclusion) matches yields an empty page rather than an error.
+fn build_match_page(
+    queue: &[Transaction],
+    rule: &Rule,
+    exclude_transaction_id: Option<&str>,
+    page: &PageRequest,
+) -> MatchPage {
+    let matches = matches_excluding(queue, rule, exclude_transaction_id);
+    let limit = page.limit.min(MAX_PREVIEW_PAGE_SIZE) as usize;
+
+    let transactions = matches
+        .iter()
+        .skip(page.offset as usize)
+        .take(limit)
+        .map(|transaction| TransactionResponse::from((*transaction).clone()))
+        .collect();
+
+    MatchPage {
+        other_count: matches.len() as u32,
+        transactions,
+    }
+}
+
+/// `rule`'s matches in `queue`, with `exclude_transaction_id` (if any)
+/// dropped from the result — the shared filtering step behind
+/// [`build_match_page`]'s page and its `other_count`.
+fn matches_excluding<'a>(
+    queue: &'a [Transaction],
+    rule: &Rule,
+    exclude_transaction_id: Option<&str>,
+) -> Vec<&'a Transaction> {
+    matching_transactions(queue, rule)
+        .into_iter()
+        .filter(|transaction| match exclude_transaction_id {
+            Some(excluded_id) => transaction.id.to_string() != excluded_id,
+            None => true,
+        })
+        .collect()
 }
 
 /// Derives the starting rule's match criteria from `import_details`, via
@@ -417,5 +503,94 @@ mod tests {
         assert_eq!(build_queue_response(queue(), 4).remaining, 3);
         assert_eq!(head_id(0), head_id(3), "skip == remaining wraps to the head");
         assert_eq!(head_id(1), head_id(4), "skip > remaining wraps consistently");
+    }
+
+    /// Builds a queue of `n` transactions that all match any rule with no
+    /// criteria (vacuous AND), each carrying distinct merchant import
+    /// details so they're individually identifiable by id.
+    fn matching_queue(n: usize) -> Vec<Transaction> {
+        (0..n)
+            .map(|i| {
+                let details = ImportDetails {
+                    source: "csv_import".to_string(),
+                    merchant: Some(format!("MERCHANT {i}")),
+                    city: None,
+                    country: None,
+                    card_last4: None,
+                    raw_type: None,
+                    currency: None,
+                    raw_description: None,
+                    original_amount_fragment: None,
+                };
+                transaction_with_import_details(Some(details))
+            })
+            .collect()
+    }
+
+    /// A vacuous rule (no criteria) matches every transaction with import
+    /// details.
+    fn vacuous_rule() -> Rule {
+        Rule {
+            pattern: MatchCriteria(vec![]),
+            category: String::new(),
+        }
+    }
+
+    /// With no page requested, `build_match_page` is never called by the
+    /// handler — `count_matches` alone still reports the full total,
+    /// unaffected by any later pagination logic.
+    #[test]
+    fn count_matches_reports_full_total_without_paging() {
+        let queue = matching_queue(5);
+        assert_eq!(count_matches(&queue, &vacuous_rule()), 5);
+    }
+
+    /// Excluding a transaction id removes it from both the page and the
+    /// page's own total (`other_count`), but never from the overall
+    /// `count_matches` total.
+    #[test]
+    fn excluded_transaction_id_removed_from_page_and_other_count_only() {
+        let queue = matching_queue(3);
+        let excluded_id = queue[0].id.to_string();
+        let rule = vacuous_rule();
+        let page_request = PageRequest { offset: 0, limit: 10 };
+
+        let page = build_match_page(&queue, &rule, Some(excluded_id.as_str()), &page_request);
+
+        assert_eq!(page.other_count, 2);
+        assert_eq!(page.transactions.len(), 2);
+        assert!(page.transactions.iter().all(|t| t.id != excluded_id));
+        assert_eq!(count_matches(&queue, &rule), 3, "overall count is unaffected");
+    }
+
+    /// Requesting an offset at or beyond the number of matches returns an
+    /// empty page (not an error).
+    #[test]
+    fn offset_past_the_end_returns_empty_page() {
+        let queue = matching_queue(3);
+        let rule = vacuous_rule();
+        let page_request = PageRequest { offset: 10, limit: 10 };
+
+        let page = build_match_page(&queue, &rule, None, &page_request);
+
+        assert_eq!(page.other_count, 3, "total is unaffected by paging past the end");
+        assert!(page.transactions.is_empty());
+    }
+
+    /// A requested `limit` above the server's fixed cap is silently
+    /// clamped, never returning more than `MAX_PREVIEW_PAGE_SIZE`
+    /// transactions in one page.
+    #[test]
+    fn limit_above_cap_is_clamped() {
+        let queue = matching_queue((MAX_PREVIEW_PAGE_SIZE + 10) as usize);
+        let rule = vacuous_rule();
+        let page_request = PageRequest {
+            offset: 0,
+            limit: MAX_PREVIEW_PAGE_SIZE + 10,
+        };
+
+        let page = build_match_page(&queue, &rule, None, &page_request);
+
+        assert_eq!(page.transactions.len(), MAX_PREVIEW_PAGE_SIZE as usize);
     }
 }

@@ -134,6 +134,15 @@ impl TryFrom<MatchCriterionRequest> for MatchCriterion {
     }
 }
 
+/// A requested slice of a larger result set: skip `offset` items, then take
+/// at most `limit`. Used by [`PreviewRuleRequest`] to page through a draft
+/// rule's actual matches instead of returning the whole queue at once.
+#[derive(Debug, Deserialize, ToSchema)]
+pub struct PageRequest {
+    pub offset: u32,
+    pub limit: u32,
+}
+
 /// Request body for `POST /api/v1/transactions-review/preview`: a
 /// draft rule's match criteria, ANDed together exactly like a saved
 /// [`csv_import::Rule`]'s `match` list, so the UI can preview how many
@@ -141,6 +150,19 @@ impl TryFrom<MatchCriterionRequest> for MatchCriterion {
 #[derive(Debug, Deserialize, ToSchema)]
 pub struct PreviewRuleRequest {
     pub criteria: Vec<MatchCriterionRequest>,
+    /// A transaction id to omit from the paged "other matches" view and its
+    /// count — e.g. the head transaction, since it's already shown
+    /// elsewhere in the review UI and showing it again in the match table
+    /// would be redundant. Never affects the overall `count`. Absent (or
+    /// `None`) excludes nothing.
+    #[serde(default)]
+    pub exclude_transaction_id: Option<String>,
+    /// When present, requests a page of the rule's actual matches (not just
+    /// their count) alongside the response's existing `count`. Absent means
+    /// the caller only wants the count, preserving today's response shape
+    /// exactly.
+    #[serde(default)]
+    pub page: Option<PageRequest>,
 }
 
 impl TryFrom<PreviewRuleRequest> for MatchCriteria {
@@ -196,5 +218,42 @@ mod double_option {
         D: Deserializer<'de>,
     {
         Deserialize::deserialize(deserializer).map(Some)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A preview request with only `criteria` (no `exclude_transaction_id`
+    /// or `page`) deserializes with both new fields defaulting to `None`,
+    /// so existing clients that predate pagination keep working unchanged.
+    #[test]
+    fn preview_request_without_paging_fields_deserializes() {
+        let json = r#"{ "criteria": [] }"#;
+        let request: PreviewRuleRequest = serde_json::from_str(json).unwrap();
+
+        assert!(request.exclude_transaction_id.is_none());
+        assert!(request.page.is_none());
+    }
+
+    /// A preview request with `exclude_transaction_id` and a `page`
+    /// deserializes both into their respective fields.
+    #[test]
+    fn preview_request_with_paging_fields_deserializes() {
+        let json = r#"{
+            "criteria": [],
+            "exclude_transaction_id": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+            "page": { "offset": 10, "limit": 20 }
+        }"#;
+        let request: PreviewRuleRequest = serde_json::from_str(json).unwrap();
+
+        assert_eq!(
+            request.exclude_transaction_id,
+            Some("01ARZ3NDEKTSV4RRFFQ69G5FAV".to_string())
+        );
+        let page = request.page.unwrap();
+        assert_eq!(page.offset, 10);
+        assert_eq!(page.limit, 20);
     }
 }

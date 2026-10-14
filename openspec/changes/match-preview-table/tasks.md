@@ -1,10 +1,10 @@
 ## 1. Backend: extend preview endpoint with pagination
 
-- [ ] 1.1 Add optional `exclude_transaction_id: Option<String>` and `page: Option<PageRequest>` (`PageRequest { offset: u32, limit: u32 }`) to `PreviewRuleRequest` (`backend/crates/api/src/requests/mod.rs`), each with a doc comment explaining purpose (`exclude_transaction_id`: omits the head transaction, already shown elsewhere in the review UI, from the returned "other matches" page and count), and verify it deserializes correctly with and without those fields.
-- [ ] 1.2 Add optional `other_count: Option<u32>` and `transactions: Option<Vec<TransactionResponse>>` to `PreviewRuleResponse` (`backend/crates/api/src/responses/mod.rs`).
-- [ ] 1.3 Extend `count_matches` (or add a sibling helper) in `backend/crates/api/src/handlers/uncategorized.rs` to optionally exclude a transaction id and slice `[offset, offset+limit)` out of the filtered matches, capping `limit` at a fixed server-side constant; verify with unit tests covering: no page requested (unchanged response), excluded id removed from both page and total, paging past the end returns empty, requested limit above the cap is clamped.
-- [ ] 1.4 Wire the new fields through `preview_uncategorized_rule`, returning `other_count`/`transactions` only when `page` was present in the request; verify via an integration test hitting `/transactions-review/preview` with and without `page`, confirming the count-only shape is byte-for-byte unchanged when omitted.
-- [ ] 1.5 Run `nix build ./nix#backend-tests-cargo` and confirm it passes.
+- [x] 1.1 Add optional `exclude_transaction_id: Option<String>` and `page: Option<PageRequest>` (`PageRequest { offset: u32, limit: u32 }`) to `PreviewRuleRequest` (`backend/crates/api/src/requests/mod.rs`), each with a doc comment explaining purpose (`exclude_transaction_id`: omits the head transaction, already shown elsewhere in the review UI, from the returned "other matches" page and count), and verify it deserializes correctly with and without those fields.
+- [x] 1.2 Add optional `other_count: Option<u32>` and `transactions: Option<Vec<TransactionResponse>>` to `PreviewRuleResponse` (`backend/crates/api/src/responses/mod.rs`).
+- [x] 1.3 Extend `count_matches` (or add a sibling helper) in `backend/crates/api/src/handlers/uncategorized.rs` to optionally exclude a transaction id and slice `[offset, offset+limit)` out of the filtered matches, capping `limit` at a fixed server-side constant; verify with unit tests covering: no page requested (unchanged response), excluded id removed from both page and total, paging past the end returns empty, requested limit above the cap is clamped.
+- [x] 1.4 Wire the new fields through `preview_uncategorized_rule`, returning `other_count`/`transactions` only when `page` was present in the request; verify via an integration test hitting `/transactions-review/preview` with and without `page`, confirming the count-only shape is byte-for-byte unchanged when omitted.
+- [x] 1.5 Run `nix build ./nix#backend-tests-cargo` and confirm it passes.
 
 ## 2. Frontend: types and API client
 

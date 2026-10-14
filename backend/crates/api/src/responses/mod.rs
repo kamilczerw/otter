@@ -185,6 +185,20 @@ pub struct UncategorizedQueueResponse {
 #[derive(Debug, Serialize, ToSchema)]
 pub struct PreviewRuleResponse {
     pub count: u32,
+    /// The match total for the requested page, excluding
+    /// `exclude_transaction_id` if one was given — distinct from `count`,
+    /// which always reports every match regardless of exclusion. `None`
+    /// (and omitted from the JSON body) unless the request included a
+    /// `page`, so a count-only request's response is byte-for-byte
+    /// unchanged from before pagination existed.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub other_count: Option<u32>,
+    /// The requested page of matching transactions, in the queue's
+    /// existing order. `None` (and omitted from the JSON body) unless the
+    /// request included a `page`, for the same byte-compatibility reason
+    /// as `other_count`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub transactions: Option<Vec<TransactionResponse>>,
 }
 
 /// Response body for `POST /api/v1/transactions-review/rules`: how

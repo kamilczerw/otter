@@ -10,7 +10,11 @@
 //!
 //! `POST /api/v1/transactions-review/preview` coverage: broader vs.
 //! narrower draft rules, the empty-criteria vacuous match, a `regex`
-//! criterion end-to-end, and rejection of a malformed criterion.
+//! criterion end-to-end, rejection of a malformed criterion, and (per the
+//! `match-preview-table` change) the optional `page`/`exclude_transaction_id`
+//! fields — count-only responses staying byte-for-byte unchanged, a page's
+//! `other_count`/`transactions`, exclusion affecting only the page/other
+//! count, and paging past the end.
 //!
 //! `POST /api/v1/transactions-review/rules` coverage (task 3.3):
 //! saving a rule persists it and re-categorizes exactly the matching
@@ -256,6 +260,97 @@ async fn preview_counts_matches_by_specificity() {
     let (status, body) = preview_rule(&app.router, serde_json::json!({ "criteria": [] })).await;
     assert_eq!(status, StatusCode::OK);
     assert_eq!(body["count"], 3); // the 3 with import_details, not the one without
+}
+
+/// With no `page` in the request, the response body is byte-for-byte the
+/// count-only shape from before pagination existed: exactly `{"count":N}`,
+/// with no `other_count`/`transactions` keys at all.
+#[tokio::test]
+async fn preview_without_page_is_byte_for_byte_count_only() {
+    let app = setup(vec![]).await;
+    let entry_id = uncategorized_entry_id(&app).await;
+    seed_transaction_under(&app, entry_id, Some(import_details(Some("NETTO 5567"), None))).await;
+
+    let response = app
+        .router
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/api/v1/transactions-review/preview")
+                .header("content-type", "application/json")
+                .body(Body::from(criteria_body(vec![("merchant", "netto")]).to_string()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+    let bytes = response.into_body().collect().await.unwrap().to_bytes();
+    assert_eq!(bytes.as_ref(), br#"{"count":1}"#);
+}
+
+/// With a `page` in the request, the response additionally includes
+/// `other_count` and `transactions`, while `count` still reports the
+/// overall total unaffected by `exclude_transaction_id`.
+#[tokio::test]
+async fn preview_with_page_returns_other_count_and_transactions() {
+    let app = setup(vec![]).await;
+    let entry_id = uncategorized_entry_id(&app).await;
+    seed_transaction_under(&app, entry_id, Some(import_details(Some("NETTO 5567 K.2"), None))).await;
+    seed_transaction_under(&app, entry_id, Some(import_details(Some("NETTO 1234 K.9"), None))).await;
+    seed_transaction_under(&app, entry_id, Some(import_details(Some("NETTO 42 ZZ"), None))).await;
+
+    let mut body = criteria_body(vec![("merchant", "netto")]);
+    body["page"] = serde_json::json!({ "offset": 0, "limit": 20 });
+    let (status, body) = preview_rule(&app.router, body).await;
+
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(body["count"], 3);
+    assert_eq!(body["other_count"], 3);
+    assert_eq!(body["transactions"].as_array().unwrap().len(), 3);
+}
+
+/// `exclude_transaction_id` drops that transaction from `other_count` and
+/// the page, but leaves the overall `count` untouched.
+#[tokio::test]
+async fn preview_excludes_transaction_from_other_count_and_page_only() {
+    let app = setup(vec![]).await;
+    let entry_id = uncategorized_entry_id(&app).await;
+    seed_transaction_under(&app, entry_id, Some(import_details(Some("NETTO 5567 K.2"), None))).await;
+    seed_transaction_under(&app, entry_id, Some(import_details(Some("NETTO 1234 K.9"), None))).await;
+
+    let (_, queue_body) = get_queue(&app.router).await;
+    let excluded_id = queue_body["head"]["transaction"]["id"].as_str().unwrap().to_string();
+
+    let mut body = criteria_body(vec![("merchant", "netto")]);
+    body["page"] = serde_json::json!({ "offset": 0, "limit": 20 });
+    body["exclude_transaction_id"] = serde_json::json!(excluded_id);
+    let (status, body) = preview_rule(&app.router, body).await;
+
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(body["count"], 2, "overall count is unaffected by exclusion");
+    assert_eq!(body["other_count"], 1);
+    let transactions = body["transactions"].as_array().unwrap();
+    assert_eq!(transactions.len(), 1);
+    assert_ne!(transactions[0]["id"], excluded_id);
+}
+
+/// Requesting a `page` with an `offset` past the number of matches returns
+/// an empty `transactions` list, not an error.
+#[tokio::test]
+async fn preview_page_past_the_end_is_empty() {
+    let app = setup(vec![]).await;
+    let entry_id = uncategorized_entry_id(&app).await;
+    seed_transaction_under(&app, entry_id, Some(import_details(Some("NETTO 5567"), None))).await;
+
+    let mut body = criteria_body(vec![("merchant", "netto")]);
+    body["page"] = serde_json::json!({ "offset": 10, "limit": 20 });
+    let (status, body) = preview_rule(&app.router, body).await;
+
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(body["other_count"], 1);
+    assert!(body["transactions"].as_array().unwrap().is_empty());
 }
 
 /// A `regex` criterion is honored end-to-end through the API, not just
