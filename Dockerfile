@@ -15,7 +15,7 @@ COPY frontend/ .
 RUN npm run build
 
 # --- Stage 2: Prepare dependency recipe ---
-FROM rust:1.85-slim AS chef-planner
+FROM rust:1.91-slim AS chef-planner
 
 RUN cargo install cargo-chef
 
@@ -26,7 +26,7 @@ COPY backend/crates/ crates/
 RUN cargo chef prepare --recipe-path recipe.json
 
 # --- Stage 3: Build backend ---
-FROM rust:1.85-slim AS backend-builder
+FROM rust:1.91-slim AS backend-builder
 
 ARG TARGETPLATFORM
 
