@@ -26,6 +26,7 @@ use db::repos::{
     SqliteBudgetEntryRepository, SqliteCategoryRepository, SqliteMonthRepository,
     SqliteTransactionRepository,
 };
+use db::MatchingRuleRepo;
 use domain::services::{
     CategoryService, EntryService, MonthService, SummaryService, TransactionService,
 };
@@ -74,6 +75,8 @@ async fn main() {
     let month_repo = Arc::new(SqliteMonthRepository::new(pool.clone()));
     let entry_repo = Arc::new(SqliteBudgetEntryRepository::new(pool.clone()));
     let transaction_repo = Arc::new(SqliteTransactionRepository::new(pool.clone()));
+    let rule_repo: Arc<dyn domain::ports::MatchingRuleRepository> =
+        Arc::new(MatchingRuleRepo::new(pool.clone()));
 
     // Create service instances
     let category_service = Arc::new(CategoryService::new(category_repo.clone()));
@@ -100,7 +103,7 @@ async fn main() {
         entry_service: entry_service.clone(),
         transaction_repo: transaction_repo.clone(),
         transaction_service: transaction_service.clone(),
-        rules_path: app_config.transaction.import.rules_file.clone(),
+        rule_repo: rule_repo.clone(),
         inline_rules: app_config.transaction.import.matching_rules.clone(),
     });
 

@@ -12,6 +12,7 @@ use db::repos::{
     SqliteBudgetEntryRepository, SqliteCategoryRepository, SqliteMonthRepository,
     SqliteTransactionRepository,
 };
+use db::MatchingRuleRepo;
 use domain::services::{
     CategoryService, EntryService, MonthService, SummaryService, TransactionService,
 };
@@ -36,6 +37,7 @@ async fn setup() -> Router {
     let month_repo = Arc::new(SqliteMonthRepository::new(pool.clone()));
     let entry_repo = Arc::new(SqliteBudgetEntryRepository::new(pool.clone()));
     let transaction_repo = Arc::new(SqliteTransactionRepository::new(pool.clone()));
+    let rule_repo = Arc::new(MatchingRuleRepo::new(pool.clone()));
 
     let category_service = Arc::new(CategoryService::new(category_repo.clone()));
     let month_service = Arc::new(MonthService::new(
@@ -64,10 +66,7 @@ async fn setup() -> Router {
         entry_service: entry_service.clone(),
         transaction_repo: transaction_repo.clone(),
         transaction_service: transaction_service.clone(),
-        rules_path: std::env::temp_dir().join(format!(
-            "otter_api_tests_no_rules_{}.toml",
-            ulid::Ulid::new()
-        )),
+        rule_repo,
         inline_rules: Vec::new(),
     });
 

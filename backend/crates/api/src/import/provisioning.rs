@@ -12,10 +12,12 @@ use chrono::{Datelike, NaiveDate};
 use ulid::Ulid;
 
 use domain::entities::{BudgetEntryWithCategory, Category, Month};
-use domain::errors::{CategoryError, DomainError, EntryError, MonthError, TransactionError};
-use domain::ports::{MonthRepository, TransactionRepository};
+use domain::errors::{CategoryError, DomainError, EntryError, MatchingRuleError, MonthError, TransactionError};
+use domain::ports::{MatchingRuleRepository, MonthRepository, TransactionRepository};
 use domain::services::{CategoryService, EntryService, MonthService, TransactionService};
 use domain::types::{BudgetMonth, CategoryName, Money};
+
+use crate::import::rule_conversion::domain_rule_to_csv_rule;
 
 /// Everything the import pipeline needs to resolve/create months,
 /// categories, budget entries, and transactions, plus the categorization
@@ -32,31 +34,32 @@ pub struct ImportDeps {
     /// detection, which has no service-level equivalent.
     pub transaction_repo: Arc<dyn TransactionRepository>,
     pub transaction_service: Arc<TransactionService>,
-    /// Path to the on-disk rules file (see `csv_import::load_rules_or_empty`).
-    /// Read fresh on every [`ImportDeps::current_rules`] call rather than
-    /// cached once at construction, so a rule saved mid-session (e.g. by the
+    /// DB-backed store of user-stored matching rules (see the
+    /// `add-rule-editor-ui` design doc). Queried fresh on every
+    /// [`ImportDeps::current_rules`] call rather than cached once at
+    /// construction, so a rule saved mid-session (e.g. by the
     /// bulk-categorize API) is picked up without restarting the server.
-    pub rules_path: std::path::PathBuf,
+    pub rule_repo: Arc<dyn MatchingRuleRepository>,
     /// Hand-curated rules from the config's `[transaction.import]
-    /// matching_rules]`, checked ahead of `rules_path`'s in
-    /// [`ImportDeps::current_rules`]. Unlike `rules_path`, never written to
+    /// matching_rules]`, checked ahead of `rule_repo`'s rules in
+    /// [`ImportDeps::current_rules`]. Unlike `rule_repo`, never written to
     /// by the bulk-categorize API.
     pub inline_rules: Vec<csv_import::Rule>,
 }
 
 impl ImportDeps {
     /// Loads the current set of categorization rules: `inline_rules`
-    /// followed by whatever's in `rules_path`, re-reading the file on every
-    /// call (see the field doc above) so a rule learned mid-session is
+    /// followed by every user-stored rule from `rule_repo`, queried fresh on
+    /// every call (see the field doc above) so a rule learned mid-session is
     /// picked up without restarting the server.
     ///
     /// # Errors
     ///
-    /// Returns [`csv_import::RulesError`] if `rules_path` exists but fails
-    /// to parse as valid rules TOML.
-    pub fn current_rules(&self) -> Result<Vec<csv_import::Rule>, csv_import::RulesError> {
+    /// Returns a [`MatchingRuleError`] if `rule_repo.list_all()` fails.
+    pub async fn current_rules(&self) -> Result<Vec<csv_import::Rule>, MatchingRuleError> {
         let mut rules = self.inline_rules.clone();
-        rules.extend(csv_import::load_rules_or_empty(&self.rules_path)?);
+        let user_rules = self.rule_repo.list_all().await?;
+        rules.extend(user_rules.into_iter().map(domain_rule_to_csv_rule));
         Ok(rules)
     }
 }
@@ -80,9 +83,10 @@ pub enum RowError {
     Entry(#[from] EntryError),
     #[error(transparent)]
     Transaction(#[from] TransactionError),
-    /// The categorization rules file exists but failed to parse.
+    /// Loading the current categorization rules (config defaults plus
+    /// user-stored rules) failed.
     #[error(transparent)]
-    Rules(#[from] csv_import::RulesError),
+    MatchingRule(#[from] MatchingRuleError),
 }
 
 /// Finds the `Month` covering `date`'s year/month, creating an empty month
@@ -183,11 +187,12 @@ mod tests {
         SqliteBudgetEntryRepository, SqliteCategoryRepository, SqliteMonthRepository,
         SqliteTransactionRepository,
     };
+    use db::MatchingRuleRepo;
 
     /// Builds `ImportDeps` backed by a fresh in-memory SQLite database,
     /// following the same setup pattern as the `api` crate's integration
     /// tests (there's no lighter-weight repository fake in this codebase).
-    /// `rules_path` is pointed at a nonexistent temp path, so
+    /// `rule_repo` is backed by that same empty database, so
     /// `current_rules()` resolves to an empty rule set (these tests don't
     /// exercise categorization).
     async fn test_deps() -> ImportDeps {
@@ -202,6 +207,7 @@ mod tests {
         let category_repo = Arc::new(SqliteCategoryRepository::new(pool.clone()));
         let entry_repo = Arc::new(SqliteBudgetEntryRepository::new(pool.clone()));
         let transaction_repo = Arc::new(SqliteTransactionRepository::new(pool.clone()));
+        let rule_repo = Arc::new(MatchingRuleRepo::new(pool.clone()));
 
         ImportDeps {
             month_repo: month_repo.clone(),
@@ -217,10 +223,7 @@ mod tests {
                 transaction_repo.clone(),
                 entry_repo.clone(),
             )),
-            rules_path: std::env::temp_dir().join(format!(
-                "otter_test_no_rules_{}.toml",
-                ulid::Ulid::new()
-            )),
+            rule_repo,
             inline_rules: Vec::new(),
         }
     }

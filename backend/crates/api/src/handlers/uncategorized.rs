@@ -22,8 +22,8 @@ use csv_import::{match_rule, MatchCriteria, Rule};
 
 use crate::errors::ApiError;
 use crate::import::{
-    find_or_create_category, find_or_create_entry, find_or_create_month, ImportDeps,
-    MatchableImportDetails, UNCATEGORIZED,
+    csv_rule_to_new_matching_rule, find_or_create_category, find_or_create_entry,
+    find_or_create_month, ImportDeps, MatchableImportDetails, UNCATEGORIZED,
 };
 use crate::requests::{PageRequest, PreviewRuleRequest, SaveRuleRequest};
 use crate::responses::{
@@ -339,15 +339,20 @@ fn reject_uncompilable_regexes(criteria: &MatchCriteria) -> Result<(), ApiError>
     Ok(())
 }
 
-/// Appends `rule` to the rules file at `deps.rules_path` and writes it
-/// back, so it's persisted before any transaction gets re-categorized
-/// against it. Deliberately reads only the file-based rules (not
-/// `deps.inline_rules`) — the config's inline rules aren't this function's
-/// to rewrite.
+/// Stores `rule` as a new user rule via `deps.rule_repo`, so it's persisted
+/// before any transaction gets re-categorized against it. Deliberately
+/// writes only to the DB-backed user rules (not `deps.inline_rules`) — the
+/// config's inline rules aren't this function's to rewrite.
+///
+/// # Errors
+///
+/// Returns an [`ApiError`] if `rule`'s criteria fail domain validation (e.g.
+/// an uncompilable regex — see [`csv_rule_to_new_matching_rule`], though
+/// `save_uncategorized_rule` already rejects those earlier via
+/// `reject_uncompilable_regexes`) or if the repository write fails.
 async fn persist_rule(deps: &ImportDeps, rule: Rule) -> Result<(), ApiError> {
-    let mut rules = csv_import::load_rules_or_empty(&deps.rules_path)?;
-    rules.push(rule);
-    csv_import::save_rules(&deps.rules_path, &rules)?;
+    let new_rule = csv_rule_to_new_matching_rule(rule)?;
+    deps.rule_repo.create(new_rule).await?;
     Ok(())
 }
 

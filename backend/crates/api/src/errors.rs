@@ -3,7 +3,7 @@ use axum::response::{IntoResponse, Response};
 use axum::Json;
 use serde_json::{json, Value};
 
-use domain::errors::{CategoryError, EntryError, MonthError, TransactionError};
+use domain::errors::{CategoryError, EntryError, MatchingRuleError, MonthError, TransactionError};
 
 use crate::import::RowError;
 
@@ -205,6 +205,36 @@ impl From<csv_import::RulesError> for ApiError {
     }
 }
 
+/// A [`MatchingRuleError`] from constructing, storing, or looking up a
+/// user-stored matching rule. `InvalidRegex` is the client's fault (a
+/// pattern that fails to compile) and maps to `400`; `NotFound` maps to
+/// `404`; any other repository failure is an operational issue and maps to
+/// `500`.
+impl From<MatchingRuleError> for ApiError {
+    fn from(err: MatchingRuleError) -> Self {
+        match err {
+            MatchingRuleError::InvalidRegex { pattern, reason } => ApiError {
+                status: StatusCode::BAD_REQUEST,
+                code: "MATCHING_RULE_INVALID_REGEX".into(),
+                details: Some(json!({ "pattern": pattern, "reason": reason })),
+            },
+            MatchingRuleError::NotFound => ApiError {
+                status: StatusCode::NOT_FOUND,
+                code: "MATCHING_RULE_NOT_FOUND".into(),
+                details: None,
+            },
+            MatchingRuleError::Repository(msg) => {
+                tracing::error!("Matching rule repository error: {}", msg);
+                ApiError {
+                    status: StatusCode::INTERNAL_SERVER_ERROR,
+                    code: "INTERNAL_ERROR".into(),
+                    details: None,
+                }
+            }
+        }
+    }
+}
+
 /// Maps a find-or-create failure from the import pipeline's provisioning
 /// helpers (also reused by the bulk-categorize endpoints) to the same HTTP
 /// status its wrapped domain error would map to on its own, except
@@ -219,7 +249,7 @@ impl From<RowError> for ApiError {
             RowError::Category(e) => e.into(),
             RowError::Entry(e) => e.into(),
             RowError::Transaction(e) => e.into(),
-            RowError::Rules(e) => e.into(),
+            RowError::MatchingRule(e) => e.into(),
         }
     }
 }

@@ -19,8 +19,8 @@
 //! `POST /api/v1/transactions-review/rules` coverage (task 3.3):
 //! saving a rule persists it and re-categorizes exactly the matching
 //! transactions, a later CSV import picks up the saved rule from the same
-//! shared rules file, and an invalid regex/category is rejected without
-//! touching the rules file or the queue.
+//! shared `MatchingRuleRepository`, and an invalid regex/category is
+//! rejected without touching the stored rules or the queue.
 
 mod common;
 
@@ -438,7 +438,7 @@ fn save_rule_body(criteria: Vec<(&str, &str)>, category: &str) -> Value {
     })
 }
 
-/// Saving a rule persists it to the rules file, re-categorizes exactly the
+/// Saving a rule persists it to the database, re-categorizes exactly the
 /// transactions it matches onto a budget entry under the new category, and
 /// leaves non-matching transactions untouched.
 #[tokio::test]
@@ -458,7 +458,7 @@ async fn saving_rule_persists_and_recategorizes_matches() {
     assert_eq!(status, StatusCode::OK);
     assert_eq!(body["remaining"], 1); // only the ZABKA one is left uncategorized
 
-    let rules = csv_import::load_rules(&app.import_deps.rules_path).unwrap();
+    let rules = app.import_deps.rule_repo.list_all().await.unwrap();
     assert_eq!(rules.len(), 1);
     assert_eq!(rules[0].category, "groceries");
 
@@ -484,7 +484,7 @@ async fn saving_rule_persists_and_recategorizes_matches() {
 }
 
 /// A rule saved via the API is picked up by a later CSV import through the
-/// same shared rules file, without reconstructing `ImportDeps`.
+/// same shared `rule_repo`, without reconstructing `ImportDeps`.
 #[tokio::test]
 async fn saved_rule_applies_to_later_import() {
     const FIXTURE_BYTES: &[u8] =
@@ -518,7 +518,7 @@ async fn saved_rule_applies_to_later_import() {
 }
 
 /// A `regex` criterion that fails to compile is rejected with a `400`,
-/// leaving the rules file and the queue untouched.
+/// leaving the stored rules and the queue untouched.
 #[tokio::test]
 async fn saving_rule_rejects_uncompilable_regex() {
     let app = setup(vec![]).await;
@@ -532,14 +532,14 @@ async fn saving_rule_rejects_uncompilable_regex() {
     let (status, _) = save_rule(&app.router, body).await;
 
     assert_eq!(status, StatusCode::BAD_REQUEST);
-    assert!(!app.import_deps.rules_path.exists());
+    assert!(app.import_deps.rule_repo.list_all().await.unwrap().is_empty());
 
     let (_, queue_body) = get_queue(&app.router).await;
     assert_eq!(queue_body["remaining"], 1);
 }
 
 /// An invalid (empty) category name is rejected with a `400`, leaving the
-/// rules file and the queue untouched.
+/// stored rules and the queue untouched.
 #[tokio::test]
 async fn saving_rule_rejects_invalid_category() {
     let app = setup(vec![]).await;
@@ -550,7 +550,7 @@ async fn saving_rule_rejects_invalid_category() {
     let (status, _) = save_rule(&app.router, body).await;
 
     assert_eq!(status, StatusCode::BAD_REQUEST);
-    assert!(!app.import_deps.rules_path.exists());
+    assert!(app.import_deps.rule_repo.list_all().await.unwrap().is_empty());
 
     let (_, queue_body) = get_queue(&app.router).await;
     assert_eq!(queue_body["remaining"], 1);

@@ -21,10 +21,12 @@ use db::repos::{
     SqliteBudgetEntryRepository, SqliteCategoryRepository, SqliteMonthRepository,
     SqliteTransactionRepository,
 };
+use db::MatchingRuleRepo;
+use domain::ports::MatchingRuleRepository;
 use domain::services::{CategoryService, EntryService, MonthService, SummaryService, TransactionService};
 
 use otter::handlers::AppState;
-use otter::import::ImportDeps;
+use otter::import::{csv_rule_to_new_matching_rule, ImportDeps};
 
 /// A fully wired test application: the router under test, plus the
 /// domain services backing it, so a test can both exercise the HTTP API
@@ -35,16 +37,15 @@ pub struct TestApp {
     pub category_service: Arc<CategoryService>,
     pub entry_service: Arc<EntryService>,
     pub transaction_service: Arc<TransactionService>,
-    /// Exposed so rule-saving tests can inspect the on-disk rules file
-    /// directly (e.g. to confirm a rejected request left it untouched).
+    /// Exposed so rule-saving tests can inspect the stored user rules
+    /// directly (e.g. to confirm a rejected request left them untouched).
     pub import_deps: Arc<ImportDeps>,
 }
 
 /// Builds a [`TestApp`] backed by a fresh in-memory SQLite database with
 /// migrations applied, wiring in `rules` as the import pipeline's
-/// categorization rules (written to a fresh temp rules file — an empty
-/// `rules` list is instead left pointing at a nonexistent path, which
-/// `ImportDeps::current_rules` treats as no rules).
+/// categorization rules (inserted as user-stored rules via `rule_repo`, the
+/// same path the "save rule" handler uses in production).
 ///
 /// Only `/imports` and the `/transactions-review` routes are mounted
 /// — this harness is shared by the import and uncategorized-queue test
@@ -60,6 +61,7 @@ pub async fn setup(rules: Vec<csv_import::Rule>) -> TestApp {
     let month_repo = Arc::new(SqliteMonthRepository::new(pool.clone()));
     let entry_repo = Arc::new(SqliteBudgetEntryRepository::new(pool.clone()));
     let transaction_repo = Arc::new(SqliteTransactionRepository::new(pool.clone()));
+    let rule_repo = Arc::new(MatchingRuleRepo::new(pool.clone()));
 
     let category_service = Arc::new(CategoryService::new(category_repo.clone()));
     let month_service = Arc::new(MonthService::new(month_repo.clone(), entry_repo.clone()));
@@ -78,12 +80,9 @@ pub async fn setup(rules: Vec<csv_import::Rule>) -> TestApp {
         month_repo.clone(),
     ));
 
-    let rules_path = std::env::temp_dir().join(format!(
-        "otter_api_test_rules_{}.toml",
-        ulid::Ulid::new()
-    ));
-    if !rules.is_empty() {
-        csv_import::save_rules(&rules_path, &rules).expect("failed to write test rules file");
+    for rule in rules {
+        let new_rule = csv_rule_to_new_matching_rule(rule).expect("test rule should convert cleanly");
+        rule_repo.create(new_rule).await.expect("failed to seed test rule");
     }
 
     let import_deps = Arc::new(ImportDeps {
@@ -93,7 +92,7 @@ pub async fn setup(rules: Vec<csv_import::Rule>) -> TestApp {
         entry_service: entry_service.clone(),
         transaction_repo: transaction_repo.clone(),
         transaction_service: transaction_service.clone(),
-        rules_path,
+        rule_repo,
         inline_rules: Vec::new(),
     });
 
