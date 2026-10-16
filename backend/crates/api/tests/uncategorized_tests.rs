@@ -372,6 +372,27 @@ async fn preview_supports_regex_criterion() {
     assert_eq!(body["count"], 1);
 }
 
+/// A `raw_fragments` criterion is honored end-to-end through the API: a
+/// transaction whose `ImportDetails.raw_fragments` contains the pattern is
+/// matched, and one without a `raw_fragments` value is not.
+#[tokio::test]
+async fn preview_supports_raw_fragments_criterion() {
+    let app = setup(vec![]).await;
+    let entry_id = uncategorized_entry_id(&app).await;
+    let mut with_fragments = import_details(Some("NETTO 5567 K.2"), None);
+    with_fragments.raw_fragments = Some("REF123 | EXTRA NOTE".to_string());
+    seed_transaction_under(&app, entry_id, Some(with_fragments)).await;
+    seed_transaction_under(&app, entry_id, Some(import_details(Some("ZABKA 42"), None))).await;
+
+    let body = serde_json::json!({
+        "criteria": [{ "field": "raw_fragments", "contains": "extra note" }],
+    });
+    let (status, body) = preview_rule(&app.router, body).await;
+
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(body["count"], 1);
+}
+
 /// A criterion setting neither `contains` nor `regex` is rejected as a bad
 /// request rather than silently matching nothing or everything.
 #[tokio::test]

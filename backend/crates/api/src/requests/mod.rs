@@ -83,6 +83,9 @@ pub enum MatchFieldRequest {
     City,
     Country,
     Description,
+    /// The transaction's joined, `" | "`-separated unmapped trailing CSV
+    /// columns, if any.
+    RawFragments,
 }
 
 impl From<MatchFieldRequest> for MatchField {
@@ -93,6 +96,7 @@ impl From<MatchFieldRequest> for MatchField {
             MatchFieldRequest::City => Self::City,
             MatchFieldRequest::Country => Self::Country,
             MatchFieldRequest::Description => Self::Description,
+            MatchFieldRequest::RawFragments => Self::RawFragments,
         }
     }
 }

@@ -149,6 +149,9 @@ pub enum MatchFieldResponse {
     City,
     Country,
     Description,
+    /// The transaction's joined, `" | "`-separated unmapped trailing CSV
+    /// columns, if any.
+    RawFragments,
 }
 
 /// Wire-format mirror of a [`MatchCriterion`]: a flat `{ field, contains,
@@ -220,6 +223,7 @@ impl From<MatchField> for MatchFieldResponse {
             MatchField::City => Self::City,
             MatchField::Country => Self::Country,
             MatchField::Description => Self::Description,
+            MatchField::RawFragments => Self::RawFragments,
         }
     }
 }

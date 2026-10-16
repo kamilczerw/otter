@@ -37,6 +37,10 @@ impl Matchable for MatchableImportDetails<'_> {
     fn description(&self) -> Option<&str> {
         self.0.raw_description.as_deref()
     }
+
+    fn raw_fragments(&self) -> Option<&str> {
+        self.0.raw_fragments.as_deref()
+    }
 }
 
 #[cfg(test)]
@@ -76,6 +80,7 @@ mod tests {
             MatchField::City,
             MatchField::Country,
             MatchField::Description,
+            MatchField::RawFragments,
         ] {
             let rule = csv_import::Rule {
                 pattern: MatchCriteria(vec![MatchCriterion {
