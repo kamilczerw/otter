@@ -67,6 +67,9 @@ pub struct ImportDetailsResponse {
     pub currency: Option<String>,
     pub raw_description: Option<String>,
     pub original_amount_fragment: Option<String>,
+    /// Verbatim `" | "`-joined trailing columns not captured by any typed
+    /// field, kept as a safety net for unrecognized row shapes, if present.
+    pub raw_fragments: Option<String>,
 }
 
 #[derive(Debug, Serialize, ToSchema)]
@@ -318,6 +321,7 @@ impl From<ImportDetails> for ImportDetailsResponse {
             currency: d.currency,
             raw_description: d.raw_description,
             original_amount_fragment: d.original_amount_fragment,
+            raw_fragments: d.raw_fragments,
         }
     }
 }

@@ -731,6 +731,7 @@ mod tests {
             currency: Some("PLN".to_string()),
             raw_description: Some("PLATNOSC KARTA LIDL WARSZAWA".to_string()),
             original_amount_fragment: Some("-123,45".to_string()),
+            raw_fragments: Some("extra1 | extra2".to_string()),
         };
         let tags = vec!["groceries".to_string(), "recurring".to_string()];
 

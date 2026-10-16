@@ -459,6 +459,7 @@ mod tests {
             currency: None,
             raw_description: None,
             original_amount_fragment: None,
+            raw_fragments: None,
         };
         let response = build_queue_response(vec![transaction_with_import_details(Some(details))], 0);
 
@@ -521,6 +522,7 @@ mod tests {
                     currency: None,
                     raw_description: None,
                     original_amount_fragment: None,
+                    raw_fragments: None,
                 };
                 transaction_with_import_details(Some(details))
             })

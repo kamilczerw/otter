@@ -36,6 +36,9 @@ pub struct ImportDetails {
     /// Original amount fragment as text (e.g. before currency conversion or
     /// sign normalization), if present.
     pub original_amount_fragment: Option<String>,
+    /// Verbatim `" | "`-joined trailing columns not captured by any typed
+    /// field, kept as a safety net for unrecognized row shapes, if present.
+    pub raw_fragments: Option<String>,
 }
 
 #[cfg(test)]
@@ -56,6 +59,7 @@ mod tests {
             currency: Some("PLN".to_string()),
             raw_description: Some("PLATNOSC KARTA LIDL WARSZAWA".to_string()),
             original_amount_fragment: Some("-123,45".to_string()),
+            raw_fragments: Some("extra1 | extra2".to_string()),
         };
 
         let json = serde_json::to_string(&details).unwrap();
@@ -79,6 +83,7 @@ mod tests {
             currency: None,
             raw_description: None,
             original_amount_fragment: None,
+            raw_fragments: None,
         };
 
         let json = serde_json::to_string(&details).unwrap();

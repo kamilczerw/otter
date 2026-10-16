@@ -99,6 +99,7 @@ fn import_details_from_row(parsed: &ParsedTransaction) -> ImportDetails {
         currency: Some(parsed.currency.clone()),
         raw_description: Some(parsed.raw_description.clone()),
         original_amount_fragment: parsed.original_amount_fragment.clone(),
+        raw_fragments: parsed.raw_fragments.clone(),
     }
 }
 
@@ -219,6 +220,7 @@ mod tests {
                 entry_repo.clone(),
             )),
             rules_path,
+            inline_rules: Vec::new(),
         }
     }
 
@@ -237,6 +239,7 @@ mod tests {
             title: title.map(str::to_string),
             raw_description: "test row".to_string(),
             original_amount_fragment: None,
+            raw_fragments: Some("extra1 | extra2".to_string()),
         }
     }
 
@@ -388,6 +391,7 @@ mod tests {
         let import_details = created.import_details.as_ref().expect("import_details should be set");
         assert_eq!(import_details.source, "csv_import");
         assert_eq!(import_details.merchant, Some("NETTO 5567".to_string()));
+        assert_eq!(import_details.raw_fragments, Some("extra1 | extra2".to_string()));
     }
 
     /// A transaction created via CSV import maps to a `TransactionResponse`

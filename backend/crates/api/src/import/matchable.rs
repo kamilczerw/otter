@@ -57,6 +57,7 @@ mod tests {
             currency: None,
             raw_description: None,
             original_amount_fragment: None,
+            raw_fragments: None,
         }
     }
 

@@ -101,6 +101,7 @@ fn import_details(merchant: Option<&str>, raw_type: Option<&str>) -> ImportDetai
         currency: None,
         raw_description: None,
         original_amount_fragment: None,
+        raw_fragments: None,
     }
 }
 
