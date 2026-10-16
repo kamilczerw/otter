@@ -25,4 +25,4 @@ pub use pipeline::{run_import, ImportOutcome};
 pub use provisioning::{
     find_or_create_category, find_or_create_entry, find_or_create_month, ImportDeps, RowError,
 };
-pub use rule_conversion::csv_rule_to_new_matching_rule;
+pub use rule_conversion::{csv_rule_to_new_matching_rule, domain_rule_to_csv_rule};

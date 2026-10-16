@@ -10,7 +10,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use axum::Router;
-use axum::routing::{get, patch, post};
+use axum::routing::{get, patch, post, put};
 use clap::Parser;
 use tower_http::cors::{AllowOrigin, CorsLayer};
 use tower_http::request_id::{PropagateRequestIdLayer, SetRequestIdLayer};
@@ -184,7 +184,16 @@ async fn main() {
         .route(
             "/transactions-review/rules",
             post(handlers::uncategorized::save_uncategorized_rule),
-        );
+        )
+        .route(
+            "/rules",
+            get(handlers::rules::list_rules).post(handlers::rules::create_rule),
+        )
+        .route(
+            "/rules/{id}",
+            put(handlers::rules::update_rule).delete(handlers::rules::delete_rule),
+        )
+        .route("/rules/import", post(handlers::rules::import_rules));
 
     // Static file serving under /ui with SPA fallback.
     // Any request under /ui/ that doesn't match a file returns index.html

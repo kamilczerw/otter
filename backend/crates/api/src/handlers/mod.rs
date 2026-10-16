@@ -3,6 +3,7 @@ pub mod entries;
 pub mod health;
 pub mod imports;
 pub mod months;
+pub mod rules;
 pub mod summary;
 pub mod transactions;
 pub mod uncategorized;

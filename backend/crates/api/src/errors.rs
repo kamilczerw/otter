@@ -6,6 +6,7 @@ use serde_json::{json, Value};
 use domain::errors::{CategoryError, EntryError, MatchingRuleError, MonthError, TransactionError};
 
 use crate::import::RowError;
+use crate::requests::MatchingRuleRequestError;
 
 pub struct ApiError {
     pub status: StatusCode,
@@ -231,6 +232,21 @@ impl From<MatchingRuleError> for ApiError {
                     details: None,
                 }
             }
+        }
+    }
+}
+
+/// A [`MatchingRuleRequestError`] from converting a rule-editor request body
+/// into domain types: an invalid `contains`/`regex` combination maps to the
+/// same generic `400 BAD_REQUEST` as other malformed-request cases; an
+/// uncompilable regex pattern delegates to the [`MatchingRuleError`] mapping
+/// above so it reports the same `MATCHING_RULE_INVALID_REGEX` code either
+/// way.
+impl From<MatchingRuleRequestError> for ApiError {
+    fn from(err: MatchingRuleRequestError) -> Self {
+        match err {
+            MatchingRuleRequestError::InvalidCriterion(_) => ApiError::bad_request(&err.to_string()),
+            MatchingRuleRequestError::InvalidRule(e) => e.into(),
         }
     }
 }

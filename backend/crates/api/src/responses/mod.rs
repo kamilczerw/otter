@@ -242,6 +242,95 @@ impl From<MatchCriterion> for MatchCriterionResponse {
     }
 }
 
+/// Converts a `domain::entities::MatchField` into its response equivalent,
+/// mirroring the `csv_import::MatchField` conversion above (see the
+/// `add-rule-editor-ui` design doc's "Decisions" section on why the two
+/// crates have separate, identically-shaped enums).
+impl From<domain::entities::MatchField> for MatchFieldResponse {
+    fn from(field: domain::entities::MatchField) -> Self {
+        match field {
+            domain::entities::MatchField::Merchant => Self::Merchant,
+            domain::entities::MatchField::RawType => Self::RawType,
+            domain::entities::MatchField::City => Self::City,
+            domain::entities::MatchField::Country => Self::Country,
+            domain::entities::MatchField::Description => Self::Description,
+            domain::entities::MatchField::RawFragments => Self::RawFragments,
+        }
+    }
+}
+
+/// Converts a `domain::entities::MatchCriterion` into its flat response
+/// shape, mirroring the `csv_import::MatchCriterion` conversion above.
+impl From<domain::entities::MatchCriterion> for MatchCriterionResponse {
+    fn from(criterion: domain::entities::MatchCriterion) -> Self {
+        let (contains, regex) = match criterion.match_type {
+            domain::entities::MatchType::Contains(pattern) => (Some(pattern), None),
+            domain::entities::MatchType::Regex(pattern) => (None, Some(pattern)),
+        };
+        Self {
+            field: criterion.field.into(),
+            contains,
+            regex,
+        }
+    }
+}
+
+/// One rule in the merged rule-editor listing (`GET /api/v1/rules`): either
+/// a config-defined default (`id: None`, `editable: false`) or a user-stored
+/// rule (`id: Some`, `editable: true`), per the "List the full rule set in
+/// match order" requirement.
+#[derive(Debug, Serialize, ToSchema)]
+pub struct MatchingRuleResponse {
+    /// The rule's identity, for a user-stored rule; `None` for a
+    /// config-defined default, which has no editable identity.
+    pub id: Option<String>,
+    pub criteria: Vec<MatchCriterionResponse>,
+    pub category: String,
+    /// Whether this rule can be edited/deleted through the API.
+    pub editable: bool,
+}
+
+impl From<domain::entities::MatchingRule> for MatchingRuleResponse {
+    fn from(rule: domain::entities::MatchingRule) -> Self {
+        Self {
+            id: Some(rule.id.to_string()),
+            criteria: rule.criteria.into_iter().map(Into::into).collect(),
+            category: rule.category,
+            editable: true,
+        }
+    }
+}
+
+impl From<csv_import::Rule> for MatchingRuleResponse {
+    fn from(rule: csv_import::Rule) -> Self {
+        Self {
+            id: None,
+            criteria: rule.pattern.0.into_iter().map(Into::into).collect(),
+            category: rule.category,
+            editable: false,
+        }
+    }
+}
+
+/// One rule from an imported rules file that failed to import (an
+/// uncompilable regex pattern), as reported by `POST /api/v1/rules/import`.
+#[derive(Debug, Serialize, ToSchema)]
+pub struct RuleImportFailureResponse {
+    pub category: String,
+    pub reason: String,
+}
+
+/// Response body for `POST /api/v1/rules/import`: how many of the uploaded
+/// file's rules were newly stored, skipped as exact duplicates of an
+/// existing user rule, or failed to import, per the "Import rules from a
+/// file" requirement.
+#[derive(Debug, Serialize, ToSchema)]
+pub struct ImportRulesResponse {
+    pub imported: u32,
+    pub skipped: u32,
+    pub failed: Vec<RuleImportFailureResponse>,
+}
+
 // --- From impls ---
 
 impl From<RowFailure> for FailedRowResponse {

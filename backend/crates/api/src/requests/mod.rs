@@ -2,6 +2,11 @@ use serde::Deserialize;
 use utoipa::ToSchema;
 
 use csv_import::{MatchCriteria, MatchCriterion, MatchField, MatchType};
+use domain::entities::{
+    MatchCriterion as DomainMatchCriterion, MatchField as DomainMatchField,
+    MatchType as DomainMatchType, NewMatchingRule,
+};
+use domain::errors::MatchingRuleError;
 
 #[derive(Debug, Deserialize, ToSchema)]
 pub struct CreateCategoryRequest {
@@ -208,6 +213,83 @@ fn criteria_from_requests(
         .map(MatchCriterion::try_from)
         .collect::<Result<Vec<_>, _>>()?;
     Ok(MatchCriteria(criteria))
+}
+
+/// Error converting a rule-editor request's match criteria into validated
+/// `domain::entities::MatchCriterion`s: either some criterion didn't set
+/// exactly one of `contains`/`regex`, or set a `regex` pattern that fails to
+/// compile.
+#[derive(Debug, thiserror::Error)]
+pub enum MatchingRuleRequestError {
+    /// A criterion set neither or both of `contains`/`regex`.
+    #[error(transparent)]
+    InvalidCriterion(#[from] InvalidMatchCriterionRequest),
+    /// A criterion's `regex` pattern failed to compile, or another
+    /// `MatchingRuleError` was raised during validation.
+    #[error(transparent)]
+    InvalidRule(#[from] MatchingRuleError),
+}
+
+/// Converts a rule-editor [`MatchFieldRequest`] into its domain equivalent.
+impl From<MatchFieldRequest> for DomainMatchField {
+    fn from(field: MatchFieldRequest) -> Self {
+        match field {
+            MatchFieldRequest::Merchant => Self::Merchant,
+            MatchFieldRequest::RawType => Self::RawType,
+            MatchFieldRequest::City => Self::City,
+            MatchFieldRequest::Country => Self::Country,
+            MatchFieldRequest::Description => Self::Description,
+            MatchFieldRequest::RawFragments => Self::RawFragments,
+        }
+    }
+}
+
+/// Converts one rule-editor [`MatchCriterionRequest`] into a validated
+/// `domain::entities::MatchCriterion`.
+///
+/// # Errors
+///
+/// Returns [`MatchingRuleRequestError::InvalidCriterion`] if neither or both
+/// of `contains`/`regex` is set, or
+/// [`MatchingRuleRequestError::InvalidRule`] if a `regex` pattern fails to
+/// compile.
+fn domain_criterion_from_request(
+    request: MatchCriterionRequest,
+) -> Result<DomainMatchCriterion, MatchingRuleRequestError> {
+    let match_type = match (request.contains, request.regex) {
+        (Some(pattern), None) => DomainMatchType::Contains(pattern),
+        (None, Some(pattern)) => DomainMatchType::Regex(pattern),
+        _ => return Err(InvalidMatchCriterionRequest.into()),
+    };
+    let criterion = DomainMatchCriterion::new(request.field.into(), match_type)?;
+    Ok(criterion)
+}
+
+/// Request body for `POST /api/v1/rules` and `PUT /api/v1/rules/{id}`: the
+/// full set of match criteria and the target category for a user-stored
+/// rule. Both endpoints replace the whole rule at once — `domain`'s
+/// `NewMatchingRule` has no notion of a partial update, so neither does this
+/// request shape.
+#[derive(Debug, Deserialize, ToSchema)]
+pub struct MatchingRuleRequest {
+    pub criteria: Vec<MatchCriterionRequest>,
+    pub category: String,
+}
+
+impl TryFrom<MatchingRuleRequest> for NewMatchingRule {
+    type Error = MatchingRuleRequestError;
+
+    fn try_from(request: MatchingRuleRequest) -> Result<Self, Self::Error> {
+        let criteria = request
+            .criteria
+            .into_iter()
+            .map(domain_criterion_from_request)
+            .collect::<Result<Vec<_>, _>>()?;
+        Ok(NewMatchingRule {
+            criteria,
+            category: request.category,
+        })
+    }
 }
 
 /// Custom serde module for handling `Option<Option<T>>` fields correctly.
