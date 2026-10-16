@@ -134,7 +134,22 @@
       "raw_fragments": "Surowe fragmenty"
     }
   },
+  "rules": {
+    "title": "Reguły",
+    "newRule": "Nowa reguła",
+    "editRule": "Edytuj regułę",
+    "importFile": "Importuj plik",
+    "category": "Kategoria",
+    "defaultRules": "Reguły domyślne",
+    "yourRules": "Twoje reguły",
+    "noUserRules": "Nie utworzono jeszcze żadnej reguły",
+    "importSummary": "Zaimportowano {imported}, pominięto {skipped} duplikatów, nieudanych: {failed}",
+    "deleteConfirmTitle": "Usunąć tę regułę?",
+    "deleteConfirmText": "Ta reguła nie będzie już stosowana do przyszłych importów."
+  },
   "errors": {
+    "MATCHING_RULE_INVALID_REGEX": "Nieprawidłowy wzorzec regex {pattern}: {reason}",
+    "MATCHING_RULE_NOT_FOUND": "Nie znaleziono reguły",
     "CATEGORY_NOT_FOUND": "Nie znaleziono kategorii",
     "CATEGORY_NAME_ALREADY_EXISTS": "Kategoria o nazwie \"{name}\" już istnieje",
     "CATEGORY_INVALID_NAME": "Nieprawidłowa nazwa kategorii: {reason}",

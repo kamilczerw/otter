@@ -95,6 +95,13 @@
             </div>
             <v-icon size="small" class="text-cosmic-secondary">mdi-chevron-right</v-icon>
           </div>
+          <div class="settings-item mt-2" @click="goToRules">
+            <div class="settings-item-left">
+              <v-icon class="settings-item-icon" size="large">mdi-filter-variant</v-icon>
+              <div class="settings-item-label">{{ $t('rules.title') }}</div>
+            </div>
+            <v-icon size="small" class="text-cosmic-secondary">mdi-chevron-right</v-icon>
+          </div>
         </div>
       </div>
     </div>
@@ -163,6 +170,12 @@ function changeBudgetBarSize(size: BudgetBarSize) {
 function goToUncategorized() {
   emit('update:modelValue', false)
   router.push('/uncategorized')
+}
+
+/** Closes the settings drawer and navigates to the rule editor view. */
+function goToRules() {
+  emit('update:modelValue', false)
+  router.push('/rules')
 }
 </script>
 

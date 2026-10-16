@@ -134,7 +134,22 @@
       "raw_fragments": "Raw fragments"
     }
   },
+  "rules": {
+    "title": "Rules",
+    "newRule": "New rule",
+    "editRule": "Edit rule",
+    "importFile": "Import file",
+    "category": "Category",
+    "defaultRules": "Default rules",
+    "yourRules": "Your rules",
+    "noUserRules": "You haven't created any rules yet",
+    "importSummary": "Imported {imported}, skipped {skipped} duplicates, {failed} failed",
+    "deleteConfirmTitle": "Delete this rule?",
+    "deleteConfirmText": "This rule will no longer apply to future imports."
+  },
   "errors": {
+    "MATCHING_RULE_INVALID_REGEX": "Invalid regex pattern {pattern}: {reason}",
+    "MATCHING_RULE_NOT_FOUND": "Rule not found",
     "CATEGORY_NOT_FOUND": "Category not found",
     "CATEGORY_NAME_ALREADY_EXISTS": "A category named \"{name}\" already exists",
     "CATEGORY_INVALID_NAME": "Invalid category name: {reason}",

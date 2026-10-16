@@ -170,6 +170,35 @@ export interface SaveRuleResponse {
   remaining: number
 }
 
+// A rule in the merged rule-editor listing (`GET /rules`): either a
+// config-defined default (`id: null`, `editable: false`) or a user-stored
+// rule (`id` set, `editable: true`).
+export interface MatchingRule {
+  id: string | null
+  criteria: MatchCriterion[]
+  category: string
+  editable: boolean
+}
+
+// Request body for `POST /rules` and `PUT /rules/{id}`.
+export interface MatchingRuleRequest {
+  criteria: MatchCriterion[]
+  category: string
+}
+
+// One rule from an imported rules file that failed to import (e.g. an
+// uncompilable regex pattern), as reported by `POST /rules/import`.
+export interface RuleImportFailure {
+  category: string
+  reason: string
+}
+
+export interface ImportRulesResponse {
+  imported: number
+  skipped: number
+  failed: RuleImportFailure[]
+}
+
 // Error types
 export interface ApiErrorResponse {
   error: {

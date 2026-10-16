@@ -84,6 +84,29 @@ export const client = {
     return handleResponse<T>(response)
   },
 
+  async put<T>(path: string, body: unknown): Promise<T> {
+    const response = await fetchWithErrorHandling(BASE_URL + path, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: JSON.stringify(body),
+    })
+    return handleResponse<T>(response)
+  },
+
+  // Multipart form upload (e.g. file import). No Content-Type header is set
+  // explicitly so the browser can add the correct multipart boundary.
+  async postForm<T>(path: string, formData: FormData): Promise<T> {
+    const response = await fetchWithErrorHandling(BASE_URL + path, {
+      method: 'POST',
+      headers: { 'Accept': 'application/json' },
+      body: formData,
+    })
+    return handleResponse<T>(response)
+  },
+
   async delete(path: string): Promise<void> {
     const response = await fetchWithErrorHandling(BASE_URL + path, {
       method: 'DELETE',
