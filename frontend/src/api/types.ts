@@ -119,7 +119,7 @@ export interface PaginatedTransactionsResponse {
 }
 
 // Field a bulk-categorization rule can match against.
-export type MatchField = 'merchant' | 'raw_type' | 'city' | 'country' | 'description'
+export type MatchField = 'merchant' | 'raw_type' | 'city' | 'country' | 'description' | 'raw_fragments'
 
 // A single match condition for bulk-categorization rules.
 // Exactly one of `contains`/`regex` is set (backend validates/enforces this).

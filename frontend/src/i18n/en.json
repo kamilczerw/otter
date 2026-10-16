@@ -128,7 +128,8 @@
       "raw_type": "Type",
       "city": "City",
       "country": "Country",
-      "description": "Description"
+      "description": "Description",
+      "raw_fragments": "Raw fragments"
     }
   },
   "errors": {

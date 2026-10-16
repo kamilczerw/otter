@@ -61,6 +61,7 @@ const fieldOptions: { title: string; value: MatchField }[] = [
   { title: t('uncategorized.fields.city'), value: 'city' },
   { title: t('uncategorized.fields.country'), value: 'country' },
   { title: t('uncategorized.fields.description'), value: 'description' },
+  { title: t('uncategorized.fields.raw_fragments'), value: 'raw_fragments' },
 ]
 
 /** Relays a field change, merging it with the row's current matchType/pattern. */
