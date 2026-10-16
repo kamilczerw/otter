@@ -5,6 +5,7 @@ pub mod imports;
 pub mod months;
 pub mod summary;
 pub mod transactions;
+pub mod uncategorized;
 
 use std::sync::Arc;
 

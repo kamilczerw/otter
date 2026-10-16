@@ -11,7 +11,7 @@ use std::sync::Arc;
 
 use axum::body::Body;
 use axum::http::{Request, StatusCode};
-use axum::routing::post;
+use axum::routing::{get, post};
 use axum::Router;
 use http_body_util::BodyExt;
 use serde_json::Value;
@@ -35,6 +35,9 @@ pub struct TestApp {
     pub category_service: Arc<CategoryService>,
     pub entry_service: Arc<EntryService>,
     pub transaction_service: Arc<TransactionService>,
+    /// Exposed so rule-saving tests can inspect the on-disk rules file
+    /// directly (e.g. to confirm a rejected request left it untouched).
+    pub import_deps: Arc<ImportDeps>,
 }
 
 /// Builds a [`TestApp`] backed by a fresh in-memory SQLite database with
@@ -43,8 +46,9 @@ pub struct TestApp {
 /// `rules` list is instead left pointing at a nonexistent path, which
 /// `ImportDeps::current_rules` treats as no rules).
 ///
-/// Only the `/imports` route is mounted — this harness is for the import
-/// test file, which has no need for the other resource routes that
+/// Only `/imports` and the `/uncategorized-transactions` routes are mounted
+/// — this harness is shared by the import and uncategorized-queue test
+/// files, which have no need for the other resource routes that
 /// `api_tests.rs`'s own `setup()` mounts.
 pub async fn setup(rules: Vec<csv_import::Rule>) -> TestApp {
     let pool = db::create_pool("sqlite::memory:")
@@ -106,8 +110,21 @@ pub async fn setup(rules: Vec<csv_import::Rule>) -> TestApp {
         import_deps,
     };
 
-    let api = Router::new().route("/imports", post(otter::handlers::imports::import_transactions));
-    let router = Router::new().nest("/api/v1", api).with_state(state);
+    let api = Router::new()
+        .route("/imports", post(otter::handlers::imports::import_transactions))
+        .route(
+            "/uncategorized-transactions",
+            get(otter::handlers::uncategorized::get_uncategorized_queue),
+        )
+        .route(
+            "/uncategorized-transactions/preview",
+            post(otter::handlers::uncategorized::preview_uncategorized_rule),
+        )
+        .route(
+            "/uncategorized-transactions/rules",
+            post(otter::handlers::uncategorized::save_uncategorized_rule),
+        );
+    let router = Router::new().nest("/api/v1", api).with_state(state.clone());
 
     TestApp {
         router,
@@ -115,6 +132,7 @@ pub async fn setup(rules: Vec<csv_import::Rule>) -> TestApp {
         category_service,
         entry_service,
         transaction_service,
+        import_deps: state.import_deps,
     }
 }
 
