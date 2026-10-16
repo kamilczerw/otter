@@ -10,7 +10,7 @@ use crate::errors::MatchingRuleError;
 
 /// A transaction field a [`MatchCriterion`] can be checked against. Mirrors
 /// `csv_import::rules::MatchField`'s variants.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum MatchField {
     /// The transaction's merchant name.
     Merchant,
@@ -28,7 +28,7 @@ pub enum MatchField {
 
 /// How a [`MatchCriterion`] compares its field's value against a pattern.
 /// Mirrors `csv_import::rules::MatchType`'s variants.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum MatchType {
     /// Case/diacritic-insensitive substring match.
     Contains(String),
@@ -41,7 +41,7 @@ pub enum MatchType {
 /// One field check within a [`MatchingRule`]'s criteria list: "does `field`
 /// match `match_type`'s pattern?". Constructed via [`MatchCriterion::new`]
 /// so an uncompilable regex pattern can never be represented.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct MatchCriterion {
     /// The transaction field to check.
     pub field: MatchField,

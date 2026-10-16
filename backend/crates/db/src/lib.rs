@@ -1,4 +1,7 @@
+pub mod matching_rule_repo;
 pub mod repos;
+
+pub use matching_rule_repo::MatchingRuleRepo;
 
 use sqlx::sqlite::{SqliteConnectOptions, SqlitePool, SqlitePoolOptions};
 use std::str::FromStr;
