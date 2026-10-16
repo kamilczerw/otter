@@ -51,6 +51,12 @@ pub struct ParsedTransaction {
     /// non-empty. Kept verbatim for display/audit; this change deliberately
     /// does not parse it into a typed amount/currency pair.
     pub original_amount_fragment: Option<String>,
+    /// Verbatim, `" | "`-joined content of the trailing columns (8-13) not
+    /// otherwise captured by a typed field above. Populated unconditionally,
+    /// regardless of whether structured extraction (e.g. `merchant`) also
+    /// succeeded, so it acts as a safety net for row shapes that extraction
+    /// doesn't recognize.
+    pub raw_fragments: Option<String>,
 }
 
 /// Errors from fields that are always populated and therefore genuinely
@@ -94,7 +100,35 @@ pub fn extract_transaction(row: &RawRow) -> Result<ParsedTransaction, ExtractErr
         title: parse_title(&row.description),
         raw_description: row.description.clone(),
         original_amount_fragment: non_empty(&row.original_amount_fragment),
+        raw_fragments: join_raw_fragments(row),
     })
+}
+
+/// Joins the six trailing-column fragments of a [`RawRow`] (columns 8-13)
+/// with `" | "`, skipping empty ones.
+///
+/// Returns `None` if all six columns are empty, rather than `Some("")`.
+fn join_raw_fragments(row: &RawRow) -> Option<String> {
+    let fragments = [
+        &row.location_fragment,
+        &row.execution_date_fragment,
+        &row.original_amount_fragment,
+        &row.card_number_fragment,
+        &row.trailing_fragment_1,
+        &row.trailing_fragment_2,
+    ];
+
+    let non_empty: Vec<&str> = fragments
+        .into_iter()
+        .map(String::as_str)
+        .filter(|fragment| !fragment.is_empty())
+        .collect();
+
+    if non_empty.is_empty() {
+        None
+    } else {
+        Some(non_empty.join(" | "))
+    }
 }
 
 /// Converts an empty string into `None`, leaving a non-empty string as
@@ -224,6 +258,7 @@ mod tests {
         check!(parsed.title == None);
         check!(parsed.raw_description == "AUTOOSZCZĘDZANIE-PRZELEW");
         check!(parsed.original_amount_fragment == None);
+        check!(parsed.raw_fragments == None);
     }
 
     /// A card payment row with a simple, single-word merchant name.
@@ -242,6 +277,16 @@ mod tests {
         check!(parsed.city == Some("CIESZYN".to_string()));
         check!(parsed.country == Some("POLSKA".to_string()));
         check!(parsed.title == Some("000498849 74230786284201674667219".to_string()));
+        check!(
+            parsed.raw_fragments
+                == Some(
+                    "Lokalizacja: Adres: NETTO 5567 K.2 Miasto: CIESZYN Kraj: POLSKA | \
+                     Data wykonania operacji: 2026-10-10 | \
+                     Oryginalna kwota operacji: 103.10 | \
+                     Numer karty: 425125******1836"
+                        .to_string()
+                )
+        );
     }
 
     /// A card payment row with a multi-word, digit-containing `Adres:`
@@ -294,6 +339,37 @@ mod tests {
         let_assert!(Ok(parsed) = extract_transaction(&row));
 
         check!(parsed.original_amount_fragment == None);
+    }
+
+    /// A row shape extraction doesn't recognize (phone number + reference
+    /// number fragments instead of `Lokalizacja:`/`Numer karty:`) leaves all
+    /// typed merchant/card fields `None`, but still preserves the trailing
+    /// columns' raw text in `raw_fragments` as a safety net.
+    #[test]
+    fn extracts_raw_fragments_for_unrecognized_trailing_columns() {
+        let mut row = fixture_rows().remove(0);
+        row.location_fragment = "Numer telefonu: 123456789".to_string();
+        row.card_number_fragment = "Numer referencyjny: ABC123".to_string();
+        let_assert!(Ok(parsed) = extract_transaction(&row));
+
+        check!(parsed.merchant == None);
+        check!(parsed.city == None);
+        check!(parsed.country == None);
+        check!(parsed.card_last4 == None);
+        check!(
+            parsed.raw_fragments
+                == Some("Numer telefonu: 123456789 | Numer referencyjny: ABC123".to_string())
+        );
+    }
+
+    /// A row with all six trailing columns empty (e.g. a transfer row) has
+    /// no `raw_fragments`, not `Some("")`.
+    #[test]
+    fn extracts_raw_fragments_as_none_when_all_trailing_columns_empty() {
+        let row = fixture_rows().remove(0);
+        let_assert!(Ok(parsed) = extract_transaction(&row));
+
+        check!(parsed.raw_fragments == None);
     }
 
     /// An unparseable `Kwota` is a hard error since it's an always-present

@@ -156,6 +156,7 @@ mod tests {
             title: None,
             raw_description: String::new(),
             original_amount_fragment: None,
+            raw_fragments: None,
         }
     }
 
