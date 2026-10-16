@@ -69,6 +69,9 @@ pub struct TransactionListQuery {
     pub entry_id: Option<String>,
     pub limit: Option<u32>,
     pub offset: Option<u32>,
+    /// Optional direction filter: `"expense"` or `"income"`. Any other
+    /// non-empty value is a `400 TRANSACTION_INVALID_KIND`.
+    pub kind: Option<String>,
 }
 
 /// Wire-format mirror of [`MatchField`] for request bodies (the reverse

@@ -297,6 +297,7 @@ mod tests {
             _entry_id: &Ulid,
             _limit: u32,
             _offset: u32,
+            _kind: Option<crate::entities::TransactionKind>,
         ) -> Result<Vec<crate::entities::Transaction>, crate::errors::TransactionError> {
             unimplemented!("not needed for summary pipeline tests")
         }

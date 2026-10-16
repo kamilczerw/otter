@@ -4,7 +4,7 @@ use sqlx::sqlite::SqlitePool;
 use sqlx::Row;
 use std::str::FromStr;
 
-use domain::entities::{ImportDetails, NewTransaction, Transaction};
+use domain::entities::{ImportDetails, NewTransaction, Transaction, TransactionKind};
 use domain::errors::TransactionError;
 use domain::ports::TransactionRepository;
 use domain::types::{Money, TransactionDate};
@@ -278,14 +278,21 @@ impl TransactionRepository for SqliteTransactionRepository {
         entry_id: &ulid::Ulid,
         limit: u32,
         offset: u32,
+        kind: Option<TransactionKind>,
     ) -> Result<Vec<Transaction>, TransactionError> {
-        let rows = sqlx::query(
+        let kind_clause = match kind {
+            Some(TransactionKind::Expense) => "AND amount < 0",
+            Some(TransactionKind::Income) => "AND amount >= 0",
+            None => "",
+        };
+        let sql = format!(
             "SELECT id, entry_id, amount, date, title, import_details, tags, created_at, updated_at \
              FROM transactions \
-             WHERE entry_id = ? \
+             WHERE entry_id = ? {kind_clause} \
              ORDER BY date DESC, created_at DESC \
-             LIMIT ? OFFSET ?",
-        )
+             LIMIT ? OFFSET ?"
+        );
+        let rows = sqlx::query(&sql)
         .bind(entry_id.to_string())
         .bind(limit as i64)
         .bind(offset as i64)
@@ -610,6 +617,52 @@ mod tests {
         let total = repo.sum_by_entry(&entry_id).await.unwrap();
 
         assert_eq!(total, Money::new(0));
+    }
+
+    #[tokio::test]
+    async fn list_by_entry_filters_by_kind() {
+        let pool = setup_pool().await;
+        let repo = SqliteTransactionRepository::new(pool.clone());
+        let entry_id = seed_entry(&pool).await;
+        let date: TransactionDate = "2026-01-15".parse().unwrap();
+
+        repo.create(NewTransaction {
+            entry_id,
+            amount: Money::new(-1000),
+            date,
+            title: None,
+            import_details: None,
+            tags: vec![],
+        })
+        .await
+        .unwrap();
+        repo.create(NewTransaction {
+            entry_id,
+            amount: Money::new(500),
+            date,
+            title: None,
+            import_details: None,
+            tags: vec![],
+        })
+        .await
+        .unwrap();
+
+        let expenses = repo
+            .list_by_entry(&entry_id, 100, 0, Some(TransactionKind::Expense))
+            .await
+            .unwrap();
+        assert_eq!(expenses.len(), 1);
+        assert_eq!(expenses[0].amount, Money::new(-1000));
+
+        let incomes = repo
+            .list_by_entry(&entry_id, 100, 0, Some(TransactionKind::Income))
+            .await
+            .unwrap();
+        assert_eq!(incomes.len(), 1);
+        assert_eq!(incomes[0].amount, Money::new(500));
+
+        let all = repo.list_by_entry(&entry_id, 100, 0, None).await.unwrap();
+        assert_eq!(all.len(), 2);
     }
 
     #[tokio::test]

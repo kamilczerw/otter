@@ -99,7 +99,7 @@ async fn imports_fixture_and_categorizes_via_rules() {
 
     let groceries_txns = app
         .transaction_service
-        .list_by_entry(&groceries_entry.id, 100, 0)
+        .list_by_entry(&groceries_entry.id, 100, 0, None)
         .await
         .unwrap();
     assert_eq!(groceries_txns.len(), 1, "only the NETTO row matches the rule");
@@ -107,7 +107,7 @@ async fn imports_fixture_and_categorizes_via_rules() {
 
     let uncategorized_txns = app
         .transaction_service
-        .list_by_entry(&uncategorized_entry.id, 100, 0)
+        .list_by_entry(&uncategorized_entry.id, 100, 0, None)
         .await
         .unwrap();
     assert_eq!(uncategorized_txns.len(), 11);
@@ -185,7 +185,7 @@ async fn partial_failure_reports_bad_row_and_imports_the_rest() {
     assert_eq!(entries.len(), 1);
     let txns = app
         .transaction_service
-        .list_by_entry(&entries[0].id, 100, 0)
+        .list_by_entry(&entries[0].id, 100, 0, None)
         .await
         .unwrap();
     assert_eq!(txns.len(), 11);
