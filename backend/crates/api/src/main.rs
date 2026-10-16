@@ -1,6 +1,7 @@
 pub mod config;
 mod errors;
 pub mod handlers;
+pub mod import;
 mod middleware;
 pub mod requests;
 pub mod responses;
@@ -8,8 +9,8 @@ pub mod responses;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use axum::routing::{get, patch};
 use axum::Router;
+use axum::routing::{get, patch, post};
 use clap::Parser;
 use tower_http::cors::{AllowOrigin, CorsLayer};
 use tower_http::request_id::{PropagateRequestIdLayer, SetRequestIdLayer};
@@ -46,8 +47,7 @@ struct Cli {
 async fn main() {
     tracing_subscriber::fmt()
         .with_env_filter(
-            EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| EnvFilter::new("info"))
+            EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("debug")),
         )
         .init();
 
@@ -58,8 +58,8 @@ async fn main() {
     // If an explicit path was given and doesn't exist, we fail with a clear error.
     let explicit = std::env::args().any(|a| a == "--config" || a == "-c");
 
-    let app_config = AppConfig::load(Some(&cli.config), explicit)
-        .expect("Failed to load configuration");
+    let app_config =
+        AppConfig::load(Some(&cli.config), explicit).expect("Failed to load configuration");
 
     let pool = db::create_pool(&app_config.database.url)
         .await
@@ -77,10 +77,7 @@ async fn main() {
 
     // Create service instances
     let category_service = Arc::new(CategoryService::new(category_repo.clone()));
-    let month_service = Arc::new(MonthService::new(
-        month_repo.clone(),
-        entry_repo.clone(),
-    ));
+    let month_service = Arc::new(MonthService::new(month_repo.clone(), entry_repo.clone()));
     let entry_service = Arc::new(EntryService::new(
         entry_repo.clone(),
         category_repo.clone(),
@@ -96,6 +93,17 @@ async fn main() {
         month_repo.clone(),
     ));
 
+    let import_deps = Arc::new(import::ImportDeps {
+        month_repo: month_repo.clone(),
+        month_service: month_service.clone(),
+        category_service: category_service.clone(),
+        entry_service: entry_service.clone(),
+        transaction_repo: transaction_repo.clone(),
+        transaction_service: transaction_service.clone(),
+        rules_path: app_config.transaction.import.rules_file.clone(),
+        inline_rules: app_config.transaction.import.matching_rules.clone(),
+    });
+
     let state = AppState {
         category_service,
         month_service,
@@ -103,6 +111,7 @@ async fn main() {
         transaction_service,
         summary_service,
         currency_config: app_config.currency.clone(),
+        import_deps,
     };
 
     // Configure CORS
@@ -127,8 +136,7 @@ async fn main() {
         .route("/health", get(handlers::health::health_check))
         .route(
             "/categories",
-            get(handlers::categories::list_categories)
-                .post(handlers::categories::create_category),
+            get(handlers::categories::list_categories).post(handlers::categories::create_category),
         )
         .route(
             "/categories/{id}",
@@ -160,21 +168,35 @@ async fn main() {
         .route(
             "/months/{id}/summary",
             get(handlers::summary::get_month_summary),
+        )
+        .route("/imports", post(handlers::imports::import_transactions))
+        .route(
+            "/transactions-review",
+            get(handlers::uncategorized::get_uncategorized_queue),
+        )
+        .route(
+            "/transactions-review/preview",
+            post(handlers::uncategorized::preview_uncategorized_rule),
+        )
+        .route(
+            "/transactions-review/rules",
+            post(handlers::uncategorized::save_uncategorized_rule),
         );
 
     // Static file serving under /ui with SPA fallback.
     // Any request under /ui/ that doesn't match a file returns index.html
     // so Vue Router can handle client-side routing.
     let index_file = cli.static_dir.join("index.html");
-    let spa_service = ServeDir::new(&cli.static_dir)
-        .not_found_service(ServeFile::new(&index_file));
+    let spa_service = ServeDir::new(&cli.static_dir).not_found_service(ServeFile::new(&index_file));
 
     let app = Router::new()
         .nest("/api/v1", api)
         .nest_service("/ui", spa_service)
         .layer(cors)
         .layer(TraceLayer::new_for_http())
-        .layer(SetRequestIdLayer::x_request_id(RequestIdGenerator::default()))
+        .layer(SetRequestIdLayer::x_request_id(
+            RequestIdGenerator::default(),
+        ))
         .layer(PropagateRequestIdLayer::x_request_id())
         .with_state(state);
 
@@ -194,7 +216,5 @@ async fn main() {
         .await
         .expect("Failed to bind address");
 
-    axum::serve(listener, app)
-        .await
-        .expect("Server error");
+    axum::serve(listener, app).await.expect("Server error");
 }

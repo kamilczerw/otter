@@ -1,0 +1,74 @@
+[[transaction.import.matching_rules]]
+category = "wellness"
+[transaction.import.matching_rules.match]
+merchant_contains = "BetterMe Inc"
+
+[[transaction.import.matching_rules]]
+category = "savings"
+[transaction.import.matching_rules.match]
+raw_type = "Autooszczędzanie"
+
+[[transaction.import.matching_rules]]
+category = "food/out"
+[transaction.import.matching_rules.match]
+merchant_contains = "ZAJAZD MALY DELFIN"
+
+[[transaction.import.matching_rules]]
+category = "subscription"
+[transaction.import.matching_rules.match]
+merchant_contains = "APPLE.COM/BILL"
+
+[[transaction.import.matching_rules]]
+category = "groceries"
+[transaction.import.matching_rules.match]
+merchant_contains = "NETTO"
+
+[[transaction.import.matching_rules]]
+category = "groceries/health"
+[transaction.import.matching_rules.match]
+merchant_contains = "ROSSMANN"
+
+[[transaction.import.matching_rules]]
+category = "cash-out"
+[transaction.import.matching_rules.match]
+merchant_contains = "AUTOMATY AUTOMATSPEC 2026"
+
+[[transaction.import.matching_rules]]
+category = "remont"
+[transaction.import.matching_rules.match]
+merchant_contains = "CASTORAMA"
+
+[[transaction.import.matching_rules]]
+category = "subscription"
+[transaction.import.matching_rules.match]
+merchant_contains = "UBER   *ONE MEMBERSHIP"
+
+[[transaction.import.matching_rules]]
+category = "remont"
+[transaction.import.matching_rules.match]
+merchant_contains = "BETEX S A"
+
+[[transaction.import.matching_rules]]
+category = "subscription"
+[transaction.import.matching_rules.match]
+merchant_contains = "MIDJOURNEY INC."
+
+[[transaction.import.matching_rules]]
+category = "groceries"
+[transaction.import.matching_rules.match]
+merchant_contains = "JMP S.A. BIEDRONKA"
+
+[[transaction.import.matching_rules]]
+category = "groceries/cats"
+[transaction.import.matching_rules.match]
+merchant_contains = "Maxi Zoo Cieszyn"
+
+[[transaction.import.matching_rules]]
+category = "groceries/decoration"
+[transaction.import.matching_rules.match]
+merchant_contains = "Action S.A."
+
+[[transaction.import.matching_rules]]
+category = "cloths"
+[transaction.import.matching_rules.match]
+merchant_contains = "Vinted"

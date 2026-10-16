@@ -76,7 +76,20 @@
     "titleHint": "Optional description (max 50 characters)",
     "noTitle": "No title",
     "addTransaction": "Add Transaction",
-    "noTransactions": "No transactions yet"
+    "noTransactions": "No transactions yet",
+    "importedFromCsv": "Imported from CSV",
+    "merchant": "Merchant",
+    "city": "City",
+    "country": "Country",
+    "cardLast4": "Card",
+    "rawType": "Type",
+    "currency": "Currency",
+    "originalAmountFragment": "Original amount",
+    "tags": "Tags",
+    "rawDescription": "Raw description",
+    "rawFragments": "Raw fragments",
+    "expense": "Expense",
+    "income": "Income"
   },
   "summary": {
     "totalBudgeted": "Total Budgeted",
@@ -91,6 +104,35 @@
     "underspent": "Underspent",
     "on_budget": "On Budget",
     "overspent": "Overspent"
+  },
+  "uncategorized": {
+    "title": "Review Uncategorized",
+    "allCaughtUp": "All caught up — no uncategorized transactions left",
+    "remaining": "{count} uncategorized transactions remaining",
+    "skip": "Skip",
+    "skippedCount": "skipped: {count}",
+    "headTransaction": "Transaction",
+    "noMetadata": "No import details available — this transaction has no suggested rule",
+    "criteria": "Match criteria",
+    "addCriterion": "Add criterion",
+    "field": "Field",
+    "contains": "Contains",
+    "regex": "Regex",
+    "pattern": "Pattern",
+    "matchCount": "Matches {count} uncategorized transactions",
+    "showOtherMatches": "Show {count} other matches",
+    "hideOtherMatches": "Hide other matches",
+    "transactionDetails": "Transaction details",
+    "category": "Category",
+    "saveAndApply": "Save & Apply",
+    "fields": {
+      "merchant": "Merchant",
+      "raw_type": "Type",
+      "city": "City",
+      "country": "Country",
+      "description": "Description",
+      "raw_fragments": "Raw fragments"
+    }
   },
   "errors": {
     "CATEGORY_NOT_FOUND": "Category not found",

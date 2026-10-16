@@ -76,7 +76,20 @@
     "titleHint": "Opcjonalny opis (maksymalnie 50 znaków)",
     "noTitle": "Brak tytułu",
     "addTransaction": "Dodaj transakcję",
-    "noTransactions": "Brak transakcji"
+    "noTransactions": "Brak transakcji",
+    "importedFromCsv": "Zaimportowano z CSV",
+    "merchant": "Sprzedawca",
+    "city": "Miasto",
+    "country": "Kraj",
+    "cardLast4": "Karta",
+    "rawType": "Typ",
+    "currency": "Waluta",
+    "originalAmountFragment": "Oryginalna kwota",
+    "tags": "Tagi",
+    "rawDescription": "Surowy opis",
+    "rawFragments": "Surowe fragmenty",
+    "expense": "Wydatek",
+    "income": "Przychód"
   },
   "summary": {
     "totalBudgeted": "Zaplanowano łącznie",
@@ -91,6 +104,35 @@
     "underspent": "Poniżej budżetu",
     "on_budget": "W budżecie",
     "overspent": "Przekroczone"
+  },
+  "uncategorized": {
+    "title": "Przegląd nieskategoryzowanych",
+    "allCaughtUp": "Wszystko gotowe — brak nieskategoryzowanych transakcji",
+    "remaining": "Pozostało {count} nieskategoryzowanych transakcji",
+    "skip": "Pomiń",
+    "skippedCount": "pominięto: {count}",
+    "headTransaction": "Transakcja",
+    "noMetadata": "Brak danych importu — dla tej transakcji nie można zasugerować reguły",
+    "criteria": "Kryteria dopasowania",
+    "addCriterion": "Dodaj kryterium",
+    "field": "Pole",
+    "contains": "Zawiera",
+    "regex": "Regex",
+    "pattern": "Wzorzec",
+    "matchCount": "Dopasowuje {count} nieskategoryzowanych transakcji",
+    "showOtherMatches": "Pokaż {count} innych dopasowań",
+    "hideOtherMatches": "Skryj inne dopasowania",
+    "transactionDetails": "Szczegóły transakcji",
+    "category": "Kategoria",
+    "saveAndApply": "Zapisz i zastosuj",
+    "fields": {
+      "merchant": "Sprzedawca",
+      "raw_type": "Typ",
+      "city": "Miasto",
+      "country": "Kraj",
+      "description": "Opis",
+      "raw_fragments": "Surowe fragmenty"
+    }
   },
   "errors": {
     "CATEGORY_NOT_FOUND": "Nie znaleziono kategorii",

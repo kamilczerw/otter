@@ -10,7 +10,7 @@
 // Example: APP__DATABASE__URL=sqlite:///data/budget.db
 
 use std::collections::HashMap;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use serde::Deserialize;
 
@@ -26,6 +26,8 @@ pub struct AppConfig {
     pub cors: CorsConfig,
     #[serde(default = "default_ui")]
     pub ui: UiConfig,
+    #[serde(default = "default_transaction")]
+    pub transaction: TransactionConfig,
 }
 
 fn default_server() -> ServerConfig {
@@ -66,6 +68,25 @@ fn default_budget_bars() -> BudgetBarsConfig {
         green_threshold: 80,
         yellow_threshold: 100,
     }
+}
+
+fn default_transaction() -> TransactionConfig {
+    TransactionConfig {
+        import: default_import(),
+    }
+}
+
+fn default_import() -> ImportConfig {
+    ImportConfig {
+        rules_file: default_rules_file(),
+        matching_rules: Vec::new(),
+    }
+}
+
+/// Default `rules_file` path: `rules.toml` next to the config file, used
+/// when `[transaction.import]` doesn't set `rules_file` explicitly.
+fn default_rules_file() -> PathBuf {
+    PathBuf::from("rules.toml")
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -144,6 +165,49 @@ fn default_yellow_threshold() -> u8 {
     100
 }
 
+/// The `[transaction]` config section: currently only CSV-import-related
+/// settings, nested under `[transaction.import]`.
+#[derive(Debug, Deserialize, Clone)]
+pub struct TransactionConfig {
+    #[serde(default = "default_import")]
+    pub import: ImportConfig,
+}
+
+/// CSV import categorization settings (`[transaction.import]`).
+///
+/// Rules can come from two places, concatenated by
+/// [`ImportDeps::current_rules`](crate::import::ImportDeps::current_rules)
+/// with `matching_rules` first: this `matching_rules` field, for a
+/// hand-curated set checked straight into a config file (or an `include`d
+/// one), and `rules_file`, a hand-editable TOML file (see
+/// `csv_import::load_rules_or_empty`/`save_rules`) that the bulk-categorize
+/// API (section 3) also writes newly learned rules to — kept separate from
+/// `matching_rules` so learning a rule never requires rewriting the whole
+/// app config. After [`AppConfig::load`] resolves it, `rules_file` is
+/// always an absolute path (see [`resolve_relative`]).
+#[derive(Debug, Deserialize, Clone)]
+pub struct ImportConfig {
+    /// Path to the rules file, relative to the config file's own directory
+    /// (absolute paths are used as-is). Defaults to `rules.toml` next to
+    /// the config file.
+    #[serde(default = "default_rules_file")]
+    pub rules_file: PathBuf,
+    /// Hand-curated rules embedded directly in this config section, in the
+    /// same shape as a standalone rules file's `matching_rules` array (see
+    /// [`csv_import::RulesFile`]). Empty by default.
+    #[serde(default)]
+    pub matching_rules: Vec<csv_import::Rule>,
+}
+
+impl Default for ImportConfig {
+    fn default() -> Self {
+        Self {
+            rules_file: default_rules_file(),
+            matching_rules: Vec::new(),
+        }
+    }
+}
+
 /// Convert flat JSON keys (e.g., "server_host") into nested structure
 /// (e.g., {"server": {"host": ...}}) so they deserialize into `AppConfig`.
 ///
@@ -192,13 +256,61 @@ fn convert_flat_json(value: serde_json::Value) -> serde_json::Value {
     serde_json::Value::Object(result)
 }
 
+/// Top-level `include = [...]` directive read from a TOML config file, e.g.
+/// `include = ["./rules.toml", "/etc/otter/shared.toml"]`.
+#[derive(Debug, Deserialize, Default)]
+struct IncludeDirective {
+    #[serde(default)]
+    include: Vec<String>,
+}
+
+/// Resolves the `include` paths listed at the top of `config_file`, relative
+/// to `config_file`'s own parent directory (absolute paths are used as-is).
+///
+/// Only one level of includes is supported — an included file's own
+/// `include` list, if any, is ignored. Good enough for splitting out things
+/// like categorization rules; add recursive resolution if nested includes
+/// are ever needed.
+fn resolve_includes(config_file: &Path) -> Result<Vec<PathBuf>, config::ConfigError> {
+    let directive_source = config::Config::builder()
+        .add_source(
+            config::File::with_name(config_file.to_string_lossy().as_ref())
+                .format(config::FileFormat::Toml)
+                .required(true),
+        )
+        .build()?;
+    let directive: IncludeDirective = directive_source.try_deserialize()?;
+
+    tracing::debug!(
+        "Found {} include paths in {}",
+        directive.include.len(),
+        config_file.display()
+    );
+
+    let base_dir = config_file.parent().unwrap_or_else(|| Path::new("."));
+    Ok(directive
+        .include
+        .into_iter()
+        .map(|p| resolve_relative(base_dir, &PathBuf::from(p)))
+        .collect())
+}
+
+/// Resolves `path` against `base_dir`: an absolute `path` is used as-is,
+/// a relative one is joined onto `base_dir`. Shared by `include` path
+/// resolution and [`ImportConfig::rules_file`] resolution, both of which
+/// need "relative to the config file's own directory" semantics.
+fn resolve_relative(base_dir: &Path, path: &Path) -> PathBuf {
+    if path.is_absolute() {
+        path.to_path_buf()
+    } else {
+        base_dir.join(path)
+    }
+}
+
 impl AppConfig {
     /// Load configuration with the following precedence (highest wins):
     /// CLI flags > Environment variables > Config file > Defaults
-    pub fn load(
-        config_path: Option<&str>,
-        explicit: bool,
-    ) -> Result<Self, config::ConfigError> {
+    pub fn load(config_path: Option<&str>, explicit: bool) -> Result<Self, config::ConfigError> {
         let mut builder = config::Config::builder();
 
         if let Some(path) = config_path {
@@ -212,10 +324,7 @@ impl AppConfig {
             }
 
             if exists {
-                let ext = path_ref
-                    .extension()
-                    .and_then(|e| e.to_str())
-                    .unwrap_or("");
+                let ext = path_ref.extension().and_then(|e| e.to_str()).unwrap_or("");
 
                 match ext {
                     "json" => {
@@ -224,9 +333,7 @@ impl AppConfig {
                         })?;
                         let raw: serde_json::Value =
                             serde_json::from_str(&contents).map_err(|e| {
-                                config::ConfigError::Message(format!(
-                                    "Invalid JSON in {path}: {e}"
-                                ))
+                                config::ConfigError::Message(format!("Invalid JSON in {path}: {e}"))
                             })?;
                         let nested = convert_flat_json(raw);
                         let nested_str = serde_json::to_string(&nested).map_err(|e| {
@@ -239,7 +346,13 @@ impl AppConfig {
                             config::FileFormat::Json,
                         ));
                     }
+                    // ponytail: JSON config has no `include` support — it's the
+                    // flat/legacy format, not used for multi-file setups.
                     _ => {
+                        for include_path in resolve_includes(path_ref)? {
+                            builder =
+                                builder.add_source(config::File::from(include_path).required(true));
+                        }
                         builder = builder.add_source(
                             config::File::with_name(path)
                                 .format(config::FileFormat::Toml)
@@ -251,13 +364,24 @@ impl AppConfig {
         }
 
         // Environment variables always override config file
-        builder = builder.add_source(
-            config::Environment::with_prefix("APP").separator("__"),
-        );
+        builder = builder.add_source(config::Environment::with_prefix("APP").separator("__"));
 
         let config = builder.build()?;
-        let app_config: Self = config.try_deserialize()?;
+        let mut app_config: Self = config.try_deserialize()?;
+
+        let base_dir = config_path
+            .map(|p| {
+                Path::new(p)
+                    .parent()
+                    .unwrap_or_else(|| Path::new("."))
+                    .to_path_buf()
+            })
+            .unwrap_or_else(|| PathBuf::from("."));
+        app_config.transaction.import.rules_file =
+            resolve_relative(&base_dir, &app_config.transaction.import.rules_file);
+
         app_config.validate()?;
+        tracing::info!("Loaded configuration: {:#?}", app_config);
         Ok(app_config)
     }
 
@@ -290,10 +414,7 @@ mod tests {
     use tempfile::NamedTempFile;
 
     fn write_toml(content: &str) -> NamedTempFile {
-        let mut f = tempfile::Builder::new()
-            .suffix(".toml")
-            .tempfile()
-            .unwrap();
+        let mut f = tempfile::Builder::new().suffix(".toml").tempfile().unwrap();
         f.write_all(content.as_bytes()).unwrap();
         f
     }
@@ -372,5 +493,73 @@ green_threshold = 50
         let config = AppConfig::load(Some(f.path().to_str().unwrap()), true).unwrap();
         assert_eq!(config.ui.budget_bars.green_threshold, 50);
         assert_eq!(config.ui.budget_bars.yellow_threshold, 100);
+    }
+
+    /// With no `rules_file` set, the default `rules.toml` resolves to a
+    /// path next to the config file (not relative to the process's CWD).
+    #[test]
+    fn default_rules_file_resolves_relative_to_config_dir() {
+        let dir = tempfile::tempdir().unwrap();
+        let main_path = dir.path().join("config.toml");
+        std::fs::write(&main_path, "").unwrap();
+
+        let config = AppConfig::load(Some(main_path.to_str().unwrap()), true).unwrap();
+        assert_eq!(
+            config.transaction.import.rules_file,
+            dir.path().join("rules.toml")
+        );
+    }
+
+    /// A relative `rules_file` is resolved against the config file's own
+    /// directory, not the process's CWD.
+    #[test]
+    fn relative_rules_file_resolves_against_config_dir() {
+        let dir = tempfile::tempdir().unwrap();
+        let main_path = dir.path().join("config.toml");
+        std::fs::write(
+            &main_path,
+            r#"
+[transaction.import]
+rules_file = "custom-rules.toml"
+"#,
+        )
+        .unwrap();
+
+        let config = AppConfig::load(Some(main_path.to_str().unwrap()), true).unwrap();
+        assert_eq!(
+            config.transaction.import.rules_file,
+            dir.path().join("custom-rules.toml")
+        );
+    }
+
+    /// An absolute `rules_file` is used as-is, regardless of the config
+    /// file's directory.
+    #[test]
+    fn absolute_rules_file_is_used_as_is() {
+        let dir = tempfile::tempdir().unwrap();
+        let main_path = dir.path().join("config.toml");
+        let absolute_rules = dir.path().join("elsewhere").join("rules.toml");
+        std::fs::write(
+            &main_path,
+            format!(
+                "[transaction.import]\nrules_file = {:?}\n",
+                absolute_rules.to_str().unwrap()
+            ),
+        )
+        .unwrap();
+
+        let config = AppConfig::load(Some(main_path.to_str().unwrap()), true).unwrap();
+        assert_eq!(config.transaction.import.rules_file, absolute_rules);
+    }
+
+    /// With no config file at all, the default `rules_file` resolves
+    /// relative to the process's CWD (`"."`).
+    #[test]
+    fn default_rules_file_with_no_config_resolves_to_cwd() {
+        let config = AppConfig::load(None, false).unwrap();
+        assert_eq!(
+            config.transaction.import.rules_file,
+            PathBuf::from(".").join("rules.toml")
+        );
     }
 }

@@ -1,0 +1,84 @@
+version: 1
+# Unified personal-finance taxonomy.
+# Roots: needs, wants, savings, business, transfers.
+# Mapping keys must match legacy tracker categories exactly.
+# Category paths use lowercase kebab-case.
+
+categories:
+  needs:
+    - groceries
+    - bills/electricity
+    - bills/gas
+    - bills/water
+    - bills/sewage
+    - bills/garbage
+    - bills/phone
+    - housing/mortgage
+    - housing/maintenance
+    - transport/fuel
+    - transport/car
+    - transport/car/parking
+    - transport/tolls
+    - transport/public-transit
+    - childcare/preschool
+    - health/medical
+    - health/mental-health
+    - pets/supplies
+    - pets/vet
+    - subscriptions
+    - personal-care
+  wants:
+    - dining/restaurants
+    - dining/delivery
+    - dining/snacks
+    - subscriptions
+    - subscriptions/tv
+    - subscriptions/music
+    - shopping/clothing
+    - shopping/home-decor
+    - shopping/electronics
+    - shopping/books
+    - wellness
+    - personal-development
+    - home-improvements
+    - charity/donations
+    - lottery
+    - family/activities
+  savings:
+    - cash
+    - investments
+  business:
+    - taxes-contributions
+    - marketing/advertising
+  transfers:
+    - cash-withdrawal
+
+mapping:
+  # Tracker 1
+  bills/car: needs/transport/car
+  bills/electricity: needs/bills/electricity
+  bills/garbage: needs/bills/garbage
+  bills/gas: needs/bills/gas
+  bills/play: needs/bills/phone
+  bills/preschool: needs/childcare/preschool
+  bills/sewage: needs/bills/sewage
+  bills/t-mobile: needs/bills/phone
+  bills/water: needs/bills/water
+  finance/invest-fund: savings/investments
+  kamil-jdg/zus: business/taxes-contributions
+  kamil/adhd-coaching: wants/personal-development
+  mortgage: needs/housing/mortgage
+
+  # Tracker 2
+  car/fuel: needs/transport/fuel
+  cash-out: transfers/cash-withdrawal
+  cloths: wants/shopping/clothing
+  food/out: wants/dining/restaurants
+  groceries: needs/groceries
+  groceries/cats: needs/pets/supplies
+  groceries/decoration: wants/shopping/home-decor
+  groceries/health: needs/health/medical
+  remont: wants/home-improvements
+  savings: savings/cash
+  subscription: wants/subscriptions
+  wellness: wants/wellness

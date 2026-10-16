@@ -3,6 +3,7 @@ use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use axum::Json;
 
+use domain::entities::TransactionKind;
 use domain::errors::TransactionError;
 use domain::types::{Money, TransactionDate};
 
@@ -11,6 +12,21 @@ use crate::requests::{CreateTransactionRequest, TransactionListQuery, UpdateTran
 use crate::responses::{PaginatedTransactionsResponse, TransactionResponse};
 
 use super::{parse_ulid, AppState};
+
+/// Parses the `kind` query parameter into a [`TransactionKind`] filter.
+///
+/// # Errors
+///
+/// Returns `ApiError::invalid_kind` if `raw` is `Some` but isn't `"expense"`
+/// or `"income"`. `None` (parameter absent) means "no filter".
+fn parse_kind(raw: Option<&str>) -> Result<Option<TransactionKind>, ApiError> {
+    match raw {
+        None => Ok(None),
+        Some("expense") => Ok(Some(TransactionKind::Expense)),
+        Some("income") => Ok(Some(TransactionKind::Income)),
+        Some(other) => Err(ApiError::invalid_kind(other)),
+    }
+}
 
 pub async fn list_transactions(
     State(state): State<AppState>,
@@ -21,11 +37,12 @@ pub async fn list_transactions(
         let entry_ulid = parse_ulid(entry_id_str)?;
         let limit = query.limit.unwrap_or(100);
         let offset = query.offset.unwrap_or(0);
+        let kind = parse_kind(query.kind.as_deref())?;
 
         // Fetch limit + 1 to determine has_more
         let transactions = state
             .transaction_service
-            .list_by_entry(&entry_ulid, limit + 1, offset)
+            .list_by_entry(&entry_ulid, limit + 1, offset, kind)
             .await?;
 
         let has_more = transactions.len() > limit as usize;
@@ -65,7 +82,8 @@ pub async fn create_transaction(
 
     let transaction = state
         .transaction_service
-        .create(entry_ulid, amount, date, req.title)
+        // Manually created transactions have no import provenance or tags.
+        .create(entry_ulid, amount, date, req.title, None, vec![])
         .await?;
     Ok((StatusCode::CREATED, Json(transaction.into())))
 }

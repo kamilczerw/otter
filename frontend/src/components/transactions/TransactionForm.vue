@@ -23,14 +23,37 @@
       v-model="amount"
       :label="$t('transactions.amount')"
       type="number"
-      min="0"
       class="mb-2"
     />
+    <v-btn-toggle v-model="kind" mandatory class="mb-2" density="comfortable">
+      <v-btn value="expense">{{ $t('transactions.expense') }}</v-btn>
+      <v-btn value="income">{{ $t('transactions.income') }}</v-btn>
+    </v-btn-toggle>
     <v-text-field
       v-model="date"
       :label="$t('transactions.date')"
       type="date"
     />
+
+    <div v-if="tags.length > 0" class="mb-2">
+      <v-chip v-for="tag in tags" :key="tag" size="small" class="mr-1" variant="tonal">
+        {{ tag }}
+      </v-chip>
+    </div>
+
+    <v-card v-if="metadata" variant="tonal" class="mb-2 pa-3">
+      <div class="text-caption text-medium-emphasis mb-2">{{ $t('transactions.importedFromCsv') }}</div>
+      <div v-if="metadata.merchant">{{ $t('transactions.merchant') }}: {{ metadata.merchant }}</div>
+      <div v-if="metadata.city">{{ $t('transactions.city') }}: {{ metadata.city }}</div>
+      <div v-if="metadata.country">{{ $t('transactions.country') }}: {{ metadata.country }}</div>
+      <div v-if="metadata.card_last4">{{ $t('transactions.cardLast4') }}: {{ metadata.card_last4 }}</div>
+      <div v-if="metadata.raw_type">{{ $t('transactions.rawType') }}: {{ metadata.raw_type }}</div>
+      <div v-if="metadata.currency">{{ $t('transactions.currency') }}: {{ metadata.currency }}</div>
+      <div v-if="metadata.original_amount_fragment">
+        {{ $t('transactions.originalAmountFragment') }}: {{ metadata.original_amount_fragment }}
+      </div>
+    </v-card>
+
     <v-alert v-if="error" type="error" variant="tonal" density="compact" class="mt-2">
       {{ error }}
     </v-alert>
@@ -68,9 +91,14 @@ const amountField = ref<any>(null)
 const entryId = ref('')
 const title = ref('')
 const amount = ref('')
+const kind = ref<'expense' | 'income'>('expense')
 const date = ref('')
 const error = ref('')
 const saving = ref(false)
+
+// Read-only import metadata/tags from the transaction being edited (absent for manually-created transactions)
+const metadata = computed(() => props.transaction?.metadata ?? null)
+const tags = computed(() => props.transaction?.tags ?? [])
 
 // Map entries to include display name for the select
 const entriesWithDisplayName = computed(() =>
@@ -100,7 +128,8 @@ function initializeForm(): void {
 function populateFromTransaction(transaction: Transaction): void {
   entryId.value = transaction.entry_id
   title.value = transaction.title ?? ''
-  amount.value = (transaction.amount / 100).toFixed(2)
+  amount.value = (Math.abs(transaction.amount) / 100).toFixed(2)
+  kind.value = transaction.kind
   date.value = transaction.date
 }
 
@@ -122,6 +151,17 @@ function setDefaultValues(): void {
 }
 
 /**
+ * Converts the entered amount magnitude into a signed minor-unit integer
+ * based on the selected income/expense toggle (expense is negative).
+ *
+ * @returns The signed amount in minor currency units
+ */
+function signedAmount(): number {
+  const magnitude = parseCurrencyToMinor(amount.value)
+  return kind.value === 'expense' ? -magnitude : magnitude
+}
+
+/**
  * Builds the transaction payload for create operation.
  * Converts empty title to null.
  *
@@ -131,7 +171,7 @@ function buildCreatePayload(): CreateTransactionRequest {
   const trimmedTitle = title.value.trim()
   return {
     entry_id: entryId.value,
-    amount: parseCurrencyToMinor(amount.value),
+    amount: signedAmount(),
     date: date.value,
     title: trimmedTitle || null
   }
@@ -154,7 +194,7 @@ function buildUpdatePayload(original: Transaction): UpdateTransactionRequest {
     payload.entry_id = entryId.value
   }
 
-  const newAmount = parseCurrencyToMinor(amount.value)
+  const newAmount = signedAmount()
   if (newAmount !== original.amount) {
     payload.amount = newAmount
   }

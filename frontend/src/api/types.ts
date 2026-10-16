@@ -28,6 +28,20 @@ export interface Entry {
   updated_at: string
 }
 
+// Metadata captured when a transaction is created via CSV import (null for manually-created transactions)
+export interface ImportMetadata {
+  source: string
+  merchant: string | null
+  city: string | null
+  country: string | null
+  card_last4: string | null
+  raw_type: string | null
+  currency: string | null
+  raw_description: string | null
+  raw_fragments: string | null
+  original_amount_fragment: string | null
+}
+
 export interface Transaction {
   id: string
   entry_id: string
@@ -36,6 +50,9 @@ export interface Transaction {
   title: string | null
   created_at: string
   updated_at: string
+  tags: string[]
+  metadata: ImportMetadata | null
+  kind: 'income' | 'expense'
 }
 
 export interface MonthSummary {
@@ -100,6 +117,57 @@ export interface UpdateTransactionRequest {
 export interface PaginatedTransactionsResponse {
   items: Transaction[]
   has_more: boolean
+}
+
+// Field a bulk-categorization rule can match against.
+export type MatchField = 'merchant' | 'raw_type' | 'city' | 'country' | 'description' | 'raw_fragments'
+
+// A single match condition for bulk-categorization rules.
+// Exactly one of `contains`/`regex` is set (backend validates/enforces this).
+export interface MatchCriterion {
+  field: MatchField
+  contains?: string | null
+  regex?: string | null
+}
+
+export interface UncategorizedHead {
+  transaction: Transaction
+  derived_rule: MatchCriterion[] | null
+}
+
+export interface UncategorizedQueue {
+  remaining: number
+  head: UncategorizedHead | null
+}
+
+export interface PageRequest {
+  offset: number
+  limit: number
+}
+
+export interface PreviewRuleRequest {
+  criteria: MatchCriterion[]
+  /** Omits this transaction id from the paged "other matches" view and its count (e.g. the head transaction, already shown elsewhere). */
+  exclude_transaction_id?: string
+  /** Requests a page of the rule's actual matches alongside `count`. Omitted means count-only. */
+  page?: PageRequest
+}
+
+export interface PreviewRuleResponse {
+  count: number
+  /** Match total for the requested page, excluding `exclude_transaction_id`. Present only when `page` was requested. */
+  other_count?: number
+  /** The requested page of matching transactions, in queue order. Present only when `page` was requested. */
+  transactions?: Transaction[]
+}
+
+export interface SaveRuleRequest {
+  criteria: MatchCriterion[]
+  category: string
+}
+
+export interface SaveRuleResponse {
+  remaining: number
 }
 
 // Error types
