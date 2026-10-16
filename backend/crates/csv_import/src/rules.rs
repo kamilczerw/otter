@@ -49,6 +49,10 @@ pub enum MatchField {
     Country,
     /// The transaction's raw description text.
     Description,
+    /// The transaction's joined, `" | "`-separated raw-fragments string (the
+    /// verbatim trailing CSV columns extraction didn't map into a typed
+    /// field).
+    RawFragments,
 }
 
 /// How a [`MatchCriterion`] compares its field's value against a pattern.
@@ -197,6 +201,8 @@ pub trait Matchable {
     fn country(&self) -> Option<&str>;
     /// The raw description text.
     fn description(&self) -> Option<&str>;
+    /// The joined, `" | "`-separated raw-fragments string, if present.
+    fn raw_fragments(&self) -> Option<&str>;
 }
 
 impl Matchable for ParsedTransaction {
@@ -219,6 +225,10 @@ impl Matchable for ParsedTransaction {
     fn description(&self) -> Option<&str> {
         Some(self.raw_description.as_str())
     }
+
+    fn raw_fragments(&self) -> Option<&str> {
+        self.raw_fragments.as_deref()
+    }
 }
 
 /// Reads the transaction field named by `field` off `transaction`, via the
@@ -232,6 +242,7 @@ fn field_value<T: Matchable>(transaction: &T, field: MatchField) -> Option<&str>
         MatchField::City => transaction.city(),
         MatchField::Country => transaction.country(),
         MatchField::Description => transaction.description(),
+        MatchField::RawFragments => transaction.raw_fragments(),
     }
 }
 
@@ -439,6 +450,41 @@ mod tests {
 
         let r = rule(vec![contains(MatchField::Description, "czynsz")], "rent");
         check!(match_rule(&txn, &r));
+    }
+
+    /// `RawFragments` matches against `raw_fragments` via a `Contains`
+    /// criterion.
+    #[test]
+    fn matches_raw_fragments_field_contains() {
+        let mut txn = transaction(None, None, None, "Przelew");
+        txn.raw_fragments = Some("REF123 | EXTRA NOTE".to_string());
+
+        let r = rule(vec![contains(MatchField::RawFragments, "extra note")], "misc");
+        check!(match_rule(&txn, &r));
+    }
+
+    /// `RawFragments` matches against `raw_fragments` via a `Regex`
+    /// criterion, against the raw (non-normalized) value.
+    #[test]
+    fn matches_raw_fragments_field_regex() {
+        let mut txn = transaction(None, None, None, "Przelew");
+        txn.raw_fragments = Some("REF123 | EXTRA NOTE".to_string());
+
+        let matching = rule(vec![regex(MatchField::RawFragments, r"^REF\d+")], "misc");
+        check!(match_rule(&txn, &matching));
+
+        let non_matching = rule(vec![regex(MatchField::RawFragments, r"^ZZZ")], "misc");
+        check!(!match_rule(&txn, &non_matching));
+    }
+
+    /// A `raw_fragments` criterion never matches a transaction with no
+    /// `raw_fragments` value, the same as any criterion against an absent
+    /// field.
+    #[test]
+    fn raw_fragments_criterion_never_matches_absent_raw_fragments() {
+        let txn = transaction(None, None, None, "Przelew");
+        let r = rule(vec![contains(MatchField::RawFragments, "extra")], "misc");
+        check!(!match_rule(&txn, &r));
     }
 
     /// A rule requiring multiple criteria only matches if all of them
