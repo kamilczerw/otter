@@ -38,6 +38,7 @@ export interface ImportMetadata {
   raw_type: string | null
   currency: string | null
   raw_description: string | null
+  raw_fragments: string | null
   original_amount_fragment: string | null
 }
 

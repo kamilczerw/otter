@@ -53,6 +53,7 @@ function baseTransaction(overrides: Partial<Transaction['metadata']> = {}): Tran
             raw_type: null,
             currency: null,
             raw_description: null,
+            raw_fragments: null,
             original_amount_fragment: null,
             ...overrides,
           },

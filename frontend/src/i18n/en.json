@@ -86,7 +86,8 @@
     "currency": "Currency",
     "originalAmountFragment": "Original amount",
     "tags": "Tags",
-    "rawDescription": "Raw description"
+    "rawDescription": "Raw description",
+    "rawFragments": "Raw fragments"
   },
   "summary": {
     "totalBudgeted": "Total Budgeted",

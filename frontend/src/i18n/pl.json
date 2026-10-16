@@ -86,7 +86,8 @@
     "currency": "Waluta",
     "originalAmountFragment": "Oryginalna kwota",
     "tags": "Tagi",
-    "rawDescription": "Surowy opis"
+    "rawDescription": "Surowy opis",
+    "rawFragments": "Surowe fragmenty"
   },
   "summary": {
     "totalBudgeted": "Zaplanowano łącznie",

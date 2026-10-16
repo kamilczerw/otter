@@ -34,6 +34,9 @@
       >
         {{ $t('transactions.rawDescription') }}: {{ transaction.metadata.raw_description }}
       </div>
+      <div v-if="transaction.metadata.raw_fragments">
+        {{ $t('transactions.rawFragments') }}: {{ transaction.metadata.raw_fragments }}
+      </div>
     </template>
     <v-alert v-else type="info" variant="tonal" density="compact" class="mt-2">
       {{ $t('uncategorized.noMetadata') }}

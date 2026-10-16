@@ -47,6 +47,7 @@ describe('TransactionDetailCard', () => {
         raw_type: 'POS',
         currency: 'USD',
         raw_description: 'WALMART SUPERCENTER #1234 ANYTOWN',
+        raw_fragments: null,
         original_amount_fragment: null,
       }),
     )
@@ -78,6 +79,7 @@ describe('TransactionDetailCard', () => {
         raw_type: null,
         currency: null,
         raw_description: 'WALMART SUPERCENTER #1234 ANYTOWN',
+        raw_fragments: null,
         original_amount_fragment: null,
       }),
     )
@@ -90,5 +92,39 @@ describe('TransactionDetailCard', () => {
     const full = wrapper.find('.description-full')
     expect(full.exists()).toBe(true)
     expect(full.text()).toContain('WALMART SUPERCENTER #1234 ANYTOWN')
+  })
+
+  it('renders the raw-fragments row when present, and omits it when null', () => {
+    const withFragments = mountCard(
+      baseTransaction({
+        source: 'csv',
+        merchant: null,
+        city: null,
+        country: null,
+        card_last4: null,
+        raw_type: null,
+        currency: null,
+        raw_description: null,
+        raw_fragments: 'NETFLIX.COM | AMSTERDAM | NLD',
+        original_amount_fragment: null,
+      }),
+    )
+    expect(withFragments.text()).toContain('NETFLIX.COM | AMSTERDAM | NLD')
+
+    const withoutFragments = mountCard(
+      baseTransaction({
+        source: 'csv',
+        merchant: null,
+        city: null,
+        country: null,
+        card_last4: null,
+        raw_type: null,
+        currency: null,
+        raw_description: null,
+        raw_fragments: null,
+        original_amount_fragment: null,
+      }),
+    )
+    expect(withoutFragments.text()).not.toContain('Raw fragments')
   })
 })
