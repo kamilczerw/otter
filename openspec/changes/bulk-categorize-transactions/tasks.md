@@ -29,5 +29,5 @@
 
 ## 5. Migration and cleanup
 
-- [ ] 5.1 Update any existing `config.toml`/included rules file in this repo (e.g. local dev config, if one exists) from the old flat `matching_rules` shape to the new criteria-list shape pointed at by `rules_file`; verify `nix build ./nix#backend` (or local `cargo build`) starts cleanly against the migrated config.
-- [ ] 5.2 Run `nix build ./nix#backend-tests-cargo` and confirm all backend tests pass after the full change; fix any fallout from the `MatchCriteria`/`ImportDeps` shape change in tests not already covered above.
+- [x] 5.1 Update any existing `config.toml`/included rules file in this repo (e.g. local dev config, if one exists) from the old flat `matching_rules` shape to the new criteria-list shape pointed at by `rules_file`; verify `nix build ./nix#backend` (or local `cargo build`) starts cleanly against the migrated config.
+- [x] 5.2 Run `nix build ./nix#backend-tests-cargo` and confirm all backend tests pass after the full change; fix any fallout from the `MatchCriteria`/`ImportDeps` shape change in tests not already covered above.

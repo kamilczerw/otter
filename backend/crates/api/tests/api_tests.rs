@@ -68,6 +68,7 @@ async fn setup() -> Router {
             "otter_api_tests_no_rules_{}.toml",
             ulid::Ulid::new()
         )),
+        inline_rules: Vec::new(),
     });
 
     let state = AppState {
@@ -665,8 +666,9 @@ async fn test_month_summary() {
     // Add entry with budgeted = 10000
     let entry_id = create_entry(&app, &month_id, &cat_id, 10000, None).await;
 
-    // Create transaction for 5000
-    create_transaction(&app, &entry_id, 5000, "2026-02-15").await;
+    // Create expense transaction for 5000 (negative amount: expenses count
+    // toward "paid", income does not)
+    create_transaction(&app, &entry_id, -5000, "2026-02-15").await;
 
     // Get summary
     let summary_path = format!("/api/v1/months/{month_id}/summary");
@@ -693,4 +695,50 @@ async fn test_transactions_require_month_param() {
     let (status, body) = do_get(&app, "/api/v1/transactions").await;
     assert_eq!(status, StatusCode::BAD_REQUEST);
     assert_eq!(body["error"]["code"], "TRANSACTIONS_MONTH_REQUIRED");
+}
+
+#[tokio::test]
+async fn test_transactions_reject_invalid_kind() {
+    let app = setup().await;
+
+    let cat_id = create_category(&app, "food").await;
+    let month_id = create_month(&app, "2026-06").await;
+    let entry_id = create_entry(&app, &month_id, &cat_id, 10000, None).await;
+
+    let list_path = format!("/api/v1/transactions?entry_id={entry_id}&kind=bogus");
+    let (status, body) = do_get(&app, &list_path).await;
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+    assert_eq!(body["error"]["code"], "TRANSACTION_INVALID_KIND");
+}
+
+#[tokio::test]
+async fn test_transactions_list_by_entry_filters_by_kind() {
+    let app = setup().await;
+
+    let cat_id = create_category(&app, "food").await;
+    let month_id = create_month(&app, "2026-07").await;
+    let entry_id = create_entry(&app, &month_id, &cat_id, 10000, None).await;
+
+    create_transaction(&app, &entry_id, -3000, "2026-07-01").await;
+    create_transaction(&app, &entry_id, 1500, "2026-07-02").await;
+
+    let expense_path = format!("/api/v1/transactions?entry_id={entry_id}&kind=expense");
+    let (status, body) = do_get(&app, &expense_path).await;
+    assert_eq!(status, StatusCode::OK);
+    let items = body["items"].as_array().unwrap();
+    assert_eq!(items.len(), 1);
+    assert_eq!(items[0]["amount"], -3000);
+
+    let income_path = format!("/api/v1/transactions?entry_id={entry_id}&kind=income");
+    let (status, body) = do_get(&app, &income_path).await;
+    assert_eq!(status, StatusCode::OK);
+    let items = body["items"].as_array().unwrap();
+    assert_eq!(items.len(), 1);
+    assert_eq!(items[0]["amount"], 1500);
+
+    let all_path = format!("/api/v1/transactions?entry_id={entry_id}");
+    let (status, body) = do_get(&app, &all_path).await;
+    assert_eq!(status, StatusCode::OK);
+    let items = body["items"].as_array().unwrap();
+    assert_eq!(items.len(), 2);
 }

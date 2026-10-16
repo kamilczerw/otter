@@ -38,6 +38,7 @@ export interface ImportMetadata {
   raw_type: string | null
   currency: string | null
   raw_description: string | null
+  raw_fragments: string | null
   original_amount_fragment: string | null
 }
 
@@ -51,6 +52,7 @@ export interface Transaction {
   updated_at: string
   tags: string[]
   metadata: ImportMetadata | null
+  kind: 'income' | 'expense'
 }
 
 export interface MonthSummary {
@@ -118,7 +120,7 @@ export interface PaginatedTransactionsResponse {
 }
 
 // Field a bulk-categorization rule can match against.
-export type MatchField = 'merchant' | 'raw_type' | 'city' | 'country' | 'description'
+export type MatchField = 'merchant' | 'raw_type' | 'city' | 'country' | 'description' | 'raw_fragments'
 
 // A single match condition for bulk-categorization rules.
 // Exactly one of `contains`/`regex` is set (backend validates/enforces this).
@@ -138,12 +140,25 @@ export interface UncategorizedQueue {
   head: UncategorizedHead | null
 }
 
+export interface PageRequest {
+  offset: number
+  limit: number
+}
+
 export interface PreviewRuleRequest {
   criteria: MatchCriterion[]
+  /** Omits this transaction id from the paged "other matches" view and its count (e.g. the head transaction, already shown elsewhere). */
+  exclude_transaction_id?: string
+  /** Requests a page of the rule's actual matches alongside `count`. Omitted means count-only. */
+  page?: PageRequest
 }
 
 export interface PreviewRuleResponse {
   count: number
+  /** Match total for the requested page, excluding `exclude_transaction_id`. Present only when `page` was requested. */
+  other_count?: number
+  /** The requested page of matching transactions, in queue order. Present only when `page` was requested. */
+  transactions?: Transaction[]
 }
 
 export interface SaveRuleRequest {

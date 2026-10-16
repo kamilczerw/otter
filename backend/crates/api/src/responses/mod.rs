@@ -67,6 +67,9 @@ pub struct ImportDetailsResponse {
     pub currency: Option<String>,
     pub raw_description: Option<String>,
     pub original_amount_fragment: Option<String>,
+    /// Verbatim `" | "`-joined trailing columns not captured by any typed
+    /// field, kept as a safety net for unrecognized row shapes, if present.
+    pub raw_fragments: Option<String>,
 }
 
 #[derive(Debug, Serialize, ToSchema)]
@@ -146,6 +149,9 @@ pub enum MatchFieldResponse {
     City,
     Country,
     Description,
+    /// The transaction's joined, `" | "`-separated unmapped trailing CSV
+    /// columns, if any.
+    RawFragments,
 }
 
 /// Wire-format mirror of a [`MatchCriterion`]: a flat `{ field, contains,
@@ -169,7 +175,7 @@ pub struct UncategorizedHeadResponse {
     pub derived_rule: Option<Vec<MatchCriterionResponse>>,
 }
 
-/// Response body for `GET /api/v1/uncategorized-transactions`: how many
+/// Response body for `GET /api/v1/transactions-review`: how many
 /// transactions remain in the "uncategorized" category, and the one at the
 /// head of that queue (if any) for the bulk-categorize UI to act on.
 #[derive(Debug, Serialize, ToSchema)]
@@ -178,16 +184,30 @@ pub struct UncategorizedQueueResponse {
     pub head: Option<UncategorizedHeadResponse>,
 }
 
-/// Response body for `POST /api/v1/uncategorized-transactions/preview`: how
+/// Response body for `POST /api/v1/transactions-review/preview`: how
 /// many transactions currently in the "uncategorized" category a draft
 /// rule's match criteria would match, so the UI can preview a rule live
 /// before saving it.
 #[derive(Debug, Serialize, ToSchema)]
 pub struct PreviewRuleResponse {
     pub count: u32,
+    /// The match total for the requested page, excluding
+    /// `exclude_transaction_id` if one was given — distinct from `count`,
+    /// which always reports every match regardless of exclusion. `None`
+    /// (and omitted from the JSON body) unless the request included a
+    /// `page`, so a count-only request's response is byte-for-byte
+    /// unchanged from before pagination existed.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub other_count: Option<u32>,
+    /// The requested page of matching transactions, in the queue's
+    /// existing order. `None` (and omitted from the JSON body) unless the
+    /// request included a `page`, for the same byte-compatibility reason
+    /// as `other_count`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub transactions: Option<Vec<TransactionResponse>>,
 }
 
-/// Response body for `POST /api/v1/uncategorized-transactions/rules`: how
+/// Response body for `POST /api/v1/transactions-review/rules`: how
 /// many transactions remain in the "uncategorized" category after the new
 /// rule was saved and applied to every currently-matching transaction.
 #[derive(Debug, Serialize, ToSchema)]
@@ -203,6 +223,7 @@ impl From<MatchField> for MatchFieldResponse {
             MatchField::City => Self::City,
             MatchField::Country => Self::Country,
             MatchField::Description => Self::Description,
+            MatchField::RawFragments => Self::RawFragments,
         }
     }
 }
@@ -304,6 +325,7 @@ impl From<ImportDetails> for ImportDetailsResponse {
             currency: d.currency,
             raw_description: d.raw_description,
             original_amount_fragment: d.original_amount_fragment,
+            raw_fragments: d.raw_fragments,
         }
     }
 }

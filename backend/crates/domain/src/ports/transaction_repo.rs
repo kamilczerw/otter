@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use crate::entities::{Transaction, NewTransaction};
+use crate::entities::{Transaction, NewTransaction, TransactionKind};
 use crate::errors::TransactionError;
 use crate::types::{Money, TransactionDate};
 
@@ -11,7 +11,9 @@ pub trait TransactionRepository: Send + Sync {
     async fn update(&self, id: &ulid::Ulid, entry_id: Option<ulid::Ulid>, amount: Option<Money>, date: Option<TransactionDate>, title: Option<Option<String>>) -> Result<Transaction, TransactionError>;
     async fn delete(&self, id: &ulid::Ulid) -> Result<(), TransactionError>;
     async fn sum_by_entry(&self, entry_id: &ulid::Ulid) -> Result<Money, TransactionError>;
-    async fn list_by_entry(&self, entry_id: &ulid::Ulid, limit: u32, offset: u32) -> Result<Vec<Transaction>, TransactionError>;
+    /// Lists transactions for `entry_id`, optionally restricted to one
+    /// direction (`Some(Expense)`/`Some(Income)`); `None` returns both.
+    async fn list_by_entry(&self, entry_id: &ulid::Ulid, limit: u32, offset: u32, kind: Option<TransactionKind>) -> Result<Vec<Transaction>, TransactionError>;
 
     /// Looks up an existing transaction matching `(entry_id, date, amount, title)`.
     ///

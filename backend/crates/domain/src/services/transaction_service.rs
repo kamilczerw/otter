@@ -1,7 +1,7 @@
 use std::sync::Arc;
 use ulid::Ulid;
 
-use crate::entities::{ImportDetails, NewTransaction, Transaction, MAX_TITLE_LENGTH};
+use crate::entities::{ImportDetails, NewTransaction, Transaction, TransactionKind, MAX_TITLE_LENGTH};
 use crate::errors::TransactionError;
 use crate::ports::{BudgetEntryRepository, TransactionRepository};
 use crate::types::{Money, TransactionDate};
@@ -177,8 +177,9 @@ impl TransactionService {
         entry_id: &Ulid,
         limit: u32,
         offset: u32,
+        kind: Option<TransactionKind>,
     ) -> Result<Vec<Transaction>, TransactionError> {
-        self.transaction_repo.list_by_entry(entry_id, limit, offset).await
+        self.transaction_repo.list_by_entry(entry_id, limit, offset, kind).await
     }
 
     pub async fn delete(&self, id: &Ulid) -> Result<(), TransactionError> {

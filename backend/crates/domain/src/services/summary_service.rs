@@ -98,6 +98,22 @@ impl SummaryService {
                     MonthError::Repository(format!("Failed to sum transactions: {}", e))
                 })?;
 
+            let has_transactions = self
+                .entry_repo
+                .transaction_count(&entry.id)
+                .await
+                .map_err(|e| {
+                    MonthError::Repository(format!("Failed to count transactions: {}", e))
+                })?
+                > 0;
+
+            // Income-only entries have transactions but no expense-side
+            // "paid" total (sum_by_entry excludes positive amounts); exclude
+            // them from the budget view entirely.
+            if has_transactions && paid.value() == 0 {
+                continue;
+            }
+
             let remaining = entry.budgeted - paid;
             let status = derive_status(entry.budgeted, paid);
 
@@ -182,6 +198,9 @@ mod tests {
     /// summary pipeline can be exercised without a database.
     struct FakeEntryRepo {
         entry: BudgetEntryWithCategory,
+        /// Transaction count reported for the fixture entry, controlling
+        /// whether `get_month_summary` treats it as having transactions.
+        transaction_count: i64,
     }
 
     #[async_trait]
@@ -218,7 +237,7 @@ mod tests {
         }
 
         async fn transaction_count(&self, _entry_id: &Ulid) -> Result<i64, EntryError> {
-            unimplemented!("not needed for summary pipeline tests")
+            Ok(self.transaction_count)
         }
     }
 
@@ -278,6 +297,7 @@ mod tests {
             _entry_id: &Ulid,
             _limit: u32,
             _offset: u32,
+            _kind: Option<crate::entities::TransactionKind>,
         ) -> Result<Vec<crate::entities::Transaction>, crate::errors::TransactionError> {
             unimplemented!("not needed for summary pipeline tests")
         }
@@ -355,14 +375,13 @@ mod tests {
         }
     }
 
-    #[tokio::test]
-    async fn income_entry_with_matching_paid_amount_is_on_budget() {
-        // Income category: transactions recorded with positive amounts.
-        // `sum_by_entry` (SUM(ABS(amount))) returns the same magnitude as the
-        // budgeted amount, so the derived status must be OnBudget, not
-        // Overspent.
-        let budgeted = Money::new(500_00);
-        let entry = make_entry(budgeted);
+    /// Builds a fixture `SummaryService` with a single fake entry, exercising
+    /// the real `get_month_summary` pipeline without a database.
+    fn make_service(
+        entry: BudgetEntryWithCategory,
+        transaction_count: i64,
+        paid: Money,
+    ) -> SummaryService {
         let month = Month {
             id: Ulid::new(),
             month: BudgetMonth::new(2026, 1).unwrap(),
@@ -370,15 +389,63 @@ mod tests {
             updated_at: Utc::now(),
         };
 
-        let service = SummaryService::new(
-            Arc::new(FakeEntryRepo { entry }),
-            Arc::new(FakeTransactionRepo { sum: budgeted }),
+        SummaryService::new(
+            Arc::new(FakeEntryRepo {
+                entry,
+                transaction_count,
+            }),
+            Arc::new(FakeTransactionRepo { sum: paid }),
             Arc::new(FakeMonthRepo { month }),
-        );
+        )
+    }
+
+    #[tokio::test]
+    async fn income_only_entry_is_excluded_from_summary() {
+        // Income category: transactions exist but `sum_by_entry` now
+        // excludes positive amounts, so `paid` is zero. Such entries must be
+        // dropped from the summary entirely, not shown as "Unpaid".
+        let budgeted = Money::new(500_00);
+        let entry = make_entry(budgeted);
+
+        let service = make_service(entry, 1, Money::new(0));
+
+        let summary = service.get_month_summary(&Ulid::new()).await.unwrap();
+
+        assert!(summary.categories.is_empty());
+        assert_eq!(summary.total_budgeted, Money::new(0));
+        assert_eq!(summary.total_paid, Money::new(0));
+    }
+
+    #[tokio::test]
+    async fn entry_with_zero_transactions_still_appears() {
+        // No transactions recorded at all: paid is zero, but this is a
+        // genuinely unpaid expense entry, not an excluded income entry.
+        let budgeted = Money::new(500_00);
+        let entry = make_entry(budgeted);
+
+        let service = make_service(entry, 0, Money::new(0));
 
         let summary = service.get_month_summary(&Ulid::new()).await.unwrap();
 
         assert_eq!(summary.categories.len(), 1);
-        assert_eq!(summary.categories[0].status, BudgetStatus::OnBudget);
+        assert_eq!(summary.categories[0].status, BudgetStatus::Unpaid);
+        assert_eq!(summary.total_budgeted, Money::new(500_00));
+    }
+
+    #[tokio::test]
+    async fn entry_with_mixed_expense_and_income_appears_with_expense_only_paid() {
+        // Mixed entry: has transactions, and `paid` (expense-only, per
+        // sum_by_entry) is non-zero, so it must appear normally.
+        let budgeted = Money::new(500_00);
+        let entry = make_entry(budgeted);
+        let paid = Money::new(300_00);
+
+        let service = make_service(entry, 2, paid);
+
+        let summary = service.get_month_summary(&Ulid::new()).await.unwrap();
+
+        assert_eq!(summary.categories.len(), 1);
+        assert_eq!(summary.categories[0].paid, paid);
+        assert_eq!(summary.total_paid, paid);
     }
 }

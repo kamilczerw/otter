@@ -85,7 +85,11 @@
     "rawType": "Type",
     "currency": "Currency",
     "originalAmountFragment": "Original amount",
-    "tags": "Tags"
+    "tags": "Tags",
+    "rawDescription": "Raw description",
+    "rawFragments": "Raw fragments",
+    "expense": "Expense",
+    "income": "Income"
   },
   "summary": {
     "totalBudgeted": "Total Budgeted",
@@ -105,6 +109,8 @@
     "title": "Review Uncategorized",
     "allCaughtUp": "All caught up — no uncategorized transactions left",
     "remaining": "{count} uncategorized transactions remaining",
+    "skip": "Skip",
+    "skippedCount": "skipped: {count}",
     "headTransaction": "Transaction",
     "noMetadata": "No import details available — this transaction has no suggested rule",
     "criteria": "Match criteria",
@@ -114,6 +120,9 @@
     "regex": "Regex",
     "pattern": "Pattern",
     "matchCount": "Matches {count} uncategorized transactions",
+    "showOtherMatches": "Show {count} other matches",
+    "hideOtherMatches": "Hide other matches",
+    "transactionDetails": "Transaction details",
     "category": "Category",
     "saveAndApply": "Save & Apply",
     "fields": {
@@ -121,7 +130,8 @@
       "raw_type": "Type",
       "city": "City",
       "country": "Country",
-      "description": "Description"
+      "description": "Description",
+      "raw_fragments": "Raw fragments"
     }
   },
   "errors": {

@@ -3,11 +3,12 @@ import type { Transaction, CreateTransactionRequest, UpdateTransactionRequest, P
 
 export const transactionsApi = {
   list: (monthId: string) => client.get<Transaction[]>('/transactions', { month: monthId }),
-  listByEntry: (entryId: string, limit: number, offset: number) =>
+  listByEntry: (entryId: string, limit: number, offset: number, kind?: 'income' | 'expense') =>
     client.get<PaginatedTransactionsResponse>('/transactions', {
       entry_id: entryId,
       limit: String(limit),
       offset: String(offset),
+      ...(kind ? { kind } : {}),
     }),
   create: (data: CreateTransactionRequest) => client.post<Transaction>('/transactions', data),
   update: (id: string, data: UpdateTransactionRequest) =>

@@ -40,6 +40,14 @@ impl ApiError {
             details: None,
         }
     }
+
+    pub fn invalid_kind(value: &str) -> Self {
+        ApiError {
+            status: StatusCode::BAD_REQUEST,
+            code: "TRANSACTION_INVALID_KIND".into(),
+            details: Some(json!({ "value": value })),
+        }
+    }
 }
 
 impl From<CategoryError> for ApiError {

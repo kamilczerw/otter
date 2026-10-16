@@ -4,7 +4,7 @@ use sqlx::sqlite::SqlitePool;
 use sqlx::Row;
 use std::str::FromStr;
 
-use domain::entities::{ImportDetails, NewTransaction, Transaction};
+use domain::entities::{ImportDetails, NewTransaction, Transaction, TransactionKind};
 use domain::errors::TransactionError;
 use domain::ports::TransactionRepository;
 use domain::types::{Money, TransactionDate};
@@ -278,14 +278,21 @@ impl TransactionRepository for SqliteTransactionRepository {
         entry_id: &ulid::Ulid,
         limit: u32,
         offset: u32,
+        kind: Option<TransactionKind>,
     ) -> Result<Vec<Transaction>, TransactionError> {
-        let rows = sqlx::query(
+        let kind_clause = match kind {
+            Some(TransactionKind::Expense) => "AND amount < 0",
+            Some(TransactionKind::Income) => "AND amount >= 0",
+            None => "",
+        };
+        let sql = format!(
             "SELECT id, entry_id, amount, date, title, import_details, tags, created_at, updated_at \
              FROM transactions \
-             WHERE entry_id = ? \
+             WHERE entry_id = ? {kind_clause} \
              ORDER BY date DESC, created_at DESC \
-             LIMIT ? OFFSET ?",
-        )
+             LIMIT ? OFFSET ?"
+        );
+        let rows = sqlx::query(&sql)
         .bind(entry_id.to_string())
         .bind(limit as i64)
         .bind(offset as i64)
@@ -298,11 +305,11 @@ impl TransactionRepository for SqliteTransactionRepository {
             .collect()
     }
 
-    /// Sums the magnitude of all transactions recorded against an entry.
+    /// Sums the magnitude of expense (negative-amount) transactions recorded
+    /// against an entry. Income transactions (positive amounts) are excluded
+    /// entirely so they don't count toward a budget's "paid" total.
     ///
-    /// Amounts are summed as absolute values (`SUM(ABS(amount))`) so that
-    /// expense transactions (negative amounts) and income transactions
-    /// (positive amounts) both contribute a positive "paid" total. This is
+    /// Amounts are summed as absolute values (`SUM(ABS(amount))`). This is
     /// an intentional magnitude sum, not ledger-accurate netting; a refund
     /// recorded in the same category as its original expense will not
     /// offset it.
@@ -311,7 +318,7 @@ impl TransactionRepository for SqliteTransactionRepository {
         entry_id: &ulid::Ulid,
     ) -> Result<Money, TransactionError> {
         let row = sqlx::query(
-            "SELECT COALESCE(SUM(ABS(amount)), 0) AS total FROM transactions WHERE entry_id = ?",
+            "SELECT COALESCE(SUM(ABS(amount)), 0) AS total FROM transactions WHERE entry_id = ? AND amount < 0",
         )
         .bind(entry_id.to_string())
         .fetch_one(&self.pool)
@@ -590,7 +597,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn sum_by_entry_returns_magnitude_for_income_transaction() {
+    async fn sum_by_entry_excludes_income_transaction() {
         let pool = setup_pool().await;
         let repo = SqliteTransactionRepository::new(pool.clone());
         let entry_id = seed_entry(&pool).await;
@@ -609,7 +616,53 @@ mod tests {
 
         let total = repo.sum_by_entry(&entry_id).await.unwrap();
 
-        assert_eq!(total, Money::new(1500));
+        assert_eq!(total, Money::new(0));
+    }
+
+    #[tokio::test]
+    async fn list_by_entry_filters_by_kind() {
+        let pool = setup_pool().await;
+        let repo = SqliteTransactionRepository::new(pool.clone());
+        let entry_id = seed_entry(&pool).await;
+        let date: TransactionDate = "2026-01-15".parse().unwrap();
+
+        repo.create(NewTransaction {
+            entry_id,
+            amount: Money::new(-1000),
+            date,
+            title: None,
+            import_details: None,
+            tags: vec![],
+        })
+        .await
+        .unwrap();
+        repo.create(NewTransaction {
+            entry_id,
+            amount: Money::new(500),
+            date,
+            title: None,
+            import_details: None,
+            tags: vec![],
+        })
+        .await
+        .unwrap();
+
+        let expenses = repo
+            .list_by_entry(&entry_id, 100, 0, Some(TransactionKind::Expense))
+            .await
+            .unwrap();
+        assert_eq!(expenses.len(), 1);
+        assert_eq!(expenses[0].amount, Money::new(-1000));
+
+        let incomes = repo
+            .list_by_entry(&entry_id, 100, 0, Some(TransactionKind::Income))
+            .await
+            .unwrap();
+        assert_eq!(incomes.len(), 1);
+        assert_eq!(incomes[0].amount, Money::new(500));
+
+        let all = repo.list_by_entry(&entry_id, 100, 0, None).await.unwrap();
+        assert_eq!(all.len(), 2);
     }
 
     #[tokio::test]
@@ -731,6 +784,7 @@ mod tests {
             currency: Some("PLN".to_string()),
             raw_description: Some("PLATNOSC KARTA LIDL WARSZAWA".to_string()),
             original_amount_fragment: Some("-123,45".to_string()),
+            raw_fragments: Some("extra1 | extra2".to_string()),
         };
         let tags = vec!["groceries".to_string(), "recurring".to_string()];
 
