@@ -87,7 +87,9 @@
     "originalAmountFragment": "Oryginalna kwota",
     "tags": "Tagi",
     "rawDescription": "Surowy opis",
-    "rawFragments": "Surowe fragmenty"
+    "rawFragments": "Surowe fragmenty",
+    "expense": "Wydatek",
+    "income": "Przychód"
   },
   "summary": {
     "totalBudgeted": "Zaplanowano łącznie",

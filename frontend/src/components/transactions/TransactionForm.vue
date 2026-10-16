@@ -23,9 +23,12 @@
       v-model="amount"
       :label="$t('transactions.amount')"
       type="number"
-      min="0"
       class="mb-2"
     />
+    <v-btn-toggle v-model="kind" mandatory class="mb-2" density="comfortable">
+      <v-btn value="expense">{{ $t('transactions.expense') }}</v-btn>
+      <v-btn value="income">{{ $t('transactions.income') }}</v-btn>
+    </v-btn-toggle>
     <v-text-field
       v-model="date"
       :label="$t('transactions.date')"
@@ -88,6 +91,7 @@ const amountField = ref<any>(null)
 const entryId = ref('')
 const title = ref('')
 const amount = ref('')
+const kind = ref<'expense' | 'income'>('expense')
 const date = ref('')
 const error = ref('')
 const saving = ref(false)
@@ -124,7 +128,8 @@ function initializeForm(): void {
 function populateFromTransaction(transaction: Transaction): void {
   entryId.value = transaction.entry_id
   title.value = transaction.title ?? ''
-  amount.value = (transaction.amount / 100).toFixed(2)
+  amount.value = (Math.abs(transaction.amount) / 100).toFixed(2)
+  kind.value = transaction.kind
   date.value = transaction.date
 }
 
@@ -146,6 +151,17 @@ function setDefaultValues(): void {
 }
 
 /**
+ * Converts the entered amount magnitude into a signed minor-unit integer
+ * based on the selected income/expense toggle (expense is negative).
+ *
+ * @returns The signed amount in minor currency units
+ */
+function signedAmount(): number {
+  const magnitude = parseCurrencyToMinor(amount.value)
+  return kind.value === 'expense' ? -magnitude : magnitude
+}
+
+/**
  * Builds the transaction payload for create operation.
  * Converts empty title to null.
  *
@@ -155,7 +171,7 @@ function buildCreatePayload(): CreateTransactionRequest {
   const trimmedTitle = title.value.trim()
   return {
     entry_id: entryId.value,
-    amount: parseCurrencyToMinor(amount.value),
+    amount: signedAmount(),
     date: date.value,
     title: trimmedTitle || null
   }
@@ -178,7 +194,7 @@ function buildUpdatePayload(original: Transaction): UpdateTransactionRequest {
     payload.entry_id = entryId.value
   }
 
-  const newAmount = parseCurrencyToMinor(amount.value)
+  const newAmount = signedAmount()
   if (newAmount !== original.amount) {
     payload.amount = newAmount
   }
