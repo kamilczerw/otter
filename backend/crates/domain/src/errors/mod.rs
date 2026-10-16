@@ -54,6 +54,23 @@ pub enum EntryError {
     Repository(String),
 }
 
+/// Errors raised by `MatchingRule`/`MatchCriterion` construction and by
+/// `MatchingRuleRepository` implementations.
+#[derive(Debug, Error)]
+pub enum MatchingRuleError {
+    /// A criterion's `Regex` pattern failed to compile. Caught at
+    /// construction time (see `MatchCriterion::new`) rather than left to
+    /// silently never-match at categorization time.
+    #[error("invalid regex pattern {pattern:?}: {reason}")]
+    InvalidRegex { pattern: String, reason: String },
+    /// No matching rule exists with the requested identity.
+    #[error("matching rule not found")]
+    NotFound,
+    /// The underlying repository failed for a reason not covered above.
+    #[error("Repository error: {0}")]
+    Repository(String),
+}
+
 #[derive(Debug, Error)]
 pub enum TransactionError {
     #[error("Transaction not found")]
