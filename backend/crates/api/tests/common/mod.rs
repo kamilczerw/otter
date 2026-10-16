@@ -94,6 +94,7 @@ pub async fn setup(rules: Vec<csv_import::Rule>) -> TestApp {
         transaction_repo: transaction_repo.clone(),
         transaction_service: transaction_service.clone(),
         rules_path,
+        inline_rules: Vec::new(),
     });
 
     let state = AppState {

@@ -101,6 +101,7 @@ async fn main() {
         transaction_repo: transaction_repo.clone(),
         transaction_service: transaction_service.clone(),
         rules_path: app_config.transaction.import.rules_file.clone(),
+        inline_rules: app_config.transaction.import.matching_rules.clone(),
     });
 
     let state = AppState {

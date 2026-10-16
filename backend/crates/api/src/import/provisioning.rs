@@ -37,18 +37,27 @@ pub struct ImportDeps {
     /// cached once at construction, so a rule saved mid-session (e.g. by the
     /// bulk-categorize API) is picked up without restarting the server.
     pub rules_path: std::path::PathBuf,
+    /// Hand-curated rules from the config's `[transaction.import]
+    /// matching_rules]`, checked ahead of `rules_path`'s in
+    /// [`ImportDeps::current_rules`]. Unlike `rules_path`, never written to
+    /// by the bulk-categorize API.
+    pub inline_rules: Vec<csv_import::Rule>,
 }
 
 impl ImportDeps {
-    /// Loads the current set of categorization rules from `rules_path`,
-    /// re-reading the file on every call (see the field doc above).
+    /// Loads the current set of categorization rules: `inline_rules`
+    /// followed by whatever's in `rules_path`, re-reading the file on every
+    /// call (see the field doc above) so a rule learned mid-session is
+    /// picked up without restarting the server.
     ///
     /// # Errors
     ///
-    /// Returns [`csv_import::RulesError`] if the file exists but fails to
-    /// parse as valid rules TOML.
+    /// Returns [`csv_import::RulesError`] if `rules_path` exists but fails
+    /// to parse as valid rules TOML.
     pub fn current_rules(&self) -> Result<Vec<csv_import::Rule>, csv_import::RulesError> {
-        csv_import::load_rules_or_empty(&self.rules_path)
+        let mut rules = self.inline_rules.clone();
+        rules.extend(csv_import::load_rules_or_empty(&self.rules_path)?);
+        Ok(rules)
     }
 }
 
@@ -212,6 +221,7 @@ mod tests {
                 "otter_test_no_rules_{}.toml",
                 ulid::Ulid::new()
             )),
+            inline_rules: Vec::new(),
         }
     }
 

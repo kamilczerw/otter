@@ -79,6 +79,7 @@ fn default_transaction() -> TransactionConfig {
 fn default_import() -> ImportConfig {
     ImportConfig {
         rules_file: default_rules_file(),
+        matching_rules: Vec::new(),
     }
 }
 
@@ -174,12 +175,16 @@ pub struct TransactionConfig {
 
 /// CSV import categorization settings (`[transaction.import]`).
 ///
-/// `rules_file` names a hand-editable TOML file (see
-/// `csv_import::load_rules_or_empty`/`save_rules`) holding the
-/// categorization rules, rather than embedding them inline — this lets the
-/// bulk-categorize API (section 3) persist newly learned rules without
-/// rewriting the whole app config. After [`AppConfig::load`] resolves it,
-/// this field is always an absolute path (see [`resolve_relative`]).
+/// Rules can come from two places, concatenated by
+/// [`ImportDeps::current_rules`](crate::import::ImportDeps::current_rules)
+/// with `matching_rules` first: this `matching_rules` field, for a
+/// hand-curated set checked straight into a config file (or an `include`d
+/// one), and `rules_file`, a hand-editable TOML file (see
+/// `csv_import::load_rules_or_empty`/`save_rules`) that the bulk-categorize
+/// API (section 3) also writes newly learned rules to — kept separate from
+/// `matching_rules` so learning a rule never requires rewriting the whole
+/// app config. After [`AppConfig::load`] resolves it, `rules_file` is
+/// always an absolute path (see [`resolve_relative`]).
 #[derive(Debug, Deserialize, Clone)]
 pub struct ImportConfig {
     /// Path to the rules file, relative to the config file's own directory
@@ -187,12 +192,18 @@ pub struct ImportConfig {
     /// the config file.
     #[serde(default = "default_rules_file")]
     pub rules_file: PathBuf,
+    /// Hand-curated rules embedded directly in this config section, in the
+    /// same shape as a standalone rules file's `matching_rules` array (see
+    /// [`csv_import::RulesFile`]). Empty by default.
+    #[serde(default)]
+    pub matching_rules: Vec<csv_import::Rule>,
 }
 
 impl Default for ImportConfig {
     fn default() -> Self {
         Self {
             rules_file: default_rules_file(),
+            matching_rules: Vec::new(),
         }
     }
 }
