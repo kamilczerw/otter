@@ -19,6 +19,7 @@ function baseTransaction(metadata: Transaction['metadata'] = null): Transaction 
     id: 't1',
     entry_id: 'e1',
     amount: 1000,
+    kind: 'expense',
     date: '2026-01-01',
     title: 'Groceries',
     created_at: '2026-01-01T00:00:00Z',

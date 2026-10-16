@@ -20,6 +20,7 @@ function makeTransaction(id: string): Transaction {
     id,
     entry_id: 'e1',
     amount: 1000,
+    kind: 'expense',
     date: '2026-01-01',
     title: `Transaction ${id}`,
     created_at: '2026-01-01T00:00:00Z',

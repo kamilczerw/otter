@@ -36,6 +36,7 @@ function baseTransaction(overrides: Partial<Transaction['metadata']> = {}): Tran
     id: 't1',
     entry_id: 'e1',
     amount: 1000,
+    kind: 'expense',
     date: '2026-01-01',
     title: null,
     created_at: '2026-01-01T00:00:00Z',

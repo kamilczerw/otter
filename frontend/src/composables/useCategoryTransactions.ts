@@ -34,7 +34,7 @@ export function useCategoryTransactions() {
     if (entry.initialLoaded) return
     entry.loading = true
     try {
-      const result = await transactionsApi.listByEntry(entryId, INITIAL_TRANSACTION_COUNT, 0)
+      const result = await transactionsApi.listByEntry(entryId, INITIAL_TRANSACTION_COUNT, 0, 'expense')
       entry.transactions = result.items
       entry.offset = result.items.length
       entry.hasMore = result.has_more
@@ -50,7 +50,7 @@ export function useCategoryTransactions() {
     entry.loading = true
     entry.showMoreClicked = true
     try {
-      const result = await transactionsApi.listByEntry(entryId, TRANSACTION_BATCH_SIZE, entry.offset)
+      const result = await transactionsApi.listByEntry(entryId, TRANSACTION_BATCH_SIZE, entry.offset, 'expense')
       entry.transactions = [...entry.transactions, ...result.items]
       entry.offset += result.items.length
       entry.hasMore = result.has_more
@@ -71,7 +71,7 @@ export function useCategoryTransactions() {
     const newEntry = getOrCreate(entryId)
     newEntry.loading = true
     try {
-      const result = await transactionsApi.listByEntry(entryId, previousOffset, 0)
+      const result = await transactionsApi.listByEntry(entryId, previousOffset, 0, 'expense')
       newEntry.transactions = result.items
       newEntry.offset = result.items.length
       newEntry.hasMore = result.has_more

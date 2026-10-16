@@ -52,6 +52,7 @@ export interface Transaction {
   updated_at: string
   tags: string[]
   metadata: ImportMetadata | null
+  kind: 'income' | 'expense'
 }
 
 export interface MonthSummary {
