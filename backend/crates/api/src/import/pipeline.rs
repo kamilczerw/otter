@@ -116,7 +116,8 @@ async fn import_one_transaction(
     transaction: &ParsedTransaction,
     result: &mut ImportOutcome,
 ) -> Result<(), RowError> {
-    let (category_name, is_uncategorized) = resolve_category_name(transaction, &deps.rules);
+    let rules = deps.current_rules()?;
+    let (category_name, is_uncategorized) = resolve_category_name(transaction, &rules);
 
     let (month, month_created) = find_or_create_month(deps, transaction.date).await?;
     if month_created {
@@ -168,7 +169,7 @@ mod tests {
     use std::sync::Arc;
 
     use chrono::NaiveDate;
-    use csv_import::MatchCriteria;
+    use csv_import::{MatchCriteria, MatchCriterion, MatchField, MatchType};
     use db::repos::{
         SqliteBudgetEntryRepository, SqliteCategoryRepository, SqliteMonthRepository,
         SqliteTransactionRepository,
@@ -178,6 +179,10 @@ mod tests {
     /// Builds `ImportDeps` backed by a fresh in-memory SQLite database,
     /// following the same setup pattern as the `api` crate's integration
     /// tests (there's no lighter-weight repository fake in this codebase).
+    /// `rules` is written out to a fresh temp TOML file via
+    /// `csv_import::save_rules` (or, if empty, left pointing at a
+    /// nonexistent path, which `current_rules()` treats as no rules) so
+    /// `ImportDeps.rules_path` mirrors how rules are read in production.
     async fn test_deps(rules: Vec<csv_import::Rule>) -> ImportDeps {
         let pool = db::create_pool("sqlite::memory:")
             .await
@@ -190,6 +195,14 @@ mod tests {
         let category_repo = Arc::new(SqliteCategoryRepository::new(pool.clone()));
         let entry_repo = Arc::new(SqliteBudgetEntryRepository::new(pool.clone()));
         let transaction_repo = Arc::new(SqliteTransactionRepository::new(pool.clone()));
+
+        let rules_path = std::env::temp_dir().join(format!(
+            "otter_pipeline_test_rules_{}.toml",
+            ulid::Ulid::new()
+        ));
+        if !rules.is_empty() {
+            csv_import::save_rules(&rules_path, &rules).expect("failed to write test rules file");
+        }
 
         ImportDeps {
             month_repo: month_repo.clone(),
@@ -205,7 +218,7 @@ mod tests {
                 transaction_repo.clone(),
                 entry_repo.clone(),
             )),
-            rules,
+            rules_path,
         }
     }
 
@@ -227,12 +240,17 @@ mod tests {
         }
     }
 
+    /// Builds a `Contains` criterion for `field`.
+    fn contains(field: MatchField, pattern: &str) -> MatchCriterion {
+        MatchCriterion {
+            field,
+            match_type: MatchType::Contains(pattern.to_string()),
+        }
+    }
+
     fn netto_rule() -> csv_import::Rule {
         csv_import::Rule {
-            pattern: MatchCriteria {
-                merchant_contains: Some("netto".to_string()),
-                ..Default::default()
-            },
+            pattern: MatchCriteria(vec![contains(MatchField::Merchant, "netto")]),
             category: "groceries".to_string(),
         }
     }
@@ -273,10 +291,7 @@ mod tests {
     #[tokio::test]
     async fn falls_back_to_uncategorized_when_rule_category_is_invalid() {
         let invalid_rule = csv_import::Rule {
-            pattern: MatchCriteria {
-                merchant_contains: Some("netto".to_string()),
-                ..Default::default()
-            },
+            pattern: MatchCriteria(vec![contains(MatchField::Merchant, "netto")]),
             category: String::new(),
         };
         let deps = test_deps(vec![invalid_rule]).await;
@@ -431,5 +446,33 @@ mod tests {
         assert_eq!(outcome.imported, 1);
         assert_eq!(outcome.uncategorized, 1);
         assert!(outcome.failed.is_empty());
+    }
+
+    /// Rules are read fresh from `rules_path` on every `run_import` call,
+    /// not cached once at `ImportDeps` construction: a rule saved to the
+    /// file mid-session (as the bulk-categorize API, section 3, will do) is
+    /// picked up on the very next import without rebuilding `ImportDeps`.
+    #[tokio::test]
+    async fn rules_are_read_fresh_from_disk_on_every_import() {
+        let deps = test_deps(vec![]).await;
+        let txn = transaction(Some("NETTO 5567"), -1050, Some("groceries run"));
+
+        let mut result = ImportOutcome::default();
+        import_one_transaction(&deps, &txn, &mut result).await.unwrap();
+        assert_eq!(result.uncategorized, 1);
+        assert_eq!(result.created_categories, vec!["uncategorized".to_string()]);
+
+        // Simulate the queue API (section 3) saving a newly learned rule
+        // mid-session, by writing directly to the same `rules_path` —
+        // without rebuilding `ImportDeps`.
+        csv_import::save_rules(&deps.rules_path, &[netto_rule()])
+            .expect("failed to write new rule to rules_path");
+
+        let txn2 = transaction(Some("NETTO 9001"), -2000, Some("more groceries"));
+        let mut result2 = ImportOutcome::default();
+        import_one_transaction(&deps, &txn2, &mut result2).await.unwrap();
+
+        assert_eq!(result2.uncategorized, 0);
+        assert_eq!(result2.created_categories, vec!["groceries".to_string()]);
     }
 }

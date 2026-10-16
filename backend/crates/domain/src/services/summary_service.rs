@@ -291,6 +291,13 @@ mod tests {
         ) -> Result<Option<crate::entities::Transaction>, crate::errors::TransactionError> {
             unimplemented!("not needed for summary pipeline tests")
         }
+
+        async fn list_by_category_name(
+            &self,
+            _category_name: &str,
+        ) -> Result<Vec<crate::entities::Transaction>, crate::errors::TransactionError> {
+            unimplemented!("not needed for summary pipeline tests")
+        }
     }
 
     /// Fake `MonthRepository` returning a single, fixed month.

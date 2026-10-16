@@ -78,8 +78,14 @@ fn default_transaction() -> TransactionConfig {
 
 fn default_import() -> ImportConfig {
     ImportConfig {
-        matching_rules: None,
+        rules_file: default_rules_file(),
     }
+}
+
+/// Default `rules_file` path: `rules.toml` next to the config file, used
+/// when `[transaction.import]` doesn't set `rules_file` explicitly.
+fn default_rules_file() -> PathBuf {
+    PathBuf::from("rules.toml")
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -168,24 +174,26 @@ pub struct TransactionConfig {
 
 /// CSV import categorization settings (`[transaction.import]`).
 ///
-/// Rules are supplied as `matching_rules`, either written inline here or
-/// pulled in from a separate file via the top-level `include` directive (see
-/// [`AppConfig::load`]) — both produce the same `matching_rules` list, so
-/// there's no separate precedence rule to document.
-#[derive(Debug, Deserialize, Clone, Default)]
+/// `rules_file` names a hand-editable TOML file (see
+/// `csv_import::load_rules_or_empty`/`save_rules`) holding the
+/// categorization rules, rather than embedding them inline — this lets the
+/// bulk-categorize API (section 3) persist newly learned rules without
+/// rewriting the whole app config. After [`AppConfig::load`] resolves it,
+/// this field is always an absolute path (see [`resolve_relative`]).
+#[derive(Debug, Deserialize, Clone)]
 pub struct ImportConfig {
-    /// Categorization rules. Empty/unset means nothing categorizes;
-    /// everything falls to `"uncategorized"`.
-    #[serde(default)]
-    pub matching_rules: Option<Vec<csv_import::Rule>>,
+    /// Path to the rules file, relative to the config file's own directory
+    /// (absolute paths are used as-is). Defaults to `rules.toml` next to
+    /// the config file.
+    #[serde(default = "default_rules_file")]
+    pub rules_file: PathBuf,
 }
 
-impl ImportConfig {
-    /// Resolves the effective set of categorization rules for this config:
-    /// `matching_rules` if set, otherwise empty (nothing categorizes;
-    /// everything falls to `"uncategorized"`).
-    pub fn resolve_rules(&self) -> Vec<csv_import::Rule> {
-        self.matching_rules.clone().unwrap_or_default()
+impl Default for ImportConfig {
+    fn default() -> Self {
+        Self {
+            rules_file: default_rules_file(),
+        }
     }
 }
 
@@ -272,11 +280,20 @@ fn resolve_includes(config_file: &Path) -> Result<Vec<PathBuf>, config::ConfigEr
     Ok(directive
         .include
         .into_iter()
-        .map(|p| {
-            let p = PathBuf::from(p);
-            if p.is_absolute() { p } else { base_dir.join(p) }
-        })
+        .map(|p| resolve_relative(base_dir, &PathBuf::from(p)))
         .collect())
+}
+
+/// Resolves `path` against `base_dir`: an absolute `path` is used as-is,
+/// a relative one is joined onto `base_dir`. Shared by `include` path
+/// resolution and [`ImportConfig::rules_file`] resolution, both of which
+/// need "relative to the config file's own directory" semantics.
+fn resolve_relative(base_dir: &Path, path: &Path) -> PathBuf {
+    if path.is_absolute() {
+        path.to_path_buf()
+    } else {
+        base_dir.join(path)
+    }
 }
 
 impl AppConfig {
@@ -339,7 +356,19 @@ impl AppConfig {
         builder = builder.add_source(config::Environment::with_prefix("APP").separator("__"));
 
         let config = builder.build()?;
-        let app_config: Self = config.try_deserialize()?;
+        let mut app_config: Self = config.try_deserialize()?;
+
+        let base_dir = config_path
+            .map(|p| {
+                Path::new(p)
+                    .parent()
+                    .unwrap_or_else(|| Path::new("."))
+                    .to_path_buf()
+            })
+            .unwrap_or_else(|| PathBuf::from("."));
+        app_config.transaction.import.rules_file =
+            resolve_relative(&base_dir, &app_config.transaction.import.rules_file);
+
         app_config.validate()?;
         tracing::info!("Loaded configuration: {:#?}", app_config);
         Ok(app_config)
@@ -455,97 +484,71 @@ green_threshold = 50
         assert_eq!(config.ui.budget_bars.yellow_threshold, 100);
     }
 
-    /// Builds a single-rule `Vec<csv_import::Rule>` with a distinct
-    /// `category` name, so tests can assert on which source a resolved rule
-    /// set came from.
-    fn rule_with_category(category: &str) -> csv_import::Rule {
-        csv_import::Rule {
-            pattern: csv_import::MatchCriteria {
-                merchant_contains: Some("netto".to_string()),
-                ..Default::default()
-            },
-            category: category.to_string(),
-        }
-    }
-
-    /// `matching_rules` set resolves to those rules.
+    /// With no `rules_file` set, the default `rules.toml` resolves to a
+    /// path next to the config file (not relative to the process's CWD).
     #[test]
-    fn resolve_rules_inline_only() {
-        let config = ImportConfig {
-            matching_rules: Some(vec![rule_with_category("inline")]),
-        };
-        let rules = config.resolve_rules();
-        assert_eq!(rules.len(), 1);
-        assert_eq!(rules[0].category, "inline");
-    }
-
-    /// Unset resolves to an empty rule set.
-    #[test]
-    fn resolve_rules_neither_set_is_empty() {
-        let config = ImportConfig {
-            matching_rules: None,
-        };
-        let rules = config.resolve_rules();
-        assert!(rules.is_empty());
-    }
-
-    /// A relative `include` path in the main config file pulls in
-    /// `matching_rules` from the included file, resolved against the main
-    /// file's own directory.
-    #[test]
-    fn include_pulls_in_matching_rules_from_relative_path() {
+    fn default_rules_file_resolves_relative_to_config_dir() {
         let dir = tempfile::tempdir().unwrap();
-        std::fs::write(
-            dir.path().join("rules.toml"),
-            r#"
-[[transaction.import.matching_rules]]
-category = "from_include"
-[transaction.import.matching_rules.match]
-merchant_contains = "netto"
-"#,
-        )
-        .unwrap();
         let main_path = dir.path().join("config.toml");
-        std::fs::write(&main_path, r#"include = ["./rules.toml"]"#).unwrap();
+        std::fs::write(&main_path, "").unwrap();
 
         let config = AppConfig::load(Some(main_path.to_str().unwrap()), true).unwrap();
-        let rules = config.transaction.import.resolve_rules();
-        assert_eq!(rules.len(), 1);
-        assert_eq!(rules[0].category, "from_include");
+        assert_eq!(
+            config.transaction.import.rules_file,
+            dir.path().join("rules.toml")
+        );
     }
 
-    /// The main config file's own `matching_rules` take precedence over an
-    /// included file's, since the main file is added as a source last.
+    /// A relative `rules_file` is resolved against the config file's own
+    /// directory, not the process's CWD.
     #[test]
-    fn main_file_matching_rules_override_included() {
+    fn relative_rules_file_resolves_against_config_dir() {
         let dir = tempfile::tempdir().unwrap();
-        std::fs::write(
-            dir.path().join("rules.toml"),
-            r#"
-[[transaction.import.matching_rules]]
-category = "from_include"
-[transaction.import.matching_rules.match]
-merchant_contains = "netto"
-"#,
-        )
-        .unwrap();
         let main_path = dir.path().join("config.toml");
         std::fs::write(
             &main_path,
             r#"
-include = ["./rules.toml"]
-
-[[transaction.import.matching_rules]]
-category = "from_main"
-[transaction.import.matching_rules.match]
-merchant_contains = "biedronka"
+[transaction.import]
+rules_file = "custom-rules.toml"
 "#,
         )
         .unwrap();
 
         let config = AppConfig::load(Some(main_path.to_str().unwrap()), true).unwrap();
-        let rules = config.transaction.import.resolve_rules();
-        assert_eq!(rules.len(), 1);
-        assert_eq!(rules[0].category, "from_main");
+        assert_eq!(
+            config.transaction.import.rules_file,
+            dir.path().join("custom-rules.toml")
+        );
+    }
+
+    /// An absolute `rules_file` is used as-is, regardless of the config
+    /// file's directory.
+    #[test]
+    fn absolute_rules_file_is_used_as_is() {
+        let dir = tempfile::tempdir().unwrap();
+        let main_path = dir.path().join("config.toml");
+        let absolute_rules = dir.path().join("elsewhere").join("rules.toml");
+        std::fs::write(
+            &main_path,
+            format!(
+                "[transaction.import]\nrules_file = {:?}\n",
+                absolute_rules.to_str().unwrap()
+            ),
+        )
+        .unwrap();
+
+        let config = AppConfig::load(Some(main_path.to_str().unwrap()), true).unwrap();
+        assert_eq!(config.transaction.import.rules_file, absolute_rules);
+    }
+
+    /// With no config file at all, the default `rules_file` resolves
+    /// relative to the process's CWD (`"."`).
+    #[test]
+    fn default_rules_file_with_no_config_resolves_to_cwd() {
+        let config = AppConfig::load(None, false).unwrap();
+        assert_eq!(
+            config.transaction.import.rules_file,
+            PathBuf::from(".").join("rules.toml")
+        );
     }
 }

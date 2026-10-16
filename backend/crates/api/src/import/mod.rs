@@ -13,9 +13,11 @@
 
 mod categorize;
 mod decode;
+mod matchable;
 mod pipeline;
 mod provisioning;
 
 pub use decode::{Charset, ImportError, RowFailure, RowOutcome};
+pub use matchable::MatchableImportDetails;
 pub use pipeline::{run_import, ImportOutcome};
 pub use provisioning::{ImportDeps, RowError};

@@ -64,7 +64,10 @@ async fn setup() -> Router {
         entry_service: entry_service.clone(),
         transaction_repo: transaction_repo.clone(),
         transaction_service: transaction_service.clone(),
-        rules: Vec::new(),
+        rules_path: std::env::temp_dir().join(format!(
+            "otter_api_tests_no_rules_{}.toml",
+            ulid::Ulid::new()
+        )),
     });
 
     let state = AppState {

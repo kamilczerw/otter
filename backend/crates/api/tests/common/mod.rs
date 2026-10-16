@@ -39,7 +39,9 @@ pub struct TestApp {
 
 /// Builds a [`TestApp`] backed by a fresh in-memory SQLite database with
 /// migrations applied, wiring in `rules` as the import pipeline's
-/// categorization rules.
+/// categorization rules (written to a fresh temp rules file — an empty
+/// `rules` list is instead left pointing at a nonexistent path, which
+/// `ImportDeps::current_rules` treats as no rules).
 ///
 /// Only the `/imports` route is mounted — this harness is for the import
 /// test file, which has no need for the other resource routes that
@@ -72,6 +74,14 @@ pub async fn setup(rules: Vec<csv_import::Rule>) -> TestApp {
         month_repo.clone(),
     ));
 
+    let rules_path = std::env::temp_dir().join(format!(
+        "otter_api_test_rules_{}.toml",
+        ulid::Ulid::new()
+    ));
+    if !rules.is_empty() {
+        csv_import::save_rules(&rules_path, &rules).expect("failed to write test rules file");
+    }
+
     let import_deps = Arc::new(ImportDeps {
         month_repo: month_repo.clone(),
         month_service: month_service.clone(),
@@ -79,7 +89,7 @@ pub async fn setup(rules: Vec<csv_import::Rule>) -> TestApp {
         entry_service: entry_service.clone(),
         transaction_repo: transaction_repo.clone(),
         transaction_service: transaction_service.clone(),
-        rules,
+        rules_path,
     });
 
     let state = AppState {
