@@ -68,6 +68,7 @@ async fn setup() -> Router {
             "otter_api_tests_no_rules_{}.toml",
             ulid::Ulid::new()
         )),
+        inline_rules: Vec::new(),
     });
 
     let state = AppState {
@@ -665,8 +666,9 @@ async fn test_month_summary() {
     // Add entry with budgeted = 10000
     let entry_id = create_entry(&app, &month_id, &cat_id, 10000, None).await;
 
-    // Create transaction for 5000
-    create_transaction(&app, &entry_id, 5000, "2026-02-15").await;
+    // Create expense transaction for 5000 (negative amount: expenses count
+    // toward "paid", income does not)
+    create_transaction(&app, &entry_id, -5000, "2026-02-15").await;
 
     // Get summary
     let summary_path = format!("/api/v1/months/{month_id}/summary");

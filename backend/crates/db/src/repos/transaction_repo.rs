@@ -298,11 +298,11 @@ impl TransactionRepository for SqliteTransactionRepository {
             .collect()
     }
 
-    /// Sums the magnitude of all transactions recorded against an entry.
+    /// Sums the magnitude of expense (negative-amount) transactions recorded
+    /// against an entry. Income transactions (positive amounts) are excluded
+    /// entirely so they don't count toward a budget's "paid" total.
     ///
-    /// Amounts are summed as absolute values (`SUM(ABS(amount))`) so that
-    /// expense transactions (negative amounts) and income transactions
-    /// (positive amounts) both contribute a positive "paid" total. This is
+    /// Amounts are summed as absolute values (`SUM(ABS(amount))`). This is
     /// an intentional magnitude sum, not ledger-accurate netting; a refund
     /// recorded in the same category as its original expense will not
     /// offset it.
@@ -311,7 +311,7 @@ impl TransactionRepository for SqliteTransactionRepository {
         entry_id: &ulid::Ulid,
     ) -> Result<Money, TransactionError> {
         let row = sqlx::query(
-            "SELECT COALESCE(SUM(ABS(amount)), 0) AS total FROM transactions WHERE entry_id = ?",
+            "SELECT COALESCE(SUM(ABS(amount)), 0) AS total FROM transactions WHERE entry_id = ? AND amount < 0",
         )
         .bind(entry_id.to_string())
         .fetch_one(&self.pool)
@@ -590,7 +590,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn sum_by_entry_returns_magnitude_for_income_transaction() {
+    async fn sum_by_entry_excludes_income_transaction() {
         let pool = setup_pool().await;
         let repo = SqliteTransactionRepository::new(pool.clone());
         let entry_id = seed_entry(&pool).await;
@@ -609,7 +609,7 @@ mod tests {
 
         let total = repo.sum_by_entry(&entry_id).await.unwrap();
 
-        assert_eq!(total, Money::new(1500));
+        assert_eq!(total, Money::new(0));
     }
 
     #[tokio::test]
