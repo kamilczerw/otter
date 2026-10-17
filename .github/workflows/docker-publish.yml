@@ -70,8 +70,7 @@ jobs:
 
           gh workflow run --repo kamilczerw/ha-addons \
             update-addon-version.yaml \
-            -f addon_name="$ADDON_NAME" \
-            -f source_repo="$GITHUB_REPOSITORY"
+            -f addon_name="$ADDON_NAME"
         env:
           GH_TOKEN: ${{ secrets.HA_ADDONS_REPO_PAT }}
 
