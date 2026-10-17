@@ -199,6 +199,24 @@ export interface ImportRulesResponse {
   failed: RuleImportFailure[]
 }
 
+// One row from an imported CSV file that failed to import, as reported by
+// `POST /imports`.
+export interface FailedRow {
+  row: number
+  raw: string
+  reason: string
+}
+
+// Result of a CSV transaction import (`POST /imports`).
+export interface ImportResponse {
+  imported: number
+  duplicates: number
+  uncategorized: number
+  created_months: string[]
+  created_categories: string[]
+  failed: FailedRow[]
+}
+
 // Error types
 export interface ApiErrorResponse {
   error: {
