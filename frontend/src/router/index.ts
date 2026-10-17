@@ -35,6 +35,11 @@ const routes: RouteRecordRaw[] = [
     name: 'rules',
     component: () => import('@/views/RulesView.vue'),
   },
+  {
+    path: '/import',
+    name: 'import',
+    component: () => import('@/views/ImportCsvView.vue'),
+  },
 ]
 
 // Detect base path dynamically to support HA Ingress subpaths.

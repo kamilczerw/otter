@@ -5,10 +5,10 @@
 
 ## 2. Import view
 
-- [ ] 2.1 Add route `/import` → new `frontend/src/views/ImportCsvView.vue` in the router config, verified by navigating to it in a dev run
-- [ ] 2.2 Build `ImportCsvView.vue`: charset `v-select` (UTF-8 default, Windows-1250), hidden file input + upload button (mirroring `RulesView.vue`'s pattern), `v-progress-linear` while in flight, calling `importCsv` on file selection and resetting the input value afterward
-- [ ] 2.3 Render the result panel on success: stat chips for `imported`/`duplicates`/`uncategorized`; if `failed.length > 0`, an expansion panel listing `Row {row}: {reason}` with `raw` as a secondary line; `created_months`/`created_categories` are not rendered
-- [ ] 2.4 Render an error alert (reusing the existing `ApiError` display pattern from `RulesView.vue`) when the upload request fails, with no result panel shown in that case
+- [x] 2.1 Add route `/import` → new `frontend/src/views/ImportCsvView.vue` in the router config, verified by navigating to it in a dev run
+- [x] 2.2 Build `ImportCsvView.vue`: charset `v-select` (UTF-8 default, Windows-1250), hidden file input + upload button (mirroring `RulesView.vue`'s pattern), `v-progress-linear` while in flight, calling `importCsv` on file selection and resetting the input value afterward
+- [x] 2.3 Render the result panel on success: stat chips for `imported`/`duplicates`/`uncategorized`; if `failed.length > 0`, an expansion panel listing `Row {row}: {reason}` with `raw` as a secondary line; `created_months`/`created_categories` are not rendered
+- [x] 2.4 Render an error alert (reusing the existing `ApiError` display pattern from `RulesView.vue`) when the upload request fails, with no result panel shown in that case
 
 ## 3. Settings entry point
 
