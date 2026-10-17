@@ -102,6 +102,13 @@
             </div>
             <v-icon size="small" class="text-cosmic-secondary">mdi-chevron-right</v-icon>
           </div>
+          <div class="settings-item mt-2" @click="goToImport">
+            <div class="settings-item-left">
+              <v-icon class="settings-item-icon" size="large">mdi-file-upload-outline</v-icon>
+              <div class="settings-item-label">{{ $t('import.title') }}</div>
+            </div>
+            <v-icon size="small" class="text-cosmic-secondary">mdi-chevron-right</v-icon>
+          </div>
         </div>
       </div>
     </div>
@@ -176,6 +183,12 @@ function goToUncategorized() {
 function goToRules() {
   emit('update:modelValue', false)
   router.push('/rules')
+}
+
+/** Closes the settings drawer and navigates to the CSV import view. */
+function goToImport() {
+  emit('update:modelValue', false)
+  router.push('/import')
 }
 </script>
 

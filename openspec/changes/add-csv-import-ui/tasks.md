@@ -12,7 +12,7 @@
 
 ## 3. Settings entry point
 
-- [ ] 3.1 Add an "Import CSV" item (`mdi-file-upload-outline`) to the Data section of `frontend/src/components/layout/SettingsDrawer.vue`, with a `goToImport()` handler mirroring `goToRules()` (close drawer, `router.push('/import')`)
+- [x] 3.1 Add an "Import CSV" item (`mdi-file-upload-outline`) to the Data section of `frontend/src/components/layout/SettingsDrawer.vue`, with a `goToImport()` handler mirroring `goToRules()` (close drawer, `router.push('/import')`)
 
 ## 4. i18n
 
