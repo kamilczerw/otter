@@ -20,6 +20,6 @@
 
 ## 5. Testing and verification
 
-- [ ] 5.1 Write `ImportCsvView.spec.ts` covering: charset defaults to UTF-8; file selection calls `importCsv` with the chosen charset; a success response renders the three stat chips; a response with `failed` rows renders the expansion panel with correct count/content; a response with no failures renders no expansion panel; an `ApiError` renders the error alert and no result panel; selecting the same filename twice re-triggers the change handler
-- [ ] 5.2 Run `npm run type-check` and the full frontend test suite, and verify all pass
+- [x] 5.1 Write `ImportCsvView.spec.ts` covering: charset defaults to UTF-8; file selection calls `importCsv` with the chosen charset; a success response renders the three stat chips; a response with `failed` rows renders the expansion panel with correct count/content; a response with no failures renders no expansion panel; an `ApiError` renders the error alert and no result panel; selecting the same filename twice re-triggers the change handler
+- [x] 5.2 Run `npm run type-check` and the full frontend test suite, and verify all pass
 - [ ] 5.3 Manually import a real CSV export (one per supported charset) against a local backend instance and confirm the result panel matches the actual `ImportResponse`, per the design doc's Risks note on `File`/`Blob` MIME-type handling
