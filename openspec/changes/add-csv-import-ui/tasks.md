@@ -16,7 +16,7 @@
 
 ## 4. i18n
 
-- [ ] 4.1 Add `import.*` keys (`title`, `charset`, `uploadButton`, `imported`, `duplicates`, `uncategorized`, `failedRows` with `{count}` interpolation) to `frontend/src/i18n/en.json` and `pl.json`, verified by `npm run type-check` and manually toggling language in the running app
+- [x] 4.1 Add `import.*` keys (`title`, `charset`, `uploadButton`, `imported`, `duplicates`, `uncategorized`, `failedRows` with `{count}` interpolation) to `frontend/src/i18n/en.json` and `pl.json`, verified by `npm run type-check` and manually toggling language in the running app
 
 ## 5. Testing and verification
 

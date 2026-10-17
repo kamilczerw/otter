@@ -147,6 +147,15 @@
     "deleteConfirmTitle": "Usunąć tę regułę?",
     "deleteConfirmText": "Ta reguła nie będzie już stosowana do przyszłych importów."
   },
+  "import": {
+    "title": "Importuj CSV",
+    "charset": "Kodowanie",
+    "uploadButton": "Wczytaj plik",
+    "imported": "Zaimportowano",
+    "duplicates": "Duplikaty",
+    "uncategorized": "Nieskategoryzowane",
+    "failedRows": "{count} wierszy nie powiodło się"
+  },
   "errors": {
     "MATCHING_RULE_INVALID_REGEX": "Nieprawidłowy wzorzec regex {pattern}: {reason}",
     "MATCHING_RULE_NOT_FOUND": "Nie znaleziono reguły",

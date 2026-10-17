@@ -147,6 +147,15 @@
     "deleteConfirmTitle": "Delete this rule?",
     "deleteConfirmText": "This rule will no longer apply to future imports."
   },
+  "import": {
+    "title": "Import CSV",
+    "charset": "Charset",
+    "uploadButton": "Upload file",
+    "imported": "Imported",
+    "duplicates": "Duplicates",
+    "uncategorized": "Uncategorized",
+    "failedRows": "{count} rows failed"
+  },
   "errors": {
     "MATCHING_RULE_INVALID_REGEX": "Invalid regex pattern {pattern}: {reason}",
     "MATCHING_RULE_NOT_FOUND": "Rule not found",
